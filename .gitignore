@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+output/
+worker/.wrangler/
+.DS_Store
