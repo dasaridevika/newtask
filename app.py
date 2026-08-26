@@ -12,14 +12,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Header
+# Title Header
 st.title("Lead Research")
 st.caption("Strategic Client Intelligence & Executive Outreach Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
 
-# Input Box
+# URL Search Input
 col_url, col_btn = st.columns([4, 1])
 with col_url:
     target_url = st.text_input(
@@ -33,21 +33,21 @@ with col_btn:
     run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
 
 if run_btn and target_url:
-    with st.status("Generating Deep Narrative Analysis & Executive Brief...", expanded=True) as status:
-        st.write(f"1. Extracting multi-source intelligence for `{target_url}`...")
+    with st.status("Generating Strategic Analysis & Executive Outreach...", expanded=True) as status:
+        st.write(f"1. Ingesting multi-source intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
         st.write("2. Synthesizing executive profile, operational expectations, and friction analysis...")
         company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"])
 
-        st.write("3. Dense vector semantic matching against 462 primary industrial sectors...")
+        st.write("3. Dense semantic vector matching against 462 primary sector definitions...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
         catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
         matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
 
-        st.write("4. Assembling narrative solution architectures and executive outreach brief...")
+        st.write("4. Mapping requirements to our catalog offerings and drafting executive outreach...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Analysis & Outreach Brief Complete", state="complete", expanded=False)
+        status.update(label="Analysis & Outreach Complete", state="complete", expanded=False)
 
     st.divider()
 
@@ -65,58 +65,65 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Section 1: What They Might Be Expecting (Deep Narrative Analysis Summary)
-    st.subheader("1. What They Are Expecting (Client Intelligence & Needs Analysis)")
-    
-    with st.container(border=True):
-        st.markdown("#### Strategic Executive Profile & Macro Position")
-        st.write(company_details.get("executive_profile_analysis", ""))
-        st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
+    # Clean, Organized Tabs: Overview, Product Mapping, Outreach Dossier
+    tab_overview, tab_mapping, tab_outreach = st.tabs([
+        "Strategic Executive Overview",
+        "Requirement-to-Product Mapping",
+        "Comprehensive Executive Outreach"
+    ])
 
-    with st.container(border=True):
-        st.markdown("#### Stated Market Requirements & Strategic Scope")
-        st.write(company_details.get("expectations_and_needs_narrative", ""))
+    # Tab 1: Strategic Executive Overview
+    with tab_overview:
+        st.subheader("1. Strategic Executive Overview & Client Needs")
+        st.caption("Deep narrative assessment of the target's operating model, capital scope, and underlying bottlenecks:")
 
-    with st.container(border=True):
-        st.markdown("#### Underlying Operational Friction & Commercial Pressures")
-        st.write(company_details.get("operational_friction_analysis", ""))
+        with st.container(border=True):
+            st.markdown("#### Strategic Executive Profile & Macro Position")
+            st.write(company_details.get("executive_profile_analysis", ""))
+            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
 
-    st.divider()
+        with st.container(border=True):
+            st.markdown("#### Stated Market Requirements & Strategic Scope")
+            st.write(company_details.get("expectations_and_needs_narrative", ""))
 
-    # Section 2: What We Can Provide (Deep Narrative Solution Architecture)
-    st.subheader("2. What We Can Provide (Strategic Solution Architecture)")
-    st.caption("Comprehensive analysis demonstrating how our capital project intelligence platform addresses their strategic needs:")
+        with st.container(border=True):
+            st.markdown("#### Underlying Operational Friction & Information Asymmetry")
+            st.write(company_details.get("operational_friction_analysis", ""))
 
-    mappings = analysis.get("exact_product_mappings", [])
-    if mappings:
-        for i, m in enumerate(mappings):
-            with st.container(border=True):
-                st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
-                st.markdown(f"**Target Sector & Requirement Solved:** {m.get('mapped_requirement')}")
-                
-                st.markdown("**Catalog Sector Definition:**")
-                st.info(m.get("offering_definition", ""))
+    # Tab 2: Requirement-to-Product Mapping
+    with tab_mapping:
+        st.subheader("2. Requirement-to-Product Mapping")
+        st.caption("Direct alignment of our 462-sector capital project intelligence products to their verified operational requirements:")
 
-                st.markdown("#### Solution Architecture & Data Deliverables")
-                st.write(m.get("comprehensive_narrative", ""))
+        mappings = analysis.get("exact_product_mappings", [])
+        if mappings:
+            for i, m in enumerate(mappings):
+                with st.container(border=True):
+                    st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
+                    st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
+                    st.divider()
+                    
+                    st.markdown("**Catalog Sector Definition:**")
+                    st.info(m.get("offering_definition", ""))
 
-                st.markdown("#### Quantified Commercial Advantage & Strategic ROI")
-                st.write(m.get("roi_narrative", ""))
-    else:
-        st.info("No direct catalog mappings available.")
+                    st.markdown("#### Strategic Solution Architecture")
+                    st.write(m.get("comprehensive_narrative", ""))
 
-    st.divider()
+                    st.markdown("#### Quantified Commercial Advantage & Strategic ROI")
+                    st.write(m.get("roi_narrative", ""))
+        else:
+            st.info("No direct catalog mappings available.")
 
-    # Section 3: In-Depth Executive Outreach Dossier (Detailed & Professional)
-    st.subheader("3. Comprehensive Executive Outreach Dossier")
-    st.caption("Authoritative, C-level briefing ready to deliver to target leadership:")
+    # Tab 3: Comprehensive Executive Outreach Dossier
+    with tab_outreach:
+        st.subheader("3. Comprehensive Executive Outreach Dossier")
+        st.caption("Authoritative, C-level briefing tailored specifically to target leadership:")
 
-    with st.container(border=True):
-        st.markdown(analysis.get("personalized_pitch", ""))
+        with st.container(border=True):
+            st.markdown(analysis.get("personalized_pitch", ""))
 
-    # Direct Copy / Code Block
-    with st.expander("View Raw Outreach Text for Copying", expanded=False):
-        st.code(analysis.get("personalized_pitch", ""), language="markdown")
+        with st.expander("View Raw Outreach Text for Copying", expanded=False):
+            st.code(analysis.get("personalized_pitch", ""), language="markdown")
 
     # Download Button
     st.divider()
@@ -135,8 +142,8 @@ if run_btn and target_url:
         "executive_outreach_dossier": analysis.get("personalized_pitch")
     }
     st.download_button(
-        label="Download Full Executive Briefing (JSON)",
+        label="Download Full Strategic Brief (JSON)",
         data=json.dumps(full_result, indent=2),
-        file_name=f"{serp_data['domain']}_executive_briefing.json",
+        file_name=f"{serp_data['domain']}_strategic_brief.json",
         mime="application/json"
     )
