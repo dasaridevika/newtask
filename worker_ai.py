@@ -56,14 +56,16 @@ class WorkerAI:
         clean_name = domain.split(".")[0].replace("www", "").capitalize() if domain else "Enterprise"
 
         system_prompt = (
-            "You are a Senior Managing Director & Strategic Intelligence Director.\n"
-            "Analyze the target company's business model from the provided text.\n"
-            "Focus specifically on their operational friction, expansion bottlenecks, and what market/capital intelligence they need.\n"
-            "Do NOT output fake links or placeholders. Keep all output professional, clean, and concise.\n\n"
+            "You are a Senior Managing Director & Global Head of Strategic Intelligence.\n"
+            "Analyze the target company's business model from the crawled web data.\n"
+            "Determine:\n"
+            "1. Exact operational friction points and expansion bottlenecks they face.\n"
+            "2. What market and capital project intelligence they expect/need to scale operations.\n"
+            "3. The primary decision maker title.\n\n"
             "Return strictly a valid JSON object matching this schema:\n"
             "{\n"
             '  "company_name": "Official Entity Name",\n'
-            '  "archetype": "Hyperscale Cloud Operator / Private Equity Sponsor / Infrastructure OEM / EPC Contractor",\n'
+            '  "archetype": "Hyperscale Operator / Private Equity Sponsor / Infrastructure OEM / EPC Contractor",\n'
             '  "industry_focus": "Specific Industry Domain",\n'
             '  "executive_summary": "High-level summary of their business model, scale, and strategic focus.",\n'
             '  "expectations_and_needs": [\n'
@@ -164,6 +166,8 @@ class WorkerAI:
         company_name = company_details.get("company_name", "Target Enterprise")
         archetype = company_details.get("archetype", "Enterprise")
         decision_maker = company_details.get("buying_role_hypothesis", "VP of Infrastructure & Strategy")
+        needs = company_details.get("expectations_and_needs", [])
+        friction = company_details.get("core_friction_points", [])
 
         is_hyperscaler = any(k in archetype.lower() or k in company_name.lower() for k in ["hyperscale", "amazon", "aws", "google", "cloud"])
         is_investment_firm = any(k in archetype.lower() or k in company_name.lower() for k in ["private equity", "investment", "investor", "capital", "buyout"])
@@ -222,31 +226,106 @@ class WorkerAI:
                 "commercial_roi": commercial_roi
             })
 
+        # Deep, Institutional, Multi-Part Outreach Brief
+        top_offering_name = mappings[0]["exact_offering_name"] if mappings else "Project Intelligence Database"
+        top_sector = matched_services[0].get("Primary Sector", "Target Sector") if matched_services else "Infrastructure"
+
         if is_hyperscaler:
-            pitch = (
-                f"Dear {company_name} Infrastructure & Real Estate Leadership,\n\n"
-                f"We track early-stage capital project pipelines, municipal land filings, and utility substation interconnection queues (MW capacity / transmission kV) "
-                f"across regional growth corridors 18–24 months in advance of public announcements.\n\n"
-                f"Our dataset directly accelerates {company_name}'s regional site selection, de-risks multi-gigawatt power provisioning, and aligns logistics buildouts with emerging transport corridors.\n\n"
-                f"We would welcome a brief 15-minute briefing to share a live sample of upcoming substation queue filings and industrial land parcels in your priority expansion regions.\n\n"
-                f"Sincerely,\nGlobal Enterprise Infrastructure Intelligence Team"
-            )
+            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+
+**TO:** {decision_maker}, {company_name}  
+**FROM:** Senior Managing Director, Global Infrastructure Intelligence  
+**SUBJECT:** Strategic Intelligence Partnership: De-risking Regional Site Selection & Substation Power Queues in {top_sector}
+
+---
+
+#### 1. Strategic Context & Executive Thesis
+{company_name} is executing multi-billion-dollar capital expansion programs across hyperscale cloud availability zones, high-density AI clusters, and multimodal logistics corridors. In today's constrained environment, the primary bottleneck to physical scaling is no longer capital—it is lead time on high-voltage utility interconnections (50MW–500MW+), municipal zoning dockets, and industrial land availability.
+
+#### 2. Identified Operational Friction & Critical Pressures
+Based on our industry intelligence, {company_name}'s regional expansion teams face two acute challenges:
+- **Utility & Substation Queue Lead Times:** Power allocations and substation queue evaluations currently require 24–36 months of pre-construction coordination.
+- **Speculative Land Scarcity:** Regional developers and speculators lock up high-capacity industrial parcels months before zoning filings become public knowledge.
+
+#### 3. What We Provide ({top_offering_name})
+Our verified Capital Project Intelligence Platform delivers proprietary, pre-construction visibility directly into {company_name}'s GIS and real estate workflows:
+- **Pre-Filing Site Intelligence:** Verified tracking of industrial land parcels, zoning applications, and environmental impact filings 18–24 months in advance.
+- **Grid Interconnection Tracking:** Substation queue status, target Megawatt (MW) allocations, kV transmission line capacity, and utility contact dockets.
+- **Corridor Mapping in {top_sector}:** Direct synchronization with regional freight terminals and utility-scale clean energy PPAs.
+
+#### 4. Quantified Strategic ROI
+- **12–18 Month First-Mover Advantage:** Identify and secure prime land parcels before regional real estate prices escalate.
+- **De-Risked Commissioning Milestones:** Validate substation capacity upfront to prevent costly multi-month deployment delays on gigawatt AI clusters.
+
+#### 5. Proposed Next Steps
+We propose a 15-minute executive briefing next week to review a live sample dataset of upcoming substation queue filings and industrial land pipelines across your priority growth corridors.
+
+---
+*Prepared by Enterprise Strategic Intelligence Group*"""
         elif is_investment_firm:
-            pitch = (
-                f"Dear {company_name} Investment Leadership,\n\n"
-                f"To support your commercial due diligence and M&A deal origination across industrial platforms, our Capital Project Intelligence Platform "
-                f"tracks upcoming global infrastructure developments—delivering verified CAPEX allocations, permitting stage-gates, and contract awards 12–18 months in advance.\n\n"
-                f"We would welcome a brief 15-minute briefing to share live forward-looking project pipelines and market sizing datasets across your target buyout sectors.\n\n"
-                f"Sincerely,\nGlobal Enterprise Intelligence Team"
-            )
+            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+
+**TO:** {decision_maker}, {company_name}  
+**FROM:** Senior Managing Director, Global Private Equity Strategy  
+**SUBJECT:** Strategic Intelligence Partnership: Proprietary Deal Origination & M&A Due Diligence in {top_sector}
+
+---
+
+#### 1. Strategic Context & Executive Thesis
+{company_name} has built an exceptional five-decade track record in backing and scaling middle-market industrial, manufacturing, and specialty service platforms. As deal competition intensifies and public auction valuations remain elevated, generating superior alpha requires proprietary deal origination and forward-looking market sizing data that moves faster than traditional quarterly reports.
+
+#### 2. Identified Operational Friction & Critical Pressures
+During investment screening and commercial due diligence, private equity investment committees face key information gaps:
+- **Lagging Historical Datasets:** Standard market reports reflect past cycles rather than forward-looking capital expenditure (CAPEX) pipelines.
+- **High Auction Premiums:** Broadly marketed investment bank auctions compress entry multiples and reduce internal rate of return (IRR) headroom.
+
+#### 3. What We Provide ({top_offering_name})
+Our Capital Project Intelligence Platform equips {company_name}'s deal teams and operating partners with verified, pre-auction market data:
+- **Forward-Looking CAPEX Pipelines:** Comprehensive database of announced, permitted, and under-construction capital developments across {top_sector}.
+- **Commercial Due Diligence Datasets:** Stress-test buyout financial models against verified customer construction schedules, capacity ratings, and equipment spending.
+- **Stakeholder Directory:** Direct mapping linking facility owners, general contractors, and engineering consultancies to identify proprietary add-on targets.
+
+#### 4. Quantified Strategic ROI
+- **Proprietary Deal Origination:** Intercept high-performing middle-market platform targets months before formal investment bank auctions begin.
+- **Underwriting Precision:** Accelerate due diligence velocity by 40% and validate portfolio company revenue projections with ground-truth construction data.
+
+#### 5. Proposed Next Steps
+We propose a brief 15-minute executive briefing next week to walk through a live demonstration of our forward-looking project feeds and market sizing data across your target investment sectors.
+
+---
+*Prepared by Enterprise Strategic Intelligence Group*"""
         else:
-            pitch = (
-                f"Dear {company_name} Executive Leadership,\n\n"
-                f"Our Project Intelligence Platform delivers verified, pre-RFP intelligence on upcoming capital developments—tracking land acquisitions, "
-                f"zoning dockets, and engineering milestones 12–18 months in advance.\n\n"
-                f"We would welcome a brief 15-minute briefing to review a live dataset of early-stage project filings across your key commercial corridors.\n\n"
-                f"Sincerely,\nGlobal Enterprise Intelligence Team"
-            )
+            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+
+**TO:** {decision_maker}, {company_name}  
+**FROM:** Senior Managing Director, Global Commercial Strategy  
+**SUBJECT:** Strategic Intelligence Partnership: Early-Stage Pipeline Visibility & Specification Lock-In in {top_sector}
+
+---
+
+#### 1. Strategic Context & Executive Thesis
+{company_name} operates as an established commercial leader in {top_sector}. In long-cycle capital expenditure environments, commercial success depends fundamentally on engaging project developers and engineering consultancies during early conceptual design—well before public contractor tenders are released.
+
+#### 2. Identified Operational Friction & Critical Pressures
+Commercial sales and business development teams encounter significant hurdles:
+- **Late Public Tenders:** By the time a project is published as a formal public RFP, hardware and service specifications have already been locked in by competitors.
+- **Supply Chain Lead Times:** Long manufacturing lead times make it difficult to respond to short-fuse contractor bids without advance pipeline visibility.
+
+#### 3. What We Provide ({top_offering_name})
+Our Project Intelligence Platform delivers pre-RFP visibility into the complete lifecycle of upcoming developments:
+- **Stage-Gate Tracking:** Track developments from initial land acquisition, zoning approval, and FEED engineering through procurement tender release.
+- **Technical & Design Parameters:** Access capacity specifications, engineering requirements, and planned procurement schedules.
+- **Key Decision-Maker Directory:** Verified contact mapping linking project owners, lead engineering consultancies, and general contractors.
+
+#### 4. Quantified Strategic ROI
+- **12–18 Month Advance Window:** Engage engineering design consultancies during blueprint drafting to lock in proprietary specifications.
+- **Higher Win Rates:** Convert speculative market demand into qualified, high-margin contract awards before competitive bidding opens.
+
+#### 5. Proposed Next Steps
+We would welcome a brief 15-minute executive briefing next week to share a live sample dataset of upcoming capital projects and permitting stage-gates across your core target markets.
+
+---
+*Prepared by Enterprise Strategic Intelligence Group*"""
 
         return {
             "fit_score": 98,

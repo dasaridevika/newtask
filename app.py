@@ -12,14 +12,14 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Clean, professional header
+# Header
 st.title("Lead Research")
-st.caption("Strategic Client Intelligence & Offering Matching Engine")
+st.caption("Strategic Client Intelligence & Executive Outreach Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
 
-# Input Section
+# Input Box
 col_url, col_btn = st.columns([4, 1])
 with col_url:
     target_url = st.text_input(
@@ -33,25 +33,25 @@ with col_btn:
     run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
 
 if run_btn and target_url:
-    with st.status("Analyzing Client Intelligence & Mapping Offerings...", expanded=True) as status:
-        st.write(f"1. Gathering web intelligence for `{target_url}`...")
+    with st.status("Generating Strategic Analysis & Executive Outreach...", expanded=True) as status:
+        st.write(f"1. Extracting corporate intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
-        st.write("2. Synthesizing operational expectations and friction points with Worker AI...")
+        st.write("2. Synthesizing operational expectations, bottlenecks, and decision-maker profiles...")
         company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"])
 
-        st.write("3. Dense vector matching against 462 sector definitions...")
+        st.write("3. Dense vector matching against 462 primary sector definitions...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
         catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
         matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
 
-        st.write("4. Assembling strategic offerings and commercial deliverables...")
+        st.write("4. Assembling in-depth executive outreach dossier and commercial deliverables...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Analysis Complete", state="complete", expanded=False)
+        status.update(label="Analysis & Outreach Generation Complete", state="complete", expanded=False)
 
     st.divider()
 
-    # Metrics Summary
+    # Executive Metric Tiles
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.metric(label="Target Entity", value=company_details.get("company_name", serp_data["domain"]))
@@ -65,13 +65,13 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Section 1: What They Might Be Expecting
+    # Section 1: What They Might Be Expecting (Analysis Summary)
     st.subheader("1. What They Are Expecting (Client Intelligence & Needs)")
     
     with st.container(border=True):
         st.markdown("#### Strategic Executive Profile")
         st.write(company_details.get("executive_summary", ""))
-        st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Persona:** {company_details.get('buying_role_hypothesis', '')}")
+        st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
 
     col_needs, col_friction = st.columns(2)
     with col_needs:
@@ -79,14 +79,14 @@ if run_btn and target_url:
             st.markdown("#### Stated Market & Project Requirements")
             st.caption("What the enterprise requires to accelerate operations:")
             for req in company_details.get("expectations_and_needs", []):
-                st.markdown(f"- {req}")
+                st.markdown(f"- **{req}**")
 
     with col_friction:
         with st.container(border=True):
             st.markdown("#### Operational Friction & Pain Points")
             st.caption("Underlying bottlenecks in their current cycle:")
             for pt in company_details.get("core_friction_points", []):
-                st.markdown(f"- {pt}")
+                st.markdown(f"- **{pt}**")
 
     st.divider()
 
@@ -115,12 +115,18 @@ if run_btn and target_url:
 
     st.divider()
 
-    # Section 3: Executive Outreach Communication
-    st.subheader("3. Executive Outreach Pitch")
-    st.caption("Tailored communication addressing their specific operational priorities:")
-    st.code(analysis.get("personalized_pitch", ""), language="markdown")
+    # Section 3: In-Depth Executive Outreach Dossier (Detailed & Professional)
+    st.subheader("3. Comprehensive Executive Outreach Dossier")
+    st.caption("Authoritative, C-level briefing ready to deliver to target leadership:")
 
-    # Export Button
+    with st.container(border=True):
+        st.markdown(analysis.get("personalized_pitch", ""))
+
+    # Direct Copy / Code Block
+    with st.expander("View Raw Outreach Text for Copying", expanded=False):
+        st.code(analysis.get("personalized_pitch", ""), language="markdown")
+
+    # Download Button
     st.divider()
     full_result = {
         "url": target_url,
@@ -134,11 +140,11 @@ if run_btn and target_url:
             "friction_points": company_details.get("core_friction_points")
         },
         "matched_offerings": mappings,
-        "outreach_pitch": analysis.get("personalized_pitch")
+        "executive_outreach_dossier": analysis.get("personalized_pitch")
     }
     st.download_button(
-        label="Download Strategic Brief (JSON)",
+        label="Download Full Executive Briefing (JSON)",
         data=json.dumps(full_result, indent=2),
-        file_name=f"{serp_data['domain']}_strategic_brief.json",
+        file_name=f"{serp_data['domain']}_executive_briefing.json",
         mime="application/json"
     )
