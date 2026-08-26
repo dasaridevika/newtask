@@ -102,10 +102,6 @@ if run_btn and target_url:
                     st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
                     st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
                     
-                    target_link = m.get("target_company_link")
-                    if target_link:
-                        st.markdown(f"**Verified Target Resource / Solution Link:** [{target_link}]({target_link})")
-
                     st.divider()
                     
                     st.markdown("**Catalog Sector Definition:**")
