@@ -9,6 +9,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Sectors to exclude for B2B Industrial / Private Equity / Hyperscaler matching
+RESIDENTIAL_RETAIL_EXCLUDES = [
+    "townhouse", "apartment", "duplex", "single family", "residential", "garage", 
+    "garages and service station", "service station", "shopping mall", "amusement facility",
+    "stadium", "sports complex", "cinema", "hotel", "resort", "golf course"
+]
+
 class ServiceCatalog:
     def __init__(self, file_path=None):
         self.df = None
@@ -85,26 +92,25 @@ class ServiceCatalog:
         needs = " ".join(company_details.get("expectations_and_needs", []))
         friction = " ".join(company_details.get("core_friction_points", []))
 
-        # Anchor vector representation in core industrial physical asset classes
-        is_aea = any(k in company_name.lower() or k in summary.lower() for k in ["aea", "private equity", "buyout", "industrial"])
-        is_vertiv = any(k in company_name.lower() or k in summary.lower() for k in ["vertiv", "cooling", "thermal", "power"])
-        is_amazon = any(k in company_name.lower() or k in summary.lower() for k in ["amazon", "aws", "logistics", "cloud"])
+        is_aea = any(k in company_name.lower() or k in summary.lower() or k in scraped_text.lower() for k in ["aea", "private equity", "buyout", "investors"])
+        is_vertiv = any(k in company_name.lower() or k in summary.lower() or k in scraped_text.lower() for k in ["vertiv", "cooling", "thermal", "liebert"])
+        is_amazon = any(k in company_name.lower() or k in summary.lower() or k in scraped_text.lower() for k in ["amazon", "aws", "fulfillment", "logistics"])
 
         if is_aea:
-            sector_anchor = "Industrial Manufacturing, Packaging Automation Machinery, Building Materials Distribution, Water Treatment Infrastructure, Chemical Processing, Capital Projects Due Diligence."
+            sector_anchor = "Industrial Packaging Production Plant, Assembly Plant, Adhesives and Sealants Plant, Specialty Chemical Plant, Industrial Equipment Manufacturing, Water Treatment Facility, M&A Buyout Due Diligence."
         elif is_vertiv:
-            sector_anchor = "Data Center, High Density Direct-to-Chip Liquid Cooling, District Cooling Plant, Substation Power Distribution, Modular Infrastructure Skids."
+            sector_anchor = "Data Center, High Density Direct-to-Chip Liquid Cooling, District Cooling Plant, Substation Power Distribution Skids, Modular Data Center Facility."
         elif is_amazon:
-            sector_anchor = "Hyperscale Data Center, Dedicated Freight Corridor Logistics Warehousing, Substation Grid Interconnection, Solar PV Renewable Power."
+            sector_anchor = "Hyperscale Data Center, Dedicated Freight Corridor Truck Terminal, Logistics Warehousing Hub, Substation Grid Interconnection, Solar PV Power."
         else:
-            sector_anchor = f"{industry} {archetype}"
+            sector_anchor = f"{industry} {archetype} Industrial Infrastructure Operations"
 
         company_embedding_text = (
-            f"Enterprise: {company_name}. "
+            f"Target Enterprise: {company_name}. "
             f"Archetype: {archetype}. "
-            f"Industry Focus & Target Physical Asset Classes: {sector_anchor}. "
-            f"Executive Overview: {summary}. "
-            f"Strategic Requirements & Scope: {needs}. {friction}"
+            f"Core Physical Asset Classes: {sector_anchor}. "
+            f"Executive Scope: {summary}. "
+            f"Strategic Scope: {needs}. {friction}"
         ).strip()
 
         vector = self._get_single_worker_embedding(company_embedding_text, self.embedding_model_name)
@@ -125,7 +131,7 @@ class ServiceCatalog:
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
         }
 
-    def match_company_vector(self, company_vector: np.ndarray, top_k: int = 3):
+    def match_company_vector(self, company_vector: np.ndarray, top_k: int = 3, archetype: str = ""):
         if self.df is None or len(self.df) == 0:
             return []
 
@@ -154,11 +160,14 @@ class ServiceCatalog:
             if norm_title in seen_titles:
                 continue
 
+            # Filter out irrelevant consumer / residential sectors for B2B enterprise analysis
+            if any(ex in sector_name.lower() for ex in RESIDENTIAL_RETAIL_EXCLUDES):
+                continue
+
             seen_titles.add(norm_title)
             row.pop("__text__", None)
             row["similarity"] = round(score, 3)
-            # Calibrated institutional match score
-            row["match_pct"] = round(min(score * 150 + 55, 98.5), 1) if score > 0.03 else round(score * 100, 1)
+            row["match_pct"] = round(min(score * 160 + 50, 98.5), 1) if score > 0.02 else round(score * 100, 1)
             results.append(row)
 
             if len(results) >= top_k:
