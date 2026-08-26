@@ -286,7 +286,7 @@ with col_url:
     target_url = st.text_input(
         "Target Enterprise Domain / Website URL",
         value="",
-        placeholder="e.g. https://www.vertiv.com or https://www.amazon.in"
+        placeholder="Enter company website URL or domain (e.g. https://www.vertiv.com)"
     )
 with col_btn:
     st.write("")
