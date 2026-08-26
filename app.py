@@ -12,6 +12,51 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Custom CSS for complete responsive text fit and zero truncation
+st.markdown("""
+<style>
+    /* Metric Card Styling with zero truncation and perfect text wrap */
+    .metric-card {
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
+        padding: 14px 16px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    .metric-label {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+    .metric-val {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #f8fafc;
+        line-height: 1.35;
+        word-wrap: break-word;
+        white-space: normal !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+    }
+    .metric-val-accent {
+        color: #38bdf8;
+        font-size: 1.4rem;
+    }
+    
+    /* Ensure all text in containers wraps cleanly */
+    p, span, div {
+        word-break: normal;
+        overflow-wrap: break-word;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Title Header
 st.title("Lead Research")
 st.caption("Strategic Client Intelligence & Executive Outreach Platform")
@@ -34,7 +79,7 @@ with col_btn:
 
 if run_btn and target_url:
     with st.status("Generating Strategic Analysis & Executive Outreach...", expanded=True) as status:
-        st.write(f"1. Ingesting multi-source intelligence and verified subpages for `{target_url}`...")
+        st.write(f"1. Ingesting multi-source intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
         st.write("2. Synthesizing executive profile, operational expectations, and friction analysis...")
@@ -45,23 +90,43 @@ if run_btn and target_url:
         catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
         matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
 
-        st.write("4. Mapping requirements to our catalog offerings and linking verified resources...")
-        analysis = ai.analyze_fit(company_details, matched_services, source_links=serp_data.get("source_links"))
+        st.write("4. Mapping requirements to our catalog offerings and drafting executive outreach...")
+        analysis = ai.analyze_fit(company_details, matched_services)
         status.update(label="Analysis & Outreach Complete", state="complete", expanded=False)
 
-    st.divider()
+    st.write("")
 
-    # Executive Metric Tiles
+    # Responsive Metric Cards (Text wrapped completely, zero ellipsis/truncation)
     m1, m2, m3, m4 = st.columns(4)
     with m1:
-        st.metric(label="Target Entity", value=company_details.get("company_name", serp_data["domain"]))
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Target Entity</div>
+            <div class="metric-val">{company_details.get('company_name', serp_data['domain'])}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with m2:
-        st.metric(label="Archetype", value=company_details.get("archetype", "Enterprise"))
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Archetype</div>
+            <div class="metric-val">{company_details.get('archetype', 'Enterprise')}</div>
+        </div>
+        """, unsafe_allow_html=True)
     with m3:
-        st.metric(label="Strategic Alignment", value=f"{analysis.get('fit_score', 98)}%")
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Strategic Alignment</div>
+            <div class="metric-val metric-val-accent">{analysis.get('fit_score', 98)}%</div>
+        </div>
+        """, unsafe_allow_html=True)
     with m4:
         top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
-        st.metric(label="Primary Matched Offering", value=top_name)
+        st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Primary Matched Offering</div>
+            <div class="metric-val" style="color:#7dd3fc;">{top_name}</div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.write("")
 
@@ -101,7 +166,6 @@ if run_btn and target_url:
                 with st.container(border=True):
                     st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
                     st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
-                    
                     st.divider()
                     
                     st.markdown("**Catalog Sector Definition:**")
