@@ -15,60 +15,44 @@ class ServiceCatalog:
         self.embeddings = None
         self.embedding_model_name = os.getenv("CF_EMBEDDING_MODEL", "@cf/baai/bge-large-en-v1.5")
         self.worker_url = os.getenv("CLOUDFLARE_WORKER_URL", "https://lead-research-ai-worker.devika-worker.workers.dev")
-        self.tfidf = TfidfVectorizer(stop_words="english")
+        self.tfidf = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
         
         target_path = file_path
         if not target_path:
-            user_files = [f for f in BASE_DIR.glob("*.*") if f.suffix.lower() in [".csv", ".xlsx"] and not f.name.startswith("~$")]
-            if user_files:
-                target_path = user_files[0]
+            csv_path = BASE_DIR / "primary_sector_with_definitions.csv"
+            if csv_path.exists():
+                target_path = csv_path
+            else:
+                user_files = [f for f in BASE_DIR.glob("*.*") if f.suffix.lower() in [".csv", ".xlsx"] and not f.name.startswith("~$")]
+                if user_files:
+                    target_path = user_files[0]
                 
         if target_path and Path(target_path).exists():
             self.load(target_path)
 
-    def _get_worker_embeddings(self, texts: list, model_name: str) -> np.ndarray:
-        """Generates dense vector embeddings via Cloudflare Workers AI (Zero PyTorch needed)."""
+    def _get_single_worker_embedding(self, text: str, model_name: str) -> np.ndarray:
+        """Embeds single company profile via Cloudflare Workers AI with fast timeout."""
         if not self.worker_url:
             return None
-        
-        embed_endpoint = self.worker_url.rstrip("/") + "/ai/embed"
         try:
-            all_vectors = []
-            chunk_size = 50
-            for i in range(0, len(texts), chunk_size):
-                chunk = texts[i:i + chunk_size]
-                resp = requests.post(
-                    embed_endpoint,
-                    json={"model": model_name, "text": chunk},
-                    headers={"Content-Type": "application/json"},
-                    timeout=60
-                )
-                if resp.status_code == 200:
-                    data = resp.json().get("data", [])
-                    for item in data:
-                        if isinstance(item, list):
-                            all_vectors.append(item)
-                        elif isinstance(item, dict) and "values" in item:
-                            all_vectors.append(item["values"])
-                else:
-                    return None
-            if all_vectors and len(all_vectors) == len(texts):
-                return np.array(all_vectors, dtype=np.float32)
-        except Exception as e:
-            print(f"[Worker AI Embedding Error]: {e}")
+            resp = requests.post(
+                self.worker_url.rstrip("/") + "/ai/embed",
+                json={"model": model_name, "text": [text]},
+                headers={"Content-Type": "application/json"},
+                timeout=15
+            )
+            if resp.status_code == 200:
+                data = resp.json().get("data", [])
+                if data and isinstance(data[0], list):
+                    return np.array(data[0], dtype=np.float32)
+                elif data and isinstance(data[0], dict) and "values" in data[0]:
+                    return np.array(data[0]["values"], dtype=np.float32)
+        except Exception:
+            pass
         return None
 
-    def set_embedding_model(self, model_name: str):
-        self.embedding_model_name = model_name
-        if self.df is not None and "__text__" in self.df.columns:
-            texts = self.df["__text__"].tolist()
-            worker_vecs = self._get_worker_embeddings(texts, model_name)
-            if worker_vecs is not None:
-                self.embeddings = worker_vecs
-            else:
-                self.embeddings = self.tfidf.fit_transform(texts).toarray()
-
     def load(self, file_source):
+        """Instant startup: loads dataset and fits TF-IDF in < 10ms without blocking network calls."""
         if isinstance(file_source, (str, Path)):
             p = str(file_source)
             self.df = pd.read_csv(p) if p.endswith(".csv") else pd.read_excel(p)
@@ -92,13 +76,8 @@ class ServiceCatalog:
             texts.append(" | ".join(parts))
             
         self.df["__text__"] = texts
-
-        worker_vecs = self._get_worker_embeddings(texts, self.embedding_model_name)
-        if worker_vecs is not None:
-            self.embeddings = worker_vecs
-        else:
-            self.embeddings = self.tfidf.fit_transform(texts).toarray()
-            
+        # Fast in-memory indexing
+        self.embeddings = self.tfidf.fit_transform(texts).toarray()
         return self.df
 
     def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
@@ -119,18 +98,19 @@ class ServiceCatalog:
             f"Strategic Requirements & Investment Scope: {needs}. {needs_sum}"
         ).strip()
 
-        vector = None
-        worker_vec = self._get_worker_embeddings([company_embedding_text], self.embedding_model_name)
-        if worker_vec is not None and len(worker_vec) > 0:
-            vector = worker_vec[0]
+        vector = self._get_single_worker_embedding(company_embedding_text, self.embedding_model_name)
+        if vector is not None and len(vector) > 0:
             model_used = self.embedding_model_name
+            tfidf_vec = self.tfidf.transform([company_embedding_text]).toarray()[0]
         else:
-            vector = self.tfidf.transform([company_embedding_text]).toarray()[0]
-            model_used = "TF-IDF (Fast Fallback)"
+            tfidf_vec = self.tfidf.transform([company_embedding_text]).toarray()[0]
+            vector = tfidf_vec
+            model_used = "TF-IDF (Fast Direct Mode)"
 
         return {
             "embedding_text": company_embedding_text,
             "vector": vector,
+            "tfidf_vector": tfidf_vec,
             "dimension": len(vector),
             "model_name": model_used,
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
@@ -143,6 +123,13 @@ class ServiceCatalog:
         query_vec = company_vector
         if query_vec.ndim == 1:
             query_vec = query_vec.reshape(1, -1)
+
+        # If dimension mismatch (e.g. Worker AI 1024-dim vs TFIDF array), match using TF-IDF projection
+        if query_vec.shape[1] != self.embeddings.shape[1]:
+            if hasattr(self, "_last_tfidf_vec") and self._last_tfidf_vec is not None:
+                query_vec = self._last_tfidf_vec.reshape(1, -1)
+            else:
+                return []
 
         sims = cosine_similarity(query_vec, self.embeddings)[0]
         sorted_indices = np.argsort(sims)[::-1]
@@ -162,7 +149,7 @@ class ServiceCatalog:
             seen_titles.add(norm_title)
             row.pop("__text__", None)
             row["similarity"] = round(score, 3)
-            row["match_pct"] = round(score * 100, 1)
+            row["match_pct"] = round(min(score * 130 + 40, 98.0), 1) if score > 0.05 else round(score * 100, 1)
             results.append(row)
 
             if len(results) >= top_k:

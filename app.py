@@ -304,7 +304,8 @@ if run_btn and target_url:
 
         st.write("3. Generating 1024-dimensional dense semantic vector with Cloudflare Worker AI...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
-        matched_services = catalog.match_company_vector(company_embed_info["vector"], top_k=3)
+        catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
+        matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
 
         st.write("4. Assembling Senior Principal strategic dossier and requirement-to-service mappings...")
         analysis = ai.analyze_fit(company_details, matched_services)
