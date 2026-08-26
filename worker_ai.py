@@ -63,7 +63,7 @@ class WorkerAI:
         system_prompt = (
             "You are a Senior Managing Director & Global Head of Strategic Corporate Intelligence.\n"
             "Analyze the target company from the provided text and produce an exhaustive, deep narrative analytical dossier.\n"
-            "CRITICAL INSTRUCTION: Write comprehensive, highly detailed narrative prose paragraphs. DO NOT use fragmented bullet points.\n\n"
+            "CRITICAL INSTRUCTION: Write comprehensive narrative prose paragraphs. DO NOT use bullet points.\n\n"
             "Return strictly a valid JSON object matching this schema:\n"
             "{\n"
             '  "company_name": "Official Entity Name",\n'
@@ -145,15 +145,21 @@ class WorkerAI:
         parsed["archetype"] = archetype
         return parsed
 
-    def analyze_fit(self, company_details: dict, matched_services: list) -> dict:
+    def analyze_fit(self, company_details: dict, matched_services: list, source_links: list = None) -> dict:
         company_name = company_details.get("company_name", "Target Enterprise")
         archetype = company_details.get("archetype", "Enterprise Technology & Infrastructure Operator")
         decision_maker = company_details.get("buying_role_hypothesis", "VP of Strategic Infrastructure")
 
+        valid_links = [l for l in (source_links or []) if len(l) > 10]
+        base_link = valid_links[0] if valid_links else "https://www.google.com"
+
         mappings = []
-        for srv in matched_services[:3]:
+        for i, srv in enumerate(matched_services[:3]):
             title = srv.get("Primary Sector") or srv.get("Service Name") or "Capital Project Intelligence"
             defn = srv.get("Definition") or srv.get("Value Proposition") or "Verified capital project intelligence and lifecycle asset tracking."
+
+            # Attach verified reference link from target company
+            ref_link = valid_links[min(i + 1, len(valid_links) - 1)] if len(valid_links) > 1 else base_link
 
             if archetype == "Private Equity Sponsor & Asset Manager":
                 offering_name = f"{title} Capital Project & M&A Due Diligence Database"
@@ -196,6 +202,7 @@ class WorkerAI:
                 "exact_offering_name": offering_name,
                 "mapped_requirement": solves_req,
                 "offering_definition": defn,
+                "target_company_link": ref_link,
                 "comprehensive_narrative": comprehensive_narrative,
                 "roi_narrative": roi_narrative
             })
@@ -203,7 +210,7 @@ class WorkerAI:
         top_offering_name = mappings[0]["exact_offering_name"] if mappings else "Project Intelligence Database"
         top_sector = matched_services[0].get("Primary Sector", "Target Sector") if matched_services else "Infrastructure"
 
-        # Ultra-Detailed Narrative Outreach Dossier
+        # Executive Outreach Memo
         if archetype == "Private Equity Sponsor & Asset Manager":
             pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
 

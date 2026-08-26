@@ -34,7 +34,7 @@ with col_btn:
 
 if run_btn and target_url:
     with st.status("Generating Strategic Analysis & Executive Outreach...", expanded=True) as status:
-        st.write(f"1. Ingesting multi-source intelligence for `{target_url}`...")
+        st.write(f"1. Ingesting multi-source intelligence and verified subpages for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
         st.write("2. Synthesizing executive profile, operational expectations, and friction analysis...")
@@ -45,8 +45,8 @@ if run_btn and target_url:
         catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
         matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
 
-        st.write("4. Mapping requirements to our catalog offerings and drafting executive outreach...")
-        analysis = ai.analyze_fit(company_details, matched_services)
+        st.write("4. Mapping requirements to our catalog offerings and linking verified resources...")
+        analysis = ai.analyze_fit(company_details, matched_services, source_links=serp_data.get("source_links"))
         status.update(label="Analysis & Outreach Complete", state="complete", expanded=False)
 
     st.divider()
@@ -101,6 +101,11 @@ if run_btn and target_url:
                 with st.container(border=True):
                     st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
                     st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
+                    
+                    target_link = m.get("target_company_link")
+                    if target_link:
+                        st.markdown(f"**Verified Target Resource / Solution Link:** [{target_link}]({target_link})")
+
                     st.divider()
                     
                     st.markdown("**Catalog Sector Definition:**")
