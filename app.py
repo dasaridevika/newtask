@@ -285,7 +285,7 @@ col_url, col_btn = st.columns([4, 1])
 with col_url:
     target_url = st.text_input(
         "Target Enterprise Domain / Website URL",
-        value="https://www.aeainvestors.com/",
+        value="",
         placeholder="e.g. https://www.vertiv.com or https://www.amazon.in"
     )
 with col_btn:
