@@ -33,21 +33,21 @@ with col_btn:
     run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
 
 if run_btn and target_url:
-    with st.status("Generating Strategic Analysis & Executive Outreach...", expanded=True) as status:
-        st.write(f"1. Extracting corporate intelligence for `{target_url}`...")
+    with st.status("Generating Deep Narrative Analysis & Executive Brief...", expanded=True) as status:
+        st.write(f"1. Extracting multi-source intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
-        st.write("2. Synthesizing operational expectations, bottlenecks, and decision-maker profiles...")
+        st.write("2. Synthesizing executive profile, operational expectations, and friction analysis...")
         company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"])
 
-        st.write("3. Dense vector matching against 462 primary sector definitions...")
+        st.write("3. Dense vector semantic matching against 462 primary industrial sectors...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
         catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
         matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
 
-        st.write("4. Assembling in-depth executive outreach dossier and commercial deliverables...")
+        st.write("4. Assembling narrative solution architectures and executive outreach brief...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Analysis & Outreach Generation Complete", state="complete", expanded=False)
+        status.update(label="Analysis & Outreach Brief Complete", state="complete", expanded=False)
 
     st.divider()
 
@@ -65,51 +65,43 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Section 1: What They Might Be Expecting (Analysis Summary)
-    st.subheader("1. What They Are Expecting (Client Intelligence & Needs)")
+    # Section 1: What They Might Be Expecting (Deep Narrative Analysis Summary)
+    st.subheader("1. What They Are Expecting (Client Intelligence & Needs Analysis)")
     
     with st.container(border=True):
-        st.markdown("#### Strategic Executive Profile")
-        st.write(company_details.get("executive_summary", ""))
+        st.markdown("#### Strategic Executive Profile & Macro Position")
+        st.write(company_details.get("executive_profile_analysis", ""))
         st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
 
-    col_needs, col_friction = st.columns(2)
-    with col_needs:
-        with st.container(border=True):
-            st.markdown("#### Stated Market & Project Requirements")
-            st.caption("What the enterprise requires to accelerate operations:")
-            for req in company_details.get("expectations_and_needs", []):
-                st.markdown(f"- **{req}**")
+    with st.container(border=True):
+        st.markdown("#### Stated Market Requirements & Strategic Scope")
+        st.write(company_details.get("expectations_and_needs_narrative", ""))
 
-    with col_friction:
-        with st.container(border=True):
-            st.markdown("#### Operational Friction & Pain Points")
-            st.caption("Underlying bottlenecks in their current cycle:")
-            for pt in company_details.get("core_friction_points", []):
-                st.markdown(f"- **{pt}**")
+    with st.container(border=True):
+        st.markdown("#### Underlying Operational Friction & Commercial Pressures")
+        st.write(company_details.get("operational_friction_analysis", ""))
 
     st.divider()
 
-    # Section 2: What We Can Provide
-    st.subheader("2. What We Can Provide (Strategic Solution Mapping)")
-    st.caption("Direct alignment of our project intelligence datasets to their specific requirements:")
+    # Section 2: What We Can Provide (Deep Narrative Solution Architecture)
+    st.subheader("2. What We Can Provide (Strategic Solution Architecture)")
+    st.caption("Comprehensive analysis demonstrating how our capital project intelligence platform addresses their strategic needs:")
 
     mappings = analysis.get("exact_product_mappings", [])
     if mappings:
         for i, m in enumerate(mappings):
             with st.container(border=True):
                 st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
-                st.markdown(f"**Solves Requirement:** {m.get('mapped_requirement')}")
-                st.write(m.get("value_summary", ""))
+                st.markdown(f"**Target Sector & Requirement Solved:** {m.get('mapped_requirement')}")
                 
                 st.markdown("**Catalog Sector Definition:**")
                 st.info(m.get("offering_definition", ""))
 
-                st.markdown("**Granular Deliverables & Data Feeds:**")
-                for d in m.get("deliverables", []):
-                    st.markdown(f"- {d}")
+                st.markdown("#### Solution Architecture & Data Deliverables")
+                st.write(m.get("comprehensive_narrative", ""))
 
-                st.markdown(f"**Commercial Advantage:** {m.get('commercial_roi', '')}")
+                st.markdown("#### Quantified Commercial Advantage & Strategic ROI")
+                st.write(m.get("roi_narrative", ""))
     else:
         st.info("No direct catalog mappings available.")
 
@@ -134,10 +126,10 @@ if run_btn and target_url:
             "name": company_details.get("company_name"),
             "archetype": company_details.get("archetype"),
             "industry": company_details.get("industry_focus"),
-            "executive_summary": company_details.get("executive_summary"),
-            "target_persona": company_details.get("buying_role_hypothesis"),
-            "stated_needs": company_details.get("expectations_and_needs"),
-            "friction_points": company_details.get("core_friction_points")
+            "executive_profile_analysis": company_details.get("executive_profile_analysis"),
+            "expectations_and_needs_analysis": company_details.get("expectations_and_needs_narrative"),
+            "operational_friction_analysis": company_details.get("operational_friction_analysis"),
+            "target_persona": company_details.get("buying_role_hypothesis")
         },
         "matched_offerings": mappings,
         "executive_outreach_dossier": analysis.get("personalized_pitch")
