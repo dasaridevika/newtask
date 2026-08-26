@@ -12,47 +12,83 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Custom CSS for complete responsive text fit and zero truncation
+# Custom High-End Executive Glassmorphic CSS
 st.markdown("""
 <style>
-    /* Metric Card Styling with zero truncation and perfect text wrap */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* Equal-Height Executive Metric Cards */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
     .metric-card {
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 10px;
-        padding: 14px 16px;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        border-radius: 12px;
+        padding: 18px 20px;
+        min-height: 100px;
         height: 100%;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: space-between;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+        transition: border-color 0.2s ease;
     }
+    
+    .metric-card:hover {
+        border-color: rgba(56, 189, 248, 0.35);
+    }
+    
     .metric-label {
-        font-size: 0.8rem;
+        font-size: 0.72rem;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.08em;
         color: #94a3b8;
-        font-weight: 600;
-        margin-bottom: 4px;
+        font-weight: 700;
+        margin-bottom: 8px;
     }
+    
     .metric-val {
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         font-weight: 700;
         color: #f8fafc;
         line-height: 1.35;
         word-wrap: break-word;
-        white-space: normal !important;
-        overflow: visible !important;
-        text-overflow: unset !important;
-    }
-    .metric-val-accent {
-        color: #38bdf8;
-        font-size: 1.4rem;
+        white-space: normal;
     }
     
-    /* Ensure all text in containers wraps cleanly */
-    p, span, div {
-        word-break: normal;
-        overflow-wrap: break-word;
+    .metric-val-cyan {
+        color: #38bdf8;
+    }
+    
+    .metric-val-green {
+        color: #4ade80;
+        font-size: 1.3rem;
+    }
+
+    /* Clean Container Padding & Elevation */
+    div[data-testid="stVerticalBlock"] > div[data-testid="stContainer"] {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 6px;
+    }
+
+    /* Tab bar spacing */
+    button[data-baseweb="tab"] {
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        padding: 10px 18px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -64,8 +100,8 @@ st.caption("Strategic Client Intelligence & Executive Outreach Platform")
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
 
-# URL Search Input
-col_url, col_btn = st.columns([4, 1])
+# URL Search Input with perfect vertical alignment
+col_url, col_btn = st.columns([5, 1], vertical_alignment="bottom")
 with col_url:
     target_url = st.text_input(
         "Target Enterprise Domain / Website URL",
@@ -73,8 +109,6 @@ with col_url:
         placeholder="Enter company website URL or domain"
     )
 with col_btn:
-    st.write("")
-    st.write("")
     run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
 
 if run_btn and target_url:
@@ -96,7 +130,9 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Responsive Metric Cards (Text wrapped completely, zero ellipsis/truncation)
+    # Equal-Height, Aligned Metric Cards
+    top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
+    
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.markdown(f"""
@@ -116,15 +152,14 @@ if run_btn and target_url:
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">Strategic Alignment</div>
-            <div class="metric-val metric-val-accent">{analysis.get('fit_score', 98)}%</div>
+            <div class="metric-val metric-val-green">{analysis.get('fit_score', 98)}%</div>
         </div>
         """, unsafe_allow_html=True)
     with m4:
-        top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-label">Primary Matched Offering</div>
-            <div class="metric-val" style="color:#7dd3fc;">{top_name}</div>
+            <div class="metric-val metric-val-cyan">{top_name}</div>
         </div>
         """, unsafe_allow_html=True)
 
