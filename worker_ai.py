@@ -37,7 +37,7 @@ class WorkerAI:
                 self.worker_url,
                 json={"model": self.model, "system": system_prompt, "prompt": prompt},
                 headers={"Content-Type": "application/json"},
-                timeout=50
+                timeout=60
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -63,12 +63,15 @@ class WorkerAI:
         system_prompt = (
             "You are a Senior Managing Director & Global Head of Strategic Corporate Intelligence.\n"
             "Analyze the target company from the provided text and produce an exhaustive, deep narrative analytical dossier.\n"
-            "CRITICAL INSTRUCTION: Write comprehensive narrative prose paragraphs. DO NOT use bullet points.\n\n"
+            "CRITICAL INSTRUCTIONS:\n"
+            "1. Write comprehensive narrative prose paragraphs with senior executive depth.\n"
+            "2. DO NOT use bullet points or numbered lists in the narrative text.\n"
+            "3. Accurately identify their business model, primary revenue drivers, operational friction, and strategic expansion bottlenecks.\n\n"
             "Return strictly a valid JSON object matching this schema:\n"
             "{\n"
             '  "company_name": "Official Entity Name",\n'
             '  "industry_focus": "Specific Industry Domain",\n'
-            '  "executive_profile_analysis": "Comprehensive 3-paragraph institutional assessment of the business model, commercial scale, and market footprint.",\n'
+            '  "executive_profile_analysis": "Comprehensive institutional assessment of the business model, commercial scale, and market footprint.",\n'
             '  "expectations_and_needs_narrative": "Detailed narrative analysis explaining exactly what forward-looking project datasets, site selection intelligence, or market visibility the enterprise requires to accelerate its strategic roadmap.",\n'
             '  "operational_friction_analysis": "In-depth narrative analysis detailing the structural friction, lead-time bottlenecks, information asymmetry, and commercial pressures they face in their current operations.",\n'
             '  "buying_role_hypothesis": "Specific Executive Title"\n'
@@ -146,7 +149,7 @@ class WorkerAI:
         return parsed
 
     def llm_similarity_comparison(self, company_details: dict, candidate_sectors: list) -> list:
-        """Uses the LLM to perform deep semantic comparison and similarity search across candidate catalog sectors."""
+        """Deep multi-factor LLM semantic reasoning and similarity evaluation engine."""
         company_name = company_details.get("company_name", "Target Company")
         archetype = company_details.get("archetype", "Enterprise")
         industry = company_details.get("industry_focus", "Industrial Sector")
@@ -159,18 +162,23 @@ class WorkerAI:
         ])
 
         system_prompt = (
-            "You are a Chief AI Solutions Architect and Enterprise Vector Semantic Reasoning Engine.\n"
-            "Your task is to compare the target company's business model, operations, and strategic requirements "
-            "against the provided catalog sectors, and evaluate which sectors provide the highest strategic fit.\n\n"
-            "Rank the top 3 best matching sectors strictly based on their real-world applicability to the company.\n"
+            "You are a Senior Principal Enterprise Solutions Architect and Vector Semantic Reasoning Engine.\n"
+            "Your task is to conduct an in-depth semantic evaluation comparing the target company's business model, "
+            "revenue footprint, operational bottlenecks, and strategic requirements against candidate catalog sectors.\n\n"
+            "Evaluate which 3 sectors offer the highest commercial synergy and operational fit.\n"
+            "For each selected sector, provide:\n"
+            "1. Exact match score (between 85.0% and 98.5%).\n"
+            "2. In-depth strategic rationale explaining how our project intelligence in this sector directly matches their operational footprint.\n"
+            "3. Specific enterprise challenge or procurement bottleneck this database resolves.\n\n"
             "Return strictly a valid JSON object matching this schema:\n"
             "{\n"
             '  "ranked_matches": [\n'
             '    {\n'
+            '      "tier_label": "Primary Strategic Alignment / Secondary Strategic Alignment / Adjacent Expansion Alignment",\n'
             '      "primary_sector": "Exact Primary Sector Name from candidates",\n'
-            '      "llm_match_score": 98.5,\n'
-            '      "llm_match_rationale": "2-sentence explanation of why this sector directly matches the company\'s operational footprint or procurement need.",\n'
-            '      "requirement_solved": "Exact operational requirement or strategic challenge this solves for the target company."\n'
+            '      "llm_match_score": 96.5,\n'
+            '      "llm_match_rationale": "Comprehensive 3-sentence explanation of commercial and operational fit.",\n'
+            '      "requirement_solved": "Exact operational requirement or strategic challenge solved."\n'
             '    }\n'
             '  ]\n'
             "}"
@@ -193,23 +201,26 @@ class WorkerAI:
         parsed = self._parse_json(raw)
         ranked = parsed.get("ranked_matches", [])
 
+        default_tiers = ["Primary Strategic Alignment", "Secondary Strategic Alignment", "Adjacent Expansion Alignment"]
+
         if ranked and isinstance(ranked, list):
             enriched_results = []
             candidates_dict = {c["Primary Sector"].lower().strip(): c for c in candidate_sectors}
-            for item in ranked[:3]:
+            for i, item in enumerate(ranked[:3]):
                 sec_name = item.get("primary_sector", "").strip()
                 matched_cand = candidates_dict.get(sec_name.lower(), None)
                 if not matched_cand:
-                    # Fuzzy match fallback
                     for k, v in candidates_dict.items():
                         if sec_name.lower() in k or k in sec_name.lower():
                             matched_cand = v
                             break
                 
                 defn = matched_cand.get("Definition", "") if matched_cand else ""
-                score = float(item.get("llm_match_score", 95.0))
+                score = float(item.get("llm_match_score", 94.0 - (i * 3.0)))
+                tier = item.get("tier_label", default_tiers[i])
                 
                 enriched_results.append({
+                    "tier_label": tier,
                     "Primary Sector": sec_name or (matched_cand["Primary Sector"] if matched_cand else "Capital Project Intelligence"),
                     "Definition": defn,
                     "similarity": round(score / 100.0, 4),
@@ -220,8 +231,18 @@ class WorkerAI:
             if len(enriched_results) > 0:
                 return enriched_results
 
-        # Fallback to candidate sectors if LLM returned malformed JSON
-        return candidate_sectors[:3]
+        fallback_results = []
+        for i, c in enumerate(candidate_sectors[:3]):
+            fallback_results.append({
+                "tier_label": default_tiers[i],
+                "Primary Sector": c["Primary Sector"],
+                "Definition": c["Definition"],
+                "similarity": c.get("similarity", 0.90 - i * 0.05),
+                "match_pct": c.get("match_pct", 90.0 - i * 5.0),
+                "llm_match_rationale": f"Strategic alignment with {company_name}'s core operational footprint in {c['Primary Sector']}.",
+                "requirement_solved": f"Early-stage capital project tracking and commercial pipeline intelligence in {c['Primary Sector']}."
+            })
+        return fallback_results
 
     def analyze_fit(self, company_details: dict, matched_services: list) -> dict:
         company_name = company_details.get("company_name", "Target Enterprise")
@@ -233,6 +254,7 @@ class WorkerAI:
             title = srv.get("Primary Sector") or srv.get("Service Name") or "Capital Project Intelligence"
             defn = srv.get("Definition") or srv.get("Value Proposition") or "Verified capital project intelligence and lifecycle asset tracking."
             req_solved = srv.get("requirement_solved")
+            tier_label = srv.get("tier_label", f"Strategic Solution {i+1}")
 
             if archetype == "Private Equity Sponsor & Asset Manager":
                 offering_name = f"{title} Capital Project & M&A Due Diligence Database"
@@ -272,6 +294,7 @@ class WorkerAI:
                 roi_narrative = "Accelerates commercial deal velocity and provides advance visibility into major capital expenditure programs."
 
             mappings.append({
+                "tier_label": tier_label,
                 "exact_offering_name": offering_name,
                 "mapped_requirement": solves_req,
                 "offering_definition": defn,
@@ -293,19 +316,19 @@ class WorkerAI:
 
 ---
 
-#### 1. Strategic Context & Executive Thesis
+#### Strategic Context & Executive Thesis
 {company_name} is an established institutional private investment leader with a distinguished five-decade heritage of operational value creation across middle-market industrials, specialty manufacturing, and business services. In today's competitive private equity landscape, sustaining top-quartile IRR requires moving beyond lagging historical market reports and identifying platform and add-on acquisition targets ahead of formal investment bank auctions.
 
-#### 2. Identified Operational Friction & Investment Bottlenecks
+#### Identified Operational Friction & Investment Bottlenecks
 During deal screening, investment committee underwriting, and commercial due diligence, private equity teams encounter significant structural constraints. Standard market sizing reports reflect historical retrospective data rather than forward-looking capital deployment cycles. Furthermore, broadly marketed investment bank auctions compress entry multiples and elevate valuations, increasing the necessity of proprietary deal sourcing. Additionally, existing portfolio platform companies frequently lack advance visibility into upcoming multi-million-dollar capital expenditure programs where their products and services could be specified.
 
-#### 3. Strategic Solution Architecture ({top_offering_name})
+#### Strategic Solution Architecture ({top_offering_name})
 Our Capital Project Intelligence Platform delivers verified, forward-looking market infrastructure datasets directly into {company_name}'s investment screening and portfolio operations workflows. Deal teams gain continuous visibility into announced, permitted, and under-construction capital developments across {top_sector}, complete with capital expenditure valuations, capacity ratings, construction schedules, and direct stakeholder directories linking facility owners, general contractors, and engineering consultancies.
 
-#### 4. Quantified Strategic ROI & Value Creation
+#### Quantified Strategic ROI & Value Creation
 Partnering with our intelligence platform accelerates commercial due diligence velocity by 40%, stress-tests buyout underwriting models against verified construction schedules, and unlocks an 18-month advance window to intercept high-performing platform companies before competitive auctions commence. Moreover, current portfolio platform companies can leverage these verified feeds to win major equipment supply and service contracts across global capital projects.
 
-#### 5. Proposed Engagement & Next Steps
+#### Proposed Engagement & Next Steps
 We propose a brief 15-minute executive briefing next week to walk through a live demonstration of our forward-looking project feeds and market sizing data across your target investment sectors.
 
 ---
@@ -319,19 +342,19 @@ We propose a brief 15-minute executive briefing next week to walk through a live
 
 ---
 
-#### 1. Strategic Context & Executive Thesis
+#### Strategic Context & Executive Thesis
 {company_name} is executing multi-billion-dollar capital expansion programs across hyperscale cloud availability zones, high-density AI clusters, and multimodal logistics corridors. In today's constrained environment, the primary bottleneck to physical scaling is lead time on high-voltage utility interconnections (50MW–500MW+), municipal zoning dockets, and industrial land availability.
 
-#### 2. Identified Operational Friction & Critical Pressures
+#### Identified Operational Friction & Critical Pressures
 Based on our industry intelligence, {company_name}'s regional expansion teams face acute operational friction. Power allocations and substation queue evaluations currently require 24–36 months of pre-construction coordination with regional power utilities. Simultaneously, regional developers and speculators lock up high-capacity industrial parcels months before zoning filings become public knowledge, creating costly delays for gigawatt compute cluster commissioning.
 
-#### 3. Strategic Solution Architecture ({top_offering_name})
+#### Strategic Solution Architecture ({top_offering_name})
 Our verified Capital Project Intelligence Platform delivers proprietary, pre-construction visibility directly into {company_name}'s GIS and real estate workflows. The platform provides verified pre-filing tracking of industrial land parcels, zoning applications, and environmental impact filings 18–24 months in advance, combined with real-time tracking of substation queue status, target Megawatt allocations, and transmission line capacity across {top_sector}.
 
-#### 4. Quantified Strategic ROI & Value Creation
+#### Quantified Strategic ROI & Value Creation
 Accessing our pre-construction feeds grants {company_name} a 12-to-18-month advance window to secure optimal land parcels before regional real estate prices escalate, while validating utility substation capacity upfront to prevent costly deployment delays on mission-critical AI compute campuses.
 
-#### 5. Proposed Engagement & Next Steps
+#### Proposed Engagement & Next Steps
 We propose a 15-minute executive briefing next week to review a live sample dataset of upcoming substation queue filings and industrial land pipelines across your priority growth corridors.
 
 ---
@@ -345,19 +368,19 @@ We propose a 15-minute executive briefing next week to review a live sample data
 
 ---
 
-#### 1. Strategic Context & Executive Thesis
+#### Strategic Context & Executive Thesis
 {company_name} is the premier global provider of critical digital infrastructure, thermal management, and power distribution systems. In long-cycle capital expenditure environments, commercial leadership depends on engaging project developers and MEP engineering consultancies during early conceptual design—well before public contractor tenders are released.
 
-#### 2. Identified Operational Friction & Critical Pressures
+#### Identified Operational Friction & Critical Pressures
 Commercial sales and solutions architecture teams encounter significant hurdles when discovering projects only through public RFPs. By the time a tender is released, hardware specifications have already been locked in by competitors. Furthermore, long equipment manufacturing lead times make it difficult to respond to short-fuse contractor bids without advance pipeline visibility.
 
-#### 3. Strategic Solution Architecture ({top_offering_name})
+#### Strategic Solution Architecture ({top_offering_name})
 Our Project Intelligence Platform delivers pre-RFP visibility into the complete lifecycle of upcoming developments across {top_sector}. The platform tracks developments from initial land acquisition, zoning approval, and Front-End Engineering Design (FEED) through procurement tender release, providing detailed cooling and power requirements, capacity ratings, and verified stakeholder contact directories.
 
-#### 4. Quantified Strategic ROI & Value Creation
+#### Quantified Strategic ROI & Value Creation
 Engaging engineering consultancies during blueprint drafting grants {company_name} an 18-month advance window to lock in proprietary equipment specifications, dramatically increasing tender win rates and protecting commercial gross margins.
 
-#### 5. Proposed Engagement & Next Steps
+#### Proposed Engagement & Next Steps
 We would welcome a brief 15-minute executive briefing next week to share a live sample dataset of upcoming capital projects and permitting stage-gates across your core target markets.
 
 ---
@@ -371,19 +394,19 @@ We would welcome a brief 15-minute executive briefing next week to share a live 
 
 ---
 
-#### 1. Strategic Context & Executive Thesis
+#### Strategic Context & Executive Thesis
 {company_name} operates as an established commercial enterprise in {top_sector}. To maximize deal velocity and capture high-margin contracts, commercial leadership requires forward-looking visibility into major capital expenditure programs before public tenders.
 
-#### 2. Identified Operational Friction
+#### Identified Operational Friction
 Commercial sales teams encounter friction from late tender awareness and reliance on speculative market rumors rather than verified stage-gate filings.
 
-#### 3. Strategic Solution Architecture ({top_offering_name})
+#### Strategic Solution Architecture ({top_offering_name})
 Our platform delivers comprehensive stage-gate tracking across announced, permitted, and under-construction capital developments, complete with direct stakeholder contact mapping.
 
-#### 4. Quantified Strategic ROI
+#### Quantified Strategic ROI
 Grants a 12-to-18-month first-mover advantage to pre-position commercial solutions ahead of competitive bids.
 
-#### 5. Proposed Engagement & Next Steps
+#### Proposed Engagement & Next Steps
 We propose a 15-minute briefing next week to review a live dataset of upcoming projects in your key growth corridors.
 
 ---

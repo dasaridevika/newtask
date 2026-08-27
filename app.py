@@ -76,6 +76,21 @@ st.markdown("""
         font-size: 1.3rem;
     }
 
+    /* Strategic Tier Badge */
+    .tier-badge {
+        display: inline-block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        padding: 4px 12px;
+        border-radius: 6px;
+        background: rgba(14, 116, 144, 0.25);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.35);
+        margin-bottom: 10px;
+    }
+
     /* Clean Container Padding & Elevation */
     div[data-testid="stVerticalBlock"] > div[data-testid="stContainer"] {
         background: rgba(15, 23, 42, 0.5);
@@ -121,7 +136,7 @@ if run_btn and target_url:
 
         st.write("3. Querying 1024-dimensional catalog embeddings matrix for candidate sectors...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
-        candidate_sectors = catalog.match_company_vector(company_embed_info["vector"], top_k=8)
+        candidate_sectors = catalog.match_company_vector(company_embed_info["vector"], top_k=15)
 
         st.write("4. Executing deep LLM semantic comparison & similarity evaluation across catalog...")
         matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
@@ -168,16 +183,16 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Clean, Organized Tabs: Overview, Product Mapping, Outreach Dossier
+    # Clean, Organized Tabs
     tab_overview, tab_mapping, tab_outreach = st.tabs([
         "Strategic Executive Overview",
-        "Requirement-to-Product Mapping (LLM Comparison)",
+        "Requirement-to-Product Mapping",
         "Comprehensive Executive Outreach"
     ])
 
     # Tab 1: Strategic Executive Overview
     with tab_overview:
-        st.subheader("1. Strategic Executive Overview & Client Needs")
+        st.subheader("Strategic Executive Overview & Client Needs")
         st.caption("Deep narrative assessment of the target's operating model, capital scope, and underlying bottlenecks:")
 
         with st.container(border=True):
@@ -195,22 +210,23 @@ if run_btn and target_url:
 
     # Tab 2: Requirement-to-Product Mapping (LLM Semantic Comparison Results)
     with tab_mapping:
-        st.subheader("2. Requirement-to-Product Mapping (LLM Semantic Comparison)")
+        st.subheader("Requirement-to-Product Mapping")
         st.caption(f"Evaluated and ranked by LLM Semantic Reasoning Engine across 462 catalog sectors:")
 
         mappings = analysis.get("exact_product_mappings", [])
         if mappings:
             for i, m in enumerate(mappings):
-                sim_score = matched_services[i]["similarity"] if i < len(matched_services) else 0.95
                 match_pct = matched_services[i]["match_pct"] if i < len(matched_services) else 95.0
                 rationale = m.get("llm_match_rationale")
+                tier_label = m.get("tier_label", f"Strategic Solution {i+1}")
 
                 with st.container(border=True):
-                    st.markdown(f"### #{i+1}. {m.get('exact_offering_name')}")
-                    st.markdown(f"**LLM Match Score:** `{match_pct}%` | **Solves Target Requirement:** `{m.get('mapped_requirement')}`")
+                    st.markdown(f'<span class="tier-badge">{tier_label} &bull; {match_pct}% MATCH</span>', unsafe_allow_html=True)
+                    st.markdown(f"### {m.get('exact_offering_name')}")
+                    st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
                     
                     if rationale:
-                        st.markdown(f"**LLM Match Rationale:** *{rationale}*")
+                        st.markdown(f"**Strategic Fit Rationale:** *{rationale}*")
 
                     st.divider()
                     
@@ -227,7 +243,7 @@ if run_btn and target_url:
 
     # Tab 3: Comprehensive Executive Outreach Dossier
     with tab_outreach:
-        st.subheader("3. Comprehensive Executive Outreach Dossier")
+        st.subheader("Comprehensive Executive Outreach Dossier")
         st.caption("Authoritative, C-level briefing tailored specifically to target leadership:")
 
         with st.container(border=True):
