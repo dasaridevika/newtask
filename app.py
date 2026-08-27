@@ -208,6 +208,7 @@ if run_btn and target_url:
         candidate_sectors = catalog.match_company_vector(
             company_embed_info["vector"],
             company_text=serp_data["content"],
+            company_details=company_details,
             top_k=15
         )
 

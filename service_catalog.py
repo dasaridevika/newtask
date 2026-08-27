@@ -65,7 +65,6 @@ class ServiceCatalog:
         if "model_name" in data:
             self.model_name = str(data["model_name"])
 
-        # Clean corpus for TF-IDF by stripping generic stop words
         cleaned_corpus = []
         for s, d in zip(self.sectors, self.definitions):
             combined = f"{s} {s} {d}".lower()
@@ -115,20 +114,19 @@ class ServiceCatalog:
 
     def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
         """
-        Creates a high-signal dense query vector representing the company's verified industry focus,
-        target business segments, and operational scope.
+        Creates a dense query vector focusing on the company's core verified industry domain
+        and primary operational capabilities.
         """
         company_name = company_details.get("company_name", "Target Enterprise")
         industry = company_details.get("industry_focus", "")
         summary = company_details.get("executive_profile_analysis", "")
         archetype = company_details.get("archetype", "Enterprise")
 
-        # Focus query on core operational and industrial sectors
         full_query = (
             f"Company: {company_name}. "
-            f"Archetype: {archetype}. "
             f"Industry Focus: {industry}. "
-            f"Core Operations & Target Sectors: {summary}."
+            f"Archetype: {archetype}. "
+            f"Core Operations & Offerings: {summary}."
         ).strip()
 
         vector = self._get_worker_embedding(full_query)
@@ -157,11 +155,11 @@ class ServiceCatalog:
                 matches.append(t)
         return sorted(matches[:6])
 
-    def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", top_k: int = 15) -> list:
+    def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", company_details: Optional[dict] = None, top_k: int = 15) -> list:
         """
-        Pure Mathematical Multi-Factor Hybrid Ranking:
-        Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF
-        and exact domain phrase matching across all 462 sectors.
+        High-Precision Multi-Factor Hybrid Ranking:
+        Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF,
+        morphological phrase matching, domain category gating, and transparent keyword explainability.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
@@ -172,12 +170,20 @@ class ServiceCatalog:
         # 2. Dynamic Sub-linear TF-IDF Similarity
         company_lower = company_text.lower()
         if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_text) > 20:
-            # Strip generic stopwords from company text before computing TF-IDF
             clean_company_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", company_lower) if t not in DOMAIN_STOPWORDS]
             company_tfidf = self.tfidf_vectorizer.transform([" ".join(clean_company_tokens)])
             tfidf_sims = (self.tfidf_matrix * company_tfidf.T).toarray().flatten()
         else:
             tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
+
+        # 3. Domain Gating Signals from verified profile
+        industry_lower = ""
+        archetype_lower = ""
+        if company_details:
+            industry_lower = str(company_details.get("industry_focus", "")).lower()
+            archetype_lower = str(company_details.get("archetype", "")).lower()
+
+        combined_evidence = f"{industry_lower} {archetype_lower} {company_lower}"
 
         hybrid_scores = []
         for idx in range(len(self.sectors)):
@@ -185,6 +191,7 @@ class ServiceCatalog:
             raw_tfidf_score = float(tfidf_sims[idx])
             sec_name = str(self.sectors[idx]).strip()
             definition = str(self.definitions[idx]).strip()
+            sec_lower = f"{sec_name} {definition}".lower()
 
             # Dynamic phrase & morphological matching
             clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
@@ -192,17 +199,25 @@ class ServiceCatalog:
             
             exact_phrase_bonus = 0.0
             if len(clean_sec) > 4 and clean_sec not in ["office building", "commercial building", "other building", "building", "school", "penitentiary", "garages and service station"]:
-                if clean_sec in company_lower or (clean_sec + "s") in company_lower or clean_sec.replace(" ", "") in company_lower:
-                    exact_phrase_bonus = 0.20
-                elif sec_tokens and sum(1 for t in sec_tokens if t in company_lower) == len(sec_tokens):
-                    exact_phrase_bonus = 0.15
+                if clean_sec in combined_evidence or (clean_sec + "s") in combined_evidence or clean_sec.replace(" ", "") in combined_evidence:
+                    exact_phrase_bonus = 0.25
+                elif sec_tokens and sum(1 for t in sec_tokens if t in combined_evidence) == len(sec_tokens):
+                    exact_phrase_bonus = 0.18
 
-            # Dynamic acronym matching (e.g. PV, BESS, LNG, EV, AI, EDC, HDPE)
+            # Acronym matching (e.g. PV, BESS, LNG, EV, AI, EDC, HDPE)
             acronyms = re.findall(r"\(([A-Za-z0-9\-]+)\)", sec_name)
-            acronym_bonus = 0.15 if any(len(a) >= 2 and re.search(r"\b" + re.escape(a.lower()) + r"\b", company_lower) for a in acronyms) else 0.0
+            acronym_bonus = 0.15 if any(len(a) >= 2 and re.search(r"\b" + re.escape(a.lower()) + r"\b", combined_evidence) for a in acronyms) else 0.0
 
-            # Mathematical Hybrid Score: Vector Cosine + Dynamic TF-IDF + Exact Domain Match
-            lexical_component = min(0.35, (raw_tfidf_score * 1.5) + exact_phrase_bonus + acronym_bonus)
+            # Domain Category Alignment Check
+            domain_alignment_bonus = 0.0
+            if industry_lower:
+                # Direct industry name tokens in sector name
+                ind_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", industry_lower) if t not in DOMAIN_STOPWORDS]
+                if ind_tokens and any(t in sec_lower for t in ind_tokens):
+                    domain_alignment_bonus = 0.15
+
+            # Mathematical Hybrid Score
+            lexical_component = min(0.40, (raw_tfidf_score * 1.5) + exact_phrase_bonus + acronym_bonus + domain_alignment_bonus)
             hybrid_score = max(0.0, raw_vec_score + lexical_component)
             calibrated_pct = calibrate_cosine_score(hybrid_score)
 
@@ -220,10 +235,10 @@ class ServiceCatalog:
                 "matched_keywords": matched_keywords
             })
 
-        # 3. Sort by hybrid score descending
+        # Sort by hybrid score descending
         hybrid_scores.sort(key=lambda x: x["hybrid_score"], reverse=True)
 
-        # 4. Deduplicate and return top_k
+        # Deduplicate and return top_k
         results = []
         seen = set()
         for item in hybrid_scores:
