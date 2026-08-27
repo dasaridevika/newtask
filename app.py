@@ -183,8 +183,22 @@ if run_btn and target_url:
 
     # Tab 1: Client Works & Projects Intelligence
     with tab_projects:
-        st.subheader("Client Works & Project Roadmaps")
-        st.caption("Chronological analysis of delivered works, active operational footprint, and future project roadmaps:")
+        st.subheader("Client Works, Projects & Operational Roadmap")
+        st.caption("Qualitative executive briefing and chronological audit of delivered works, active operations, and future capital roadmaps:")
+
+        # Detailed Qualitative Executive Briefing
+        with st.container(border=True):
+            st.markdown("#### 📋 Strategic Executive Summary & Operational Anatomy")
+            st.write(company_details.get("executive_profile_analysis", ""))
+            
+            bm_text = company_details.get("business_model_and_revenue_drivers", "")
+            if bm_text:
+                st.markdown(f"**💼 Business Model & Revenue Drivers:** {bm_text}")
+            
+            persona = company_details.get("buying_role_hypothesis", "Strategic Leadership")
+            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Decision Maker:** `{persona}`")
+
+        st.divider()
 
         # 1. Delivered Historical Projects
         st.markdown("### 1. Delivered Works & Proven Track Record")
