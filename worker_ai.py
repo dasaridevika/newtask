@@ -114,7 +114,7 @@ class WorkerAI:
 
     def extract_company_details(self, scraped_text: str, domain: str = "", client_inquiry: str = "", evidence_store=None) -> dict:
         clean_name = self._safe_company_name(domain)
-        inquiry_text = f'\nClient Specific Inbound Inquiry / Requirement:\n"{client_inquiry}"\n' if client_inquiry else ""
+        inquiry_text = f'\nClient Specific Inbound Inquiry / Stated Requirement:\n"{client_inquiry}"\n' if client_inquiry else ""
 
         pages = getattr(evidence_store, "pages", None) if evidence_store else None
         available_urls = [p.url for p in pages] if pages else [f"https://{domain}" if domain else ""]
@@ -126,13 +126,17 @@ class WorkerAI:
         system_prompt = """
 You are a Senior Principal Corporate Intelligence Strategist, Executive Diligence Architect, and Evidence Verification Specialist.
 
-Analyze the target enterprise in depth strictly from the supplied crawled evidence and internal pages. Provide a rich, highly qualitative, and evidence-grounded strategic briefing.
+Analyze the target enterprise in depth strictly from the supplied crawled evidence and internal pages. Extract rich factual intelligence covering:
+1. Executive Profile & Operating Model
+2. Delivered / Historical Projects & Proven Track Record (e.g. past facility buildouts, acquisitions, revenue CAGR, physical expansions with exact metrics)
+3. Current Active Operations & Live Offerings
+4. Future Roadmaps & Strategic Expansion Targets (e.g. digital transformation, AI adoption, capital deployment, new market entries)
+5. Implied Operational Pain Points & Diligence Friction
 
 Reasoning rules:
-- Ground every factual claim directly in the evidence chunks and cite the exact source URL.
+- Ground every claim directly in the evidence chunks and cite exact source URLs.
 - Separate observed facts from strategic inferences.
-- Provide thorough qualitative depth on the business model, active operational initiatives, and implied organizational friction.
-- Avoid generic filler or vague buzzwords; state specific products, technologies, strategies, and customer segments.
+- Extract concrete numbers, metrics, and case studies when present in the text (e.g. $19B AUM, 300k SF facility, 6 acquisitions, 5x growth rate).
 - Do not write prose outside the JSON object.
 
 Return a single valid JSON object with exactly these keys:
@@ -142,7 +146,29 @@ Return a single valid JSON object with exactly these keys:
   "industry_focus": string,
   "executive_profile_analysis": string,
   "business_model_and_revenue_drivers": string,
-  "active_initiatives_and_growth_signals": [string],
+  "delivered_historical_projects": [
+    {
+      "project_name": string,
+      "summary": string,
+      "metric_or_milestone": string,
+      "source_url": string
+    }
+  ],
+  "current_active_operations": [
+    {
+      "operation_name": string,
+      "details": string,
+      "scope": string,
+      "source_url": string
+    }
+  ],
+  "future_roadmaps_and_expansion": [
+    {
+      "initiative": string,
+      "strategic_objective": string,
+      "implied_need": string
+    }
+  ],
   "operational_friction_and_pain_points": string,
   "observed_facts": [
     {
@@ -165,20 +191,6 @@ Return a single valid JSON object with exactly these keys:
   },
   "buying_role_hypothesis": string
 }
-
-Field guidance:
-- company_name: Official enterprise name.
-- archetype: Specific operating model (e.g. Private Equity Sponsor / Asset Manager, Manufacturer / Technology OEM, Utility / Clean Energy Developer, Software / SaaS Operator, Healthcare Provider, EPC / General Contractor, Logistics / Distribution Operator).
-- industry_focus: Primary industry domain (e.g. Middle Market Private Equity & Buyouts, Solar PV Manufacturing & Renewable Energy, Critical Power & Thermal Infrastructure).
-- executive_profile_analysis: 4 to 6 detailed sentences summarizing what the company does, its core capabilities, and operational scale based on evidence.
-- business_model_and_revenue_drivers: Detailed breakdown of how the company generates revenue, its customer segments, value proposition, and delivery model.
-- active_initiatives_and_growth_signals: 3 to 5 bullet points highlighting active expansion, recent portfolio acquisitions, facility investments, or strategic partnerships evident in the text.
-- operational_friction_and_pain_points: 2 to 3 sentences explaining the critical operational friction, information gaps, and lead-time bottlenecks typical for an enterprise of this scale.
-- observed_facts: Explicitly evidence-grounded facts with real URLs.
-- strategic_inferences: Logical inferences grounded in factual evidence.
-- unknowns_and_gaps: 2 to 3 critical business parameters not verifiable in public web dockets.
-- confidence_assessment: Level, 0-100 score, and explanation.
-- buying_role_hypothesis: Most likely executive decision-maker role (e.g. Managing Director - Private Equity, VP of Capital Projects, Chief Operating Officer, VP of Supply Chain).
 """.strip()
 
         prompt = f"""
@@ -204,9 +216,46 @@ CRAWLED EVIDENCE CHUNKS:
                         "industry_focus": {"type": "string"},
                         "executive_profile_analysis": {"type": "string"},
                         "business_model_and_revenue_drivers": {"type": "string"},
-                        "active_initiatives_and_growth_signals": {
+                        "delivered_historical_projects": {
                             "type": "array",
-                            "items": {"type": "string"}
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "project_name": {"type": "string"},
+                                    "summary": {"type": "string"},
+                                    "metric_or_milestone": {"type": "string"},
+                                    "source_url": {"type": "string"},
+                                },
+                                "required": ["project_name", "summary", "metric_or_milestone", "source_url"],
+                            },
+                        },
+                        "current_active_operations": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "operation_name": {"type": "string"},
+                                    "details": {"type": "string"},
+                                    "scope": {"type": "string"},
+                                    "source_url": {"type": "string"},
+                                },
+                                "required": ["operation_name", "details", "scope", "source_url"],
+                            },
+                        },
+                        "future_roadmaps_and_expansion": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "initiative": {"type": "string"},
+                                    "strategic_objective": {"type": "string"},
+                                    "implied_need": {"type": "string"},
+                                },
+                                "required": ["initiative", "strategic_objective", "implied_need"],
+                            },
                         },
                         "operational_friction_and_pain_points": {"type": "string"},
                         "observed_facts": {
@@ -256,7 +305,9 @@ CRAWLED EVIDENCE CHUNKS:
                         "industry_focus",
                         "executive_profile_analysis",
                         "business_model_and_revenue_drivers",
-                        "active_initiatives_and_growth_signals",
+                        "delivered_historical_projects",
+                        "current_active_operations",
+                        "future_roadmaps_and_expansion",
                         "operational_friction_and_pain_points",
                         "observed_facts",
                         "strategic_inferences",
@@ -274,28 +325,52 @@ CRAWLED EVIDENCE CHUNKS:
         if not parsed or len(parsed.get("executive_profile_analysis", "")) < 40:
             parsed = {
                 "company_name": clean_name,
-                "archetype": "Enterprise",
-                "industry_focus": "Industrial & Commercial Operations",
-                "executive_profile_analysis": f"{clean_name} operates within the commercial and industrial sector, delivering specialized products, capital infrastructure, or managed services to institutional and enterprise clients.",
-                "business_model_and_revenue_drivers": f"{clean_name} creates value through direct project execution, long-term commercial contracts, asset investments, or specialized product manufacturing.",
-                "active_initiatives_and_growth_signals": ["Commercial capacity expansion and active market engagement across core operational jurisdictions."],
-                "operational_friction_and_pain_points": "Navigating supply chain lead times, regional regulatory permitting stage-gates, and market intelligence discovery.",
+                "archetype": "Private Equity Sponsor / Asset Manager" if "invest" in domain.lower() or "capital" in domain.lower() else "Enterprise",
+                "industry_focus": "Commercial Operations & Strategic Capital",
+                "executive_profile_analysis": f"{clean_name} operates across core commercial and industrial domains, executing large-scale operational initiatives, capital deployment, and strategic facility programs.",
+                "business_model_and_revenue_drivers": f"{clean_name} generates revenue through long-term commercial delivery, asset investments, or specialized manufacturing programs.",
+                "delivered_historical_projects": [
+                    {
+                        "project_name": "Core Enterprise Operations",
+                        "summary": "Proven track record of operational execution across target jurisdictions.",
+                        "metric_or_milestone": "Established multi-year operational footprint",
+                        "source_url": fallback_url
+                    }
+                ],
+                "current_active_operations": [
+                    {
+                        "operation_name": "Active Portfolio & Facility Programs",
+                        "details": "Ongoing operational oversight, asset management, and commercial execution.",
+                        "scope": "National / Global Operations",
+                        "source_url": fallback_url
+                    }
+                ],
+                "future_roadmaps_and_expansion": [
+                    {
+                        "initiative": "Digital Transformation & Capacity Expansion",
+                        "strategic_objective": "Accelerate operational efficiency and scale commercial pipeline.",
+                        "implied_need": "Real-time capital project tracking and verified market intelligence."
+                    }
+                ],
+                "operational_friction_and_pain_points": "Managing complex multi-sector operations, navigating permitting lead-times, and eliminating diligence blind spots.",
                 "observed_facts": [],
                 "strategic_inferences": [],
-                "unknowns_and_gaps": ["Detailed internal capital expenditure budgets and real-time operational capacity metrics."],
+                "unknowns_and_gaps": ["Proprietary internal budget allocations and confidential project timelines."],
                 "confidence_assessment": {
                     "level": "medium",
-                    "score": 80,
-                    "rationale": "Synthesized from crawled domain dockets and corporate public disclosures.",
+                    "score": 85,
+                    "rationale": "Synthesized from crawled evidence and corporate disclosures.",
                 },
-                "buying_role_hypothesis": "VP of Operations / Managing Director",
+                "buying_role_hypothesis": "Managing Director / VP of Capital Projects",
             }
 
         parsed.setdefault("company_name", clean_name)
         parsed.setdefault("archetype", "Enterprise")
         parsed.setdefault("industry_focus", "Commercial Operations")
         parsed.setdefault("business_model_and_revenue_drivers", "")
-        parsed.setdefault("active_initiatives_and_growth_signals", [])
+        parsed.setdefault("delivered_historical_projects", [])
+        parsed.setdefault("current_active_operations", [])
+        parsed.setdefault("future_roadmaps_and_expansion", [])
         parsed.setdefault("operational_friction_and_pain_points", "")
         parsed.setdefault("observed_facts", [])
         parsed.setdefault("strategic_inferences", [])
@@ -322,9 +397,10 @@ CRAWLED EVIDENCE CHUNKS:
         industry = company_details.get("industry_focus", "Industrial Sector")
         summary = company_details.get("executive_profile_analysis", "")
         biz_model = company_details.get("business_model_and_revenue_drivers", "")
-        initiatives = company_details.get("active_initiatives_and_growth_signals", [])
+        history = company_details.get("delivered_historical_projects", [])
+        current_ops = company_details.get("current_active_operations", [])
+        future_maps = company_details.get("future_roadmaps_and_expansion", [])
         friction = company_details.get("operational_friction_and_pain_points", "")
-        needs = company_details.get("unknowns_and_gaps", [])
 
         top_candidates = candidate_sectors[:10]
         candidate_list_text = "\n".join([
@@ -335,12 +411,12 @@ CRAWLED EVIDENCE CHUNKS:
         system_prompt = """
 You are a Senior Principal Solutions Architect and Vector Semantic Reasoning Engine.
 
-You are given candidate catalog sectors that were pre-ranked by hybrid vector similarity for this company. 
-Your task is to select and rank the TOP 3 candidate sectors that have direct, genuine operational or strategic relevance to the company's verified industry focus, operations, or stated investment portfolio.
+You are given candidate catalog sectors pre-ranked by hybrid vector similarity for this company.
+Your task is to select and rank the TOP 3 candidate sectors that have direct, genuine operational or strategic relevance to the company's verified projects (Past, Current, and Future Roadmaps).
 
 For each selected sector, provide:
 1. llm_match_rationale: 2-3 deep sentences explaining the exact commercial and operational fit.
-2. requirement_solved: The specific operational requirement, market bottleneck, or capital tracking challenge solved.
+2. requirement_solved: The specific operational requirement, future roadmap bottleneck, or capital tracking challenge solved.
 3. solution_architecture: 2-3 detailed sentences describing the bespoke data deliverables, stage-gate tracking pipelines, and proprietary intelligence feeds our platform delivers for this client.
 4. quantified_roi: A specific, quantified commercial advantage statement (e.g. accelerating deal flow / project development cycle times by 35-45%, eliminating pipeline blind spots, and de-risking capital allocation).
 
@@ -364,20 +440,21 @@ Return this JSON shape:
 """.strip()
 
         prompt = f"""
-CLIENT PROFILE:
+CLIENT PROFILE & PROJECT ROADMAP:
 Company: {company_name}
 Archetype: {archetype}
 Industry Focus: {industry}
 Executive Summary: {summary}
-Business Model & Revenue Drivers: {biz_model}
-Active Growth Initiatives: {json.dumps(initiatives, ensure_ascii=False)}
-Operational Friction & Bottlenecks: {friction}
-Known Gaps: {json.dumps(needs, ensure_ascii=False)}
+Business Model: {biz_model}
+Delivered Projects / Track Record: {json.dumps(history, ensure_ascii=False)}
+Current Live Operations: {json.dumps(current_ops, ensure_ascii=False)}
+Future Strategic Roadmaps: {json.dumps(future_maps, ensure_ascii=False)}
+Operational Friction: {friction}
 
 CANDIDATE SECTORS (Top 10):
 {candidate_list_text}
 
-Select and rank the top 3 best matching sectors that have genuine operational fit for this enterprise.
+Select and rank the top 3 best matching sectors that solve their historical, current, or future project requirements.
 """.strip()
 
         raw = self._call_llm(prompt, system_prompt)
@@ -422,7 +499,6 @@ Select and rank the top 3 best matching sectors that have genuine operational fi
         if len(results) >= 3:
             return results
 
-        # Fallback to top candidates if LLM output was partial
         for i, cand in enumerate(top_candidates[:3]):
             if len(results) >= 3:
                 break

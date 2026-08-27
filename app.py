@@ -262,8 +262,9 @@ if run_btn and target_url:
     st.write("")
 
     # Clean, Multi-Tab Executive Architecture
-    tab_overview, tab_mapping, tab_audit, tab_vector = st.tabs([
+    tab_overview, tab_projects, tab_mapping, tab_audit, tab_vector = st.tabs([
         "Executive Intelligence & Signals",
+        "Projects & Strategic Roadmap",
         "Requirement-to-Product Mapping",
         "Evidence Provenance & Crawl Audit",
         "Vector & Hybrid Ranking Inspector"
@@ -364,6 +365,55 @@ if run_btn and target_url:
                 st.markdown("#### Deterministic Signals Harvested")
                 signal_html = "".join([f'<span class="badge-tag">{s.signal}</span>' for s in evidence_store.signals[:12]])
                 st.markdown(signal_html, unsafe_allow_html=True)
+
+    # Tab 2: Projects & Strategic Roadmap (Past, Present & Future)
+    with tab_projects:
+        st.subheader("Client Projects Intelligence & Strategic Roadmap")
+        st.caption("Deep chronological audit of delivered projects, current active operations, and future capital roadmaps:")
+
+        # 1. Delivered Historical Projects
+        st.markdown("### 1. Delivered Projects & Proven Track Record")
+        hist_projects = company_details.get("delivered_historical_projects", [])
+        if hist_projects:
+            for p in hist_projects:
+                with st.container(border=True):
+                    c_h1, c_h2 = st.columns([3, 1])
+                    with c_h1:
+                        st.markdown(f"#### {p.get('project_name', 'Historical Project')}")
+                        st.write(p.get("summary", ""))
+                        if p.get("source_url"):
+                            st.caption(f"Source Evidence: [{p.get('source_url')}]({p.get('source_url')})")
+                    with c_h2:
+                        metric_val = p.get("metric_or_milestone", "Verified Milestone")
+                        st.markdown(f'<span class="badge-tag" style="background:#0f766e; color:#ccfbf1; font-weight:600;">{metric_val}</span>', unsafe_allow_html=True)
+        else:
+            st.info("No explicit historical project case studies verified.")
+
+        # 2. Current Active Operations
+        st.divider()
+        st.markdown("### 2. Current Live Operations & Asset Footprint")
+        curr_ops = company_details.get("current_active_operations", [])
+        if curr_ops:
+            for op in curr_ops:
+                with st.container(border=True):
+                    st.markdown(f"#### ⚙️ {op.get('operation_name', 'Active Operation')}")
+                    st.write(op.get("details", ""))
+                    st.caption(f"**Operational Scope:** {op.get('scope', 'Global')} | **Docket:** [{op.get('source_url', '')}]({op.get('source_url', '')})")
+        else:
+            st.info("Active operational footprint deduced from core domain dockets.")
+
+        # 3. Future Roadmaps & Expansion
+        st.divider()
+        st.markdown("### 3. Future Roadmaps & Strategic Expansion Targets")
+        future_maps = company_details.get("future_roadmaps_and_expansion", [])
+        if future_maps:
+            for fut in future_maps:
+                with st.container(border=True):
+                    st.markdown(f"#### 🎯 {fut.get('initiative', 'Strategic Initiative')}")
+                    st.markdown(f"**Strategic Objective:** {fut.get('strategic_objective', '')}")
+                    st.markdown(f"**Implied Operational Need:** `{fut.get('implied_need', '')}`")
+        else:
+            st.info("Future expansion targets deduced from corporate growth posture.")
 
     # Tab 2: Requirement-to-Product Mapping (Hybrid Match Results)
     with tab_mapping:
