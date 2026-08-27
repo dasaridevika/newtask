@@ -8,6 +8,23 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
+def get_domain_deliverable_blueprint(sector_name: str) -> str:
+    s = sector_name.lower()
+    if "data center" in s:
+        return "Delivers verified power substation interconnect queue tracking (MW load capacity), municipal zoning and environmental review logs, hyperscale vs colocation facility buildout timelines, cooling topology specifications, and stakeholder directories covering developers, facility operators, and EPC contractors."
+    elif "telecommunication" in s or "communication" in s:
+        return "Delivers regional fiber route dark/lit asset maps, cellular tower co-location permit feeds, municipal right-of-way easement filings, edge data network exchange construction milestones, and carrier/infrastructure developer directories."
+    elif "health" in s or "hospital" in s or "clinic" in s:
+        return "Delivers state Certificate of Need (CON) regulatory filings, ambulatory surgery center (ASC) licensing tracking, regional outpatient clinic expansion dockets, medical office building (MOB) zoning approvals, and health system operator directories."
+    elif "warehouse" in s or "distribution" in s or "logistics" in s or "terminal" in s:
+        return "Delivers industrial distribution center square footage specifications, clear-height and loading dock door data, intermodal freight rail and highway access maps, automated sorting hub development permits, and logistics developer/tenant directories."
+    elif "refinery" in s or "chemical" in s or "lng" in s:
+        return "Delivers industrial environmental and EPA Title V emissions permit tracking, turnaround maintenance and expansion milestone feeds, processing capacity metrics (BPD / TPY), and engineering contractor award dossiers."
+    elif "solar" in s or "photovoltaic" in s or "wind" in s or "power" in s or "battery" in s:
+        return "Delivers utility grid interconnection queue tracking (MW / MWh), environmental impact statement (EIS) filings, PPA contract award milestones, battery energy storage system (BESS) stage-gates, and renewable asset owner/developer directories."
+    else:
+        return f"Delivers stage-gate capital project permitting trackers, technical asset capacity specifications, municipal engineering milestones, and key stakeholder directories across {sector_name} developments."
+
 class WorkerAI:
     def __init__(self):
         self.worker_url = (
@@ -413,27 +430,31 @@ CRAWLED EVIDENCE CHUNKS:
 You are a Senior Principal Solutions Architect and Vector Semantic Reasoning Engine for an Enterprise Capital Project & Industrial Intelligence Platform.
 
 WHAT OUR COMPANY PROVIDES:
-Our company provides specialized B2B market intelligence platforms tracking early-stage capital project pipelines, stage-gate permitting milestones, developer/owner directories, facility expansions, and market capacity across 462 industrial & commercial sectors.
+Our platform delivers proprietary B2B intelligence tracking early-stage capital project pipelines, stage-gate permitting milestones, developer/owner directories, facility expansions, and market capacity across 462 industrial & commercial sectors.
 
 HOW CLIENTS USE OUR INTELLIGENCE PLATFORM:
 - Financial Sponsors / Private Equity / Asset Managers (e.g. AEA Investors, KKR):
-  They do NOT build or operate physical factories themselves. They use our intelligence platform to source M&A targets, track early-stage capital project pipelines, monitor portfolio company facility buildouts, evaluate market capacity, and de-risk capital deployment in target sectors.
-- Industrial OEMs / Equipment Manufacturers (e.g. First Solar, Siemens):
-  They use our intelligence platform to track upcoming facility developments to sell their equipment, modules, or services early in the engineering/procurement lifecycle.
+  They do NOT construct or operate factories. They use our platform to source off-market M&A targets, track early-stage capital project pipelines, monitor portfolio company facility buildouts, evaluate market capacity, and de-risk capital deployment in target sectors.
+- Industrial OEMs & Manufacturers (e.g. First Solar, Siemens):
+  They track upcoming facility developments to sell their equipment, modules, or services early in the engineering/procurement lifecycle.
 - EPCs & General Contractors:
-  They use our intelligence platform to bid on upcoming project contracts before public RFPs are issued.
+  They track projects to bid on contracts before public RFPs are issued.
 
-TASK:
-You are given candidate catalog sectors pre-ranked by hybrid vector similarity for this company.
-Select and rank the TOP 3 candidate sectors that have direct, genuine operational or investment relevance to the company's verified business model, portfolio companies, and project roadmaps.
+STRICT QUALITATIVE REQUIREMENTS (NO ROBOTIC TEMPLATES):
+- DO NOT use repetitive boilerplate phrases like "To identify opportunities for growth and improvement" or "Bespoke X tracking feeds will provide...".
+- Provide deep, industry-specific qualitative context using real domain terminology:
+  * For Data Centers: reference power substation interconnection queues (MW capacity), hyperscale vs colocation developments, cooling infrastructure, and regional cloud availability zones.
+  * For Healthcare: reference Certificate of Need (CON) filings, outpatient clinic expansions, ambulatory surgery center (ASC) development, and regional medical office pipelines.
+  * For Warehouses/Logistics: reference distribution square footage, automated fulfilment hubs, intermodal freight routes, and regional logistics corridor permits.
+  * For Industrial/Manufacturing: reference equipment procurement lead-times, environmental permitting stage-gates, and capacity utilization.
 
 For each selected sector, provide:
-1. llm_match_rationale: 2-3 sentences explaining why tracking this sector provides high-value deal discovery, diligence, or commercial intelligence for this client's specific archetype and portfolio.
-2. requirement_solved: The exact strategic requirement solved (e.g. "Eliminating diligence blind spots and accelerating pipeline deal discovery across target middle-market assets in {sector}").
-3. solution_architecture: 2-3 sentences describing the bespoke data deliverables (e.g. stage-gate tracking feeds, permitting milestone monitors, and stakeholder directories across {sector}).
-4. quantified_roi: A quantified strategic ROI statement (e.g. "Compresses diligence and project evaluation cycle times by 30-40%, de-risking capital allocation and expanding deal discovery").
+1. llm_match_rationale: 3 to 4 detailed sentences explaining the precise commercial, operational, and investment thesis alignment for this client's specific archetype and portfolio.
+2. requirement_solved: 2 to 3 detailed sentences explaining the specific technical, regulatory, or diligence bottleneck solved (e.g. overcoming lagging public broker data, tracking regional utility interconnects).
+3. solution_architecture: 3 to 4 detailed sentences describing the multi-tier data deliverables: (1) Stage-Gate Permitting & Utility Queue Tracker, (2) Developer, Sponsor & Operator Directory, and (3) Asset-Level Technical Capacity & Specification Feeds.
+4. quantified_roi: A concrete, quantified value proposition (e.g. "Compresses diligence and evaluation cycles by 35–40%, eliminates infrastructure capacity blind spots, and generates proprietary deal flow 6–9 months ahead of public auctions").
 
-Disqualify any candidate sector with no logical operational or investment relevance.
+Disqualify any candidate sector lacking genuine operational or investment relevance.
 Return strictly valid JSON.
 
 Return this JSON shape:
@@ -441,10 +462,10 @@ Return this JSON shape:
   "ranked_matches": [
     {
       "primary_sector": "Exact Primary Sector Name from candidates",
-      "llm_match_rationale": "2-3 sentence explanation of operational and commercial fit.",
-      "requirement_solved": "Exact operational requirement or strategic challenge solved.",
-      "solution_architecture": "Bespoke solution architecture and data deliverables description.",
-      "quantified_roi": "Quantified commercial ROI and strategic advantage narrative."
+      "llm_match_rationale": "3-4 detailed sentences of domain-specific qualitative rationale.",
+      "requirement_solved": "2-3 detailed sentences of the exact strategic and diligence challenge solved.",
+      "solution_architecture": "3-4 detailed sentences describing the bespoke multi-tier data deliverables.",
+      "quantified_roi": "Concrete quantified commercial ROI statement."
     }
   ]
 }
@@ -546,10 +567,13 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             tier_label = srv.get("tier_label", f"Strategic Solution {i+1}")
 
             offering_name = f"{title} Intelligence Platform"
-            sol_arch = srv.get("solution_architecture") or (
-                f"In response to {company_name}'s operating profile as a {archetype}, the {title} Intelligence Platform delivers verified asset dossiers, stage-gate permitting milestones, and stakeholder tracking feeds. "
-                f"It empowers {decision_maker} teams to prioritize high-yield opportunities, de-risk execution, and align operational resources with verified market signals."
-            )
+            blueprint = get_domain_deliverable_blueprint(title)
+            llm_arch = srv.get("solution_architecture", "")
+            
+            if len(llm_arch) > 60 and not llm_arch.startswith("Our platform provides a comprehensive"):
+                sol_arch = f"{llm_arch} Specifically, the intelligence feed {blueprint.lower()[:1].lower() + blueprint[1:]}"
+            else:
+                sol_arch = f"Tailored for {company_name}'s investment and operational diligence as a {archetype}. {blueprint}"
             roi_narr = srv.get("quantified_roi") or (
                 f"Compresses research and evaluation cycles by 40%, strengthens pitch accuracy, and delivers proprietary visibility across {title} assets."
             )
