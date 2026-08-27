@@ -177,7 +177,7 @@ with col_url:
     target_url = st.text_input(
         "Target Client Domain / Website URL",
         value="",
-        placeholder="e.g. https://www.firstsolar.com, https://www.vertiv.com, or https://www.aeainvestors.com"
+        placeholder="e.g. https://example.com or enterprise-domain.com"
     )
 with col_btn:
     run_btn = st.button("Analyze & Match", type="primary", use_container_width=True)
@@ -186,7 +186,7 @@ with col_btn:
 client_inquiry = st.text_input(
     "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
     value="",
-    placeholder="e.g. 'Looking for pipeline tracking across upcoming utility-scale solar buildouts and grid interconnection queues.'"
+    placeholder="e.g. 'Looking for commercial expansion intelligence, asset tracking, or market visibility in target regions.'"
 )
 
 if run_btn and target_url:
