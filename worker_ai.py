@@ -57,28 +57,31 @@ class WorkerAI:
             pass
         return {}
 
-    def extract_company_details(self, scraped_text: str, domain: str = "") -> dict:
+    def extract_company_details(self, scraped_text: str, domain: str = "", client_inquiry: str = "") -> dict:
         clean_name = domain.split(".")[0].replace("www", "").capitalize() if domain else "Enterprise"
 
+        inquiry_context = f"\nClient's Specific Inbound Inquiry/Message:\n\"{client_inquiry}\"\n" if client_inquiry else ""
+
         system_prompt = (
-            "You are a Senior Managing Director & Global Head of Strategic Corporate Intelligence.\n"
-            "Analyze the target company from the provided text and produce an exhaustive, deep narrative analytical dossier.\n"
+            "You are a Senior Managing Director & Head of Enterprise Client Solutions.\n"
+            "An enterprise client has approached our firm with an inquiry regarding their strategic requirements.\n"
+            "Analyze the client company from the crawled text and their inquiry to produce an exhaustive, deep narrative dossier.\n"
             "CRITICAL INSTRUCTIONS:\n"
             "1. Write comprehensive narrative prose paragraphs with senior executive depth.\n"
             "2. DO NOT use bullet points or numbered lists in the narrative text.\n"
-            "3. Accurately identify their business model, primary revenue drivers, operational friction, and strategic expansion bottlenecks.\n\n"
+            "3. Accurately identify their operational model, what they are requesting from us, and their underlying bottlenecks.\n\n"
             "Return strictly a valid JSON object matching this schema:\n"
             "{\n"
             '  "company_name": "Official Entity Name",\n'
             '  "industry_focus": "Specific Industry Domain",\n'
-            '  "executive_profile_analysis": "Comprehensive institutional assessment of the business model, commercial scale, and market footprint.",\n'
-            '  "expectations_and_needs_narrative": "Detailed narrative analysis explaining exactly what forward-looking project datasets, site selection intelligence, or market visibility the enterprise requires to accelerate its strategic roadmap.",\n'
-            '  "operational_friction_analysis": "In-depth narrative analysis detailing the structural friction, lead-time bottlenecks, information asymmetry, and commercial pressures they face in their current operations.",\n'
+            '  "executive_profile_analysis": "Comprehensive institutional assessment of their business model, commercial scale, and market footprint.",\n'
+            '  "expectations_and_needs_narrative": "Detailed narrative analysis explaining exactly what forward-looking project datasets, site selection intelligence, or market visibility the client is seeking from us to support their operations.",\n'
+            '  "operational_friction_analysis": "In-depth narrative analysis detailing the structural friction, lead-time bottlenecks, information asymmetry, and commercial pressures they face in their current operations that prompted their inquiry.",\n'
             '  "buying_role_hypothesis": "Specific Executive Title"\n'
             "}"
         )
 
-        prompt = f"Target Enterprise Domain: {domain}\n\nCrawled Intelligence:\n{scraped_text[:12000]}"
+        prompt = f"Target Enterprise Domain: {domain}{inquiry_context}\n\nCrawled Intelligence:\n{scraped_text[:12000]}"
         raw = self._call_llm(prompt, system_prompt)
         parsed = self._parse_json(raw)
 
@@ -98,7 +101,7 @@ class WorkerAI:
                         f"{comp_name} is an institutional global private investment firm managing approximately $19 billion in assets under management across dedicated Middle Market Private Equity, Small Business Buyouts, and Private Debt investment strategies. Founded in 1968 by landmark industrial family offices, the firm has established a five-decade legacy of operational value creation by partnering with market-leading enterprises across value-added industrials, industrial services, specialty manufacturing, and consumer healthcare. The firm's operational model focuses on executing strategic add-on acquisitions, scaling manufacturing efficiency, and driving international expansion across middle-market platform companies."
                     ),
                     "expectations_and_needs_narrative": (
-                        f"To sustain top-quartile internal rates of return (IRR) and accelerate buyout deal velocity, {comp_name}'s investment committees and operating partners require authoritative, forward-looking intelligence on global capital expenditure pipelines. Specifically, deal teams expect verified visibility into upcoming industrial manufacturing buildouts, plant modernization dockets, and supply chain procurement cycles across specialty chemical, packaging machinery, and industrial services sectors. This forward intelligence is essential to stress-test financial underwriting models, conduct commercial due diligence on potential buyout targets, and benchmark the growth avenues of their existing portfolio platforms."
+                        f"In approaching our firm, {comp_name}'s investment committees and operating partners are seeking authoritative, forward-looking intelligence on global capital expenditure pipelines. Specifically, their deal teams require verified visibility into upcoming industrial manufacturing buildouts, plant modernization dockets, and supply chain procurement cycles across specialty chemical, packaging machinery, and industrial services sectors. This forward intelligence is essential for their team to stress-test financial underwriting models, conduct commercial due diligence on potential buyout targets, and benchmark the growth avenues of their existing portfolio platforms."
                     ),
                     "operational_friction_analysis": (
                         f"{comp_name}'s deal origination and diligence processes encounter substantial structural friction stemming from reliance on lagging historical market reports that fail to capture real-time industrial capital allocation. In addition, intensely competitive investment banking auctions compress entry multiples and reduce returns, creating an urgent commercial necessity for proprietary pre-auction deal origination. Furthermore, existing portfolio companies frequently operate without advance visibility into upcoming multi-million-dollar capital projects, resulting in missed opportunities to pre-position high-margin equipment and service contracts."
@@ -113,7 +116,7 @@ class WorkerAI:
                         "Amazon (NASDAQ: AMZN) is a global technology and infrastructure enterprise operating at immense scale across hyperscale cloud computing (Amazon Web Services), e-commerce retail networks, generative AI platforms (Bedrock), and physical logistics ecosystems. In regional growth corridors, Amazon is executing massive multi-billion-dollar capital allocation programs ($48B committed through 2030), expanding dedicated freight railway logistics hubs, and building hyper-density AWS cloud availability zones powered by renewable energy microgrids and substation interconnections."
                     ),
                     "expectations_and_needs_narrative": (
-                        "Amazon's global infrastructure planning, real estate, and procurement leadership require granular, pre-construction intelligence covering land zoning dockets, municipal permits, and environmental impact filings 18 to 24 months in advance. Additionally, infrastructure planners require real-time tracking of utility substation interconnection queues (including target Megawatt capacity and transmission kV voltage levels) to de-risk multi-gigawatt power provisioning for AWS AI clusters and optimize multimodal logistics routing adjacent to dedicated freight rail corridors."
+                        "In their inquiry, Amazon's global infrastructure planning, real estate, and procurement leadership are seeking granular, pre-construction intelligence covering land zoning dockets, municipal permits, and environmental impact filings 18 to 24 months in advance. Additionally, their infrastructure planners require real-time tracking of utility substation interconnection queues (including target Megawatt capacity and transmission kV voltage levels) to de-risk multi-gigawatt power provisioning for AWS AI clusters and optimize multimodal logistics routing adjacent to dedicated freight rail corridors."
                     ),
                     "operational_friction_analysis": (
                         "The primary constraint on Amazon's physical expansion is no longer capital—it is lead-time friction in securing high-voltage power allocations and municipal zoning approvals. Substation interconnect queues frequently span 24 to 36 months of pre-construction coordination with regional power utilities. Furthermore, regional land speculators frequently lock up high-capacity industrial parcels prior to public announcements, inflating site acquisition costs and introducing critical commissioning delays for gigawatt compute clusters."
@@ -128,7 +131,7 @@ class WorkerAI:
                         "Vertiv Holdings Co. (NYSE: VRT) is the premier global architect of critical digital infrastructure technologies powering hyperscale data centers, enterprise communication networks, and mission-critical commercial facilities. Operating across 40+ countries with 34,000+ personnel, Vertiv designs, manufactures, and commissions industrial-scale Liebert thermal management systems, direct-to-chip liquid cooling CDUs, medium-voltage switchgear, and integrated modular power distribution skids."
                     ),
                     "expectations_and_needs_narrative": (
-                        "Vertiv's commercial business development and solutions architecture teams require predictive 12-to-18-month advance visibility into regional data center land acquisitions, municipal permitting dockets, and substation queue allocations. Gaining early intelligence during conceptual design and Front-End Engineering Design (FEED) allows Vertiv to engage MEP engineering consultancies and project developers well before formal public equipment tenders are released."
+                        "In seeking our project intelligence capabilities, Vertiv's commercial business development and solutions architecture teams require predictive 12-to-18-month advance visibility into regional data center land acquisitions, municipal permitting dockets, and substation queue allocations. Gaining early intelligence during conceptual design and Front-End Engineering Design (FEED) allows Vertiv to engage MEP engineering consultancies and project developers well before formal public equipment tenders are released."
                     ),
                     "operational_friction_analysis": (
                         "Because critical power and liquid cooling equipment require long manufacturing lead times, discovering projects only after public contractor bidding opens severely disadvantages hardware OEMs. Public tenders compress commercial margins and frequently favor competitors whose equipment was pre-specified into architectural blueprints during initial permitting, resulting in substantial commercial friction and lower conversion rates on high-margin infrastructure contracts."
@@ -140,7 +143,7 @@ class WorkerAI:
                     "company_name": clean_name,
                     "industry_focus": f"Enterprise Infrastructure & Operations in {domain}",
                     "executive_profile_analysis": f"{clean_name} delivers specialized commercial operations, digital capabilities, and infrastructure solutions across target markets.",
-                    "expectations_and_needs_narrative": f"{clean_name} requires authoritative capital project pipeline intelligence, stage-gate permitting visibility, and verified stakeholder directories to identify early commercial opportunities.",
+                    "expectations_and_needs_narrative": f"{clean_name} is seeking authoritative capital project pipeline intelligence, stage-gate permitting visibility, and verified stakeholder directories to identify early commercial opportunities.",
                     "operational_friction_analysis": f"{clean_name} faces operational friction from late awareness of major procurement tenders and lack of verified forward-looking project datasets.",
                     "buying_role_hypothesis": "VP of Infrastructure Procurement / Head of Strategic Growth"
                 }
@@ -162,22 +165,22 @@ class WorkerAI:
         ])
 
         system_prompt = (
-            "You are a Senior Principal Enterprise Solutions Architect and Vector Semantic Reasoning Engine.\n"
-            "Your task is to conduct an in-depth semantic evaluation comparing the target company's business model, "
-            "revenue footprint, operational bottlenecks, and strategic requirements against candidate catalog sectors.\n\n"
-            "Evaluate which 3 sectors offer the highest commercial synergy and operational fit.\n"
+            "You are a Senior Principal Enterprise Solutions Architect.\n"
+            "An enterprise client has approached us with an inquiry regarding their strategic intelligence needs.\n"
+            "Your task is to evaluate which catalog sectors from our offerings directly match and fulfill the client's inquiry.\n\n"
+            "Rank the top 3 best matching sectors strictly based on their real-world applicability to the client's request.\n"
             "For each selected sector, provide:\n"
             "1. Exact match score (between 85.0% and 98.5%).\n"
-            "2. In-depth strategic rationale explaining how our project intelligence in this sector directly matches their operational footprint.\n"
-            "3. Specific enterprise challenge or procurement bottleneck this database resolves.\n\n"
+            "2. In-depth strategic rationale explaining how our project intelligence in this sector fulfills their stated need.\n"
+            "3. Specific enterprise challenge or procurement bottleneck this database resolves for them.\n\n"
             "Return strictly a valid JSON object matching this schema:\n"
             "{\n"
             '  "ranked_matches": [\n'
             '    {\n'
-            '      "tier_label": "Primary Strategic Alignment / Secondary Strategic Alignment / Adjacent Expansion Alignment",\n'
+            '      "tier_label": "Primary Strategic Solution / Secondary Strategic Solution / Adjacent Expansion Solution",\n'
             '      "primary_sector": "Exact Primary Sector Name from candidates",\n'
             '      "llm_match_score": 96.5,\n'
-            '      "llm_match_rationale": "Comprehensive 3-sentence explanation of commercial and operational fit.",\n'
+            '      "llm_match_rationale": "Comprehensive 3-sentence explanation of how this fulfills their inquiry.",\n'
             '      "requirement_solved": "Exact operational requirement or strategic challenge solved."\n'
             '    }\n'
             '  ]\n'
@@ -185,23 +188,23 @@ class WorkerAI:
         )
 
         prompt = (
-            f"TARGET COMPANY PROFILE:\n"
-            f"Name: {company_name}\n"
+            f"CLIENT PROFILE & INBOUND INQUIRY CONTEXT:\n"
+            f"Client Name: {company_name}\n"
             f"Archetype: {archetype}\n"
             f"Industry Focus: {industry}\n"
             f"Operational Scope: {summary}\n"
-            f"Strategic Requirements: {needs}\n"
-            f"Operational Bottlenecks: {friction}\n\n"
-            f"CATALOG SECTOR CANDIDATES TO COMPARE:\n"
+            f"What the Client is Seeking: {needs}\n"
+            f"Client's Operational Challenges: {friction}\n\n"
+            f"OUR CATALOG SECTOR OFFERINGS TO MATCH:\n"
             f"{candidate_list_text}\n\n"
-            f"Perform deep semantic comparison and select the top 3 best matching sectors."
+            f"Perform deep semantic comparison and select the top 3 best matching solutions to fulfill the client's request."
         )
 
         raw = self._call_llm(prompt, system_prompt)
         parsed = self._parse_json(raw)
         ranked = parsed.get("ranked_matches", [])
 
-        default_tiers = ["Primary Strategic Alignment", "Secondary Strategic Alignment", "Adjacent Expansion Alignment"]
+        default_tiers = ["Primary Strategic Solution", "Secondary Strategic Solution", "Adjacent Expansion Solution"]
 
         if ranked and isinstance(ranked, list):
             enriched_results = []
@@ -239,15 +242,15 @@ class WorkerAI:
                 "Definition": c["Definition"],
                 "similarity": c.get("similarity", 0.90 - i * 0.05),
                 "match_pct": c.get("match_pct", 90.0 - i * 5.0),
-                "llm_match_rationale": f"Strategic alignment with {company_name}'s core operational footprint in {c['Primary Sector']}.",
+                "llm_match_rationale": f"Directly fulfills {company_name}'s inquiry regarding capital project intelligence in {c['Primary Sector']}.",
                 "requirement_solved": f"Early-stage capital project tracking and commercial pipeline intelligence in {c['Primary Sector']}."
             })
         return fallback_results
 
     def analyze_fit(self, company_details: dict, matched_services: list) -> dict:
-        company_name = company_details.get("company_name", "Target Enterprise")
+        company_name = company_details.get("company_name", "Client Enterprise")
         archetype = company_details.get("archetype", "Enterprise Technology & Infrastructure Operator")
-        decision_maker = company_details.get("buying_role_hypothesis", "VP of Strategic Infrastructure")
+        decision_maker = company_details.get("buying_role_hypothesis", "Client Leadership")
 
         mappings = []
         for i, srv in enumerate(matched_services[:3]):
@@ -260,18 +263,18 @@ class WorkerAI:
                 offering_name = f"{title} Capital Project & M&A Due Diligence Database"
                 solves_req = req_solved or f"Commercial Due Diligence & Proprietary M&A Deal Sourcing in {title}"
                 comprehensive_narrative = (
-                    f"Our {title} Intelligence Database directly resolves {company_name}'s reliance on lagging retrospective market reports by providing an exhaustive, verified forward-looking pipeline of announced, permitted, and under-construction capital developments across {title}. "
-                    f"By tracking project stage-gates from feasibility and environmental permitting through EPC tender awards, the database equips {company_name}'s deal teams to stress-test buyout financial models against verified customer spending and capacity specifications. "
-                    f"Furthermore, by delivering direct mapping of facility owners, lead contractors, and engineering consultancies, the platform unlocks proprietary pre-auction deal origination and empowers existing portfolio platform companies to capture high-margin supply contracts."
+                    f"In response to {company_name}'s inquiry regarding pre-acquisition due diligence and sector intelligence, our {title} Intelligence Database provides an exhaustive, verified forward-looking pipeline of announced, permitted, and under-construction capital developments across {title}. "
+                    f"By tracking project stage-gates from feasibility and environmental permitting through EPC tender awards, the database directly enables {company_name}'s deal teams to stress-test buyout financial models against verified customer spending and capacity specifications. "
+                    f"Furthermore, by delivering direct contact mapping of facility owners, lead contractors, and engineering consultancies, the platform unlocks proprietary pre-auction deal origination and empowers existing portfolio platform companies to capture high-margin supply contracts."
                 )
                 roi_narrative = (
-                    f"Accelerates commercial due diligence velocity by 40%, eliminates information asymmetry during buyout underwriting, and unlocks an 18-month first-mover window for proprietary deal sourcing ahead of competitive investment bank auctions."
+                    f"Directly accelerates commercial due diligence velocity by 40%, eliminates information asymmetry during buyout underwriting, and unlocks an 18-month first-mover window for proprietary deal sourcing ahead of competitive investment bank auctions."
                 )
             elif archetype == "Hyperscale Cloud & Logistics Developer":
                 offering_name = f"{title} Capital Project & Site Selection Intelligence Feed"
                 solves_req = req_solved or f"Pre-Filing Site Selection, Permitting & Substation Queue Tracking in {title}"
                 comprehensive_narrative = (
-                    f"Our {title} Intelligence Feed provides {company_name}'s global real estate, GIS, and infrastructure planning leadership with comprehensive pre-construction tracking across industrial land transactions, municipal zoning dockets, and environmental impact filings 18 to 24 months in advance of public announcement. "
+                    f"In response to {company_name}'s inquiry regarding infrastructure expansion and utility grid tracking, our {title} Intelligence Feed provides global real estate, GIS, and infrastructure planning leadership with comprehensive pre-construction tracking across industrial land transactions, municipal zoning dockets, and environmental impact filings 18 to 24 months in advance of public announcement. "
                     f"The dataset specifically monitors regional utility substation interconnection queues—tracking target Megawatt (MW) allocations, kV transmission line capacity, and utility queue positions—to enable {company_name} to secure multi-gigawatt power before breaking ground and eliminate costly construction bottlenecks."
                 )
                 roi_narrative = (
@@ -281,7 +284,7 @@ class WorkerAI:
                 offering_name = f"{title} Pre-Tender Blueprint Specification & Engineering Pipeline Feed"
                 solves_req = req_solved or f"Early Front-End Engineering Design (FEED) Specification Lock-In in {title}"
                 comprehensive_narrative = (
-                    f"Our {title} Intelligence Feed tracks the complete lifecycle of upcoming capital developments in {title} from early land acquisition and environmental permitting through Front-End Engineering Design (FEED). "
+                    f"In response to {company_name}'s inquiry regarding advance capital project visibility, our {title} Intelligence Feed tracks the complete lifecycle of upcoming developments in {title} from early land acquisition and environmental permitting through Front-End Engineering Design (FEED). "
                     f"By providing {company_name}'s solutions architects with early visibility into scheduled equipment procurement, cooling and power requirements, and engineering parameters, the platform enables {company_name} to engage engineering consultancies during blueprint drafting and secure sole-source specification status before public tenders open."
                 )
                 roi_narrative = (
@@ -290,7 +293,7 @@ class WorkerAI:
             else:
                 offering_name = f"{title} Capital Project Intelligence Database"
                 solves_req = req_solved or f"Early-Stage Pipeline Tracking & Market Discovery in {title}"
-                comprehensive_narrative = f"Tracks announced, permitted, and under-construction capital developments across {title} globally, providing verified stage-gate tracking and direct stakeholder mapping."
+                comprehensive_narrative = f"In response to {company_name}'s inquiry, this dataset tracks announced, permitted, and under-construction capital developments across {title} globally, providing verified stage-gate tracking and direct stakeholder mapping."
                 roi_narrative = "Accelerates commercial deal velocity and provides advance visibility into major capital expenditure programs."
 
             mappings.append({
@@ -306,111 +309,124 @@ class WorkerAI:
         top_offering_name = mappings[0]["exact_offering_name"] if mappings else "Project Intelligence Database"
         top_sector = matched_services[0].get("Primary Sector", "Target Sector") if matched_services else "Infrastructure"
 
-        # Executive Outreach Memo
+        # Tailored Inbound Client Proposal Memo
         if archetype == "Private Equity Sponsor & Asset Manager":
-            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+            pitch = f"""### EXECUTIVE CLIENT RESPONSE & STRATEGIC PROPOSAL
 
 **TO:** {decision_maker}, {company_name}  
 **FROM:** Senior Managing Director, Global Private Equity Strategy Group  
-**SUBJECT:** Strategic Intelligence Partnership: Proprietary M&A Deal Origination & CAPEX Due Diligence in {top_sector}
+**SUBJECT:** Proposal & Response: Capital Project Pipeline Datasets & M&A Due Diligence Intelligence in {top_sector}
 
 ---
 
-#### Strategic Context & Executive Thesis
-{company_name} is an established institutional private investment leader with a distinguished five-decade heritage of operational value creation across middle-market industrials, specialty manufacturing, and business services. In today's competitive private equity landscape, sustaining top-quartile IRR requires moving beyond lagging historical market reports and identifying platform and add-on acquisition targets ahead of formal investment bank auctions.
+#### 1. Executive Acknowledgment & Strategic Alignment
+Thank you for reaching out to our firm regarding your market intelligence and capital expenditure diligence requirements. We understand that as an established private equity leader managing institutional buyout funds, sustaining superior internal rates of return (IRR) requires verified, forward-looking project datasets across your core industrial and specialty manufacturing target sectors.
 
-#### Identified Operational Friction & Investment Bottlenecks
-During deal screening, investment committee underwriting, and commercial due diligence, private equity teams encounter significant structural constraints. Standard market sizing reports reflect historical retrospective data rather than forward-looking capital deployment cycles. Furthermore, broadly marketed investment bank auctions compress entry multiples and elevate valuations, increasing the necessity of proprietary deal sourcing. Additionally, existing portfolio platform companies frequently lack advance visibility into upcoming multi-million-dollar capital expenditure programs where their products and services could be specified.
+#### 2. Direct Resolution of Your Stated Requirements
+In addressing your inquiry regarding pre-acquisition underwriting and commercial diligence, our team has structured a dedicated solution architecture centered around **{top_offering_name}**:
+- **Forward-Looking CAPEX Pipeline:** Continuous tracking of announced, permitted, and under-construction capital developments across {top_sector}, delivering verified project valuations ($M CAPEX), capacity specifications, and scheduled procurement milestones.
+- **Commercial Due Diligence Datasets:** Enables your investment committee to stress-test financial underwriting models against ground-truth construction schedules rather than relying on lagging retrospective market reports.
+- **Stakeholder Network Directory:** Direct mapping linking facility owners, general contractors, and engineering consultancies to unlock proprietary pre-auction deal flow and add-on acquisition targets.
 
-#### Strategic Solution Architecture ({top_offering_name})
-Our Capital Project Intelligence Platform delivers verified, forward-looking market infrastructure datasets directly into {company_name}'s investment screening and portfolio operations workflows. Deal teams gain continuous visibility into announced, permitted, and under-construction capital developments across {top_sector}, complete with capital expenditure valuations, capacity ratings, construction schedules, and direct stakeholder directories linking facility owners, general contractors, and engineering consultancies.
+#### 3. Delivery Scope & Integration Architecture
+- **Data Delivery Formats:** Direct API data feeds, customized secure web portal access, and GIS-compatible spatial layers.
+- **Update Frequency:** Real-time stage-gate updates with weekly curated executive pipeline briefs.
+- **Coverage Scope:** Global and regional tracking across primary industrial growth corridors.
 
-#### Quantified Strategic ROI & Value Creation
-Partnering with our intelligence platform accelerates commercial due diligence velocity by 40%, stress-tests buyout underwriting models against verified construction schedules, and unlocks an 18-month advance window to intercept high-performing platform companies before competitive auctions commence. Moreover, current portfolio platform companies can leverage these verified feeds to win major equipment supply and service contracts across global capital projects.
+#### 4. Expected Strategic Value & Impact
+Implementing our intelligence feeds accelerates commercial due diligence velocity by 40%, eliminates information asymmetry during platform underwriting, and provides an 18-month advance window to intercept high-performing targets before formal investment bank auctions begin.
 
-#### Proposed Engagement & Next Steps
-We propose a brief 15-minute executive briefing next week to walk through a live demonstration of our forward-looking project feeds and market sizing data across your target investment sectors.
+#### 5. Proposed Next Steps
+We are prepared to provide your investment team with immediate pilot access to a live sample dataset of upcoming projects in {top_sector} and arrange a 15-minute technical briefing with our sector directors to configure your custom coverage parameters.
 
 ---
-*Prepared by Enterprise Strategic Intelligence Group*"""
+*Prepared by Enterprise Strategic Solutions Group*"""
         elif archetype == "Hyperscale Cloud & Logistics Developer":
-            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+            pitch = f"""### EXECUTIVE CLIENT RESPONSE & STRATEGIC PROPOSAL
 
 **TO:** {decision_maker}, {company_name}  
 **FROM:** Senior Managing Director, Global Infrastructure Intelligence  
-**SUBJECT:** Strategic Intelligence Partnership: De-risking Regional Site Selection & Substation Power Queues in {top_sector}
+**SUBJECT:** Proposal & Response: Pre-Construction Site Selection & Utility Substation Queue Tracking in {top_sector}
 
 ---
 
-#### Strategic Context & Executive Thesis
-{company_name} is executing multi-billion-dollar capital expansion programs across hyperscale cloud availability zones, high-density AI clusters, and multimodal logistics corridors. In today's constrained environment, the primary bottleneck to physical scaling is lead time on high-voltage utility interconnections (50MW–500MW+), municipal zoning dockets, and industrial land availability.
+#### 1. Executive Acknowledgment & Strategic Alignment
+Thank you for contacting our firm regarding your regional infrastructure scaling and utility power provisioning requirements. We recognize that for hyperscale cloud and logistics operators deploying multi-billion-dollar capital programs, the critical constraint on physical commissioning is lead-time friction in securing high-voltage substation interconnections (50MW–500MW+) and municipal land zoning approvals.
 
-#### Identified Operational Friction & Critical Pressures
-Based on our industry intelligence, {company_name}'s regional expansion teams face acute operational friction. Power allocations and substation queue evaluations currently require 24–36 months of pre-construction coordination with regional power utilities. Simultaneously, regional developers and speculators lock up high-capacity industrial parcels months before zoning filings become public knowledge, creating costly delays for gigawatt compute cluster commissioning.
+#### 2. Direct Resolution of Your Stated Requirements
+In response to your inquiry regarding pre-construction site selection and grid capacity tracking, we have configured **{top_offering_name}**:
+- **Pre-Filing Land & Permitting Tracking:** Verified tracking of industrial land transactions, zoning applications, and environmental impact clearance dockets 18 to 24 months in advance of public announcement.
+- **Substation Interconnection Queue Intelligence:** Granular tracking of substation queue status, target Megawatt (MW) allocations, kV transmission voltage capacity, and utility contact dockets across {top_sector}.
+- **Freight & Power Infrastructure Synchronization:** Direct alignment with regional transport corridors and utility-scale clean energy PPAs.
 
-#### Strategic Solution Architecture ({top_offering_name})
-Our verified Capital Project Intelligence Platform delivers proprietary, pre-construction visibility directly into {company_name}'s GIS and real estate workflows. The platform provides verified pre-filing tracking of industrial land parcels, zoning applications, and environmental impact filings 18–24 months in advance, combined with real-time tracking of substation queue status, target Megawatt allocations, and transmission line capacity across {top_sector}.
+#### 3. Delivery Scope & Integration Architecture
+- **Data Delivery Formats:** Enterprise GIS layers (ArcGIS/QGIS), automated Snowflake/BigQuery data warehouse feeds, and real-time webhook alerts.
+- **Update Frequency:** Continuous daily permitting docket ingestion and monthly substation queue reconciliations.
 
-#### Quantified Strategic ROI & Value Creation
-Accessing our pre-construction feeds grants {company_name} a 12-to-18-month advance window to secure optimal land parcels before regional real estate prices escalate, while validating utility substation capacity upfront to prevent costly deployment delays on mission-critical AI compute campuses.
+#### 4. Expected Strategic Value & Impact
+Accessing our pre-construction feeds shortens site selection lead times by 12 to 18 months, prevents costly multi-month deployment delays on gigawatt AI clusters, and de-risks multi-billion-dollar infrastructure expansion programs.
 
-#### Proposed Engagement & Next Steps
-We propose a 15-minute executive briefing next week to review a live sample dataset of upcoming substation queue filings and industrial land pipelines across your priority growth corridors.
+#### 5. Proposed Next Steps
+We are ready to activate a tailored demonstration dataset covering upcoming substation interconnects and industrial land pipelines across your priority growth corridors.
 
 ---
-*Prepared by Enterprise Strategic Intelligence Group*"""
+*Prepared by Enterprise Strategic Solutions Group*"""
         elif archetype == "Mission-Critical Infrastructure OEM":
-            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+            pitch = f"""### EXECUTIVE CLIENT RESPONSE & STRATEGIC PROPOSAL
 
 **TO:** {decision_maker}, {company_name}  
-**FROM:** Senior Managing Director, Global Commercial Strategy  
-**SUBJECT:** Strategic Intelligence Partnership: Early-Stage Blueprint Specification & Pipeline Tracking in {top_sector}
+**FROM:** Senior Managing Director, Global Commercial Solutions  
+**SUBJECT:** Proposal & Response: Early-Stage Blueprint Specification & Pipeline Tracking in {top_sector}
 
 ---
 
-#### Strategic Context & Executive Thesis
-{company_name} is the premier global provider of critical digital infrastructure, thermal management, and power distribution systems. In long-cycle capital expenditure environments, commercial leadership depends on engaging project developers and MEP engineering consultancies during early conceptual design—well before public contractor tenders are released.
+#### 1. Executive Acknowledgment & Strategic Alignment
+Thank you for contacting our firm regarding your commercial pipeline tracking and engineering specification requirements. We recognize that for premier digital infrastructure OEMs, maximizing win rates on high-margin power and thermal equipment requires engaging project developers and MEP engineering consultancies during early conceptual design—well before public contractor tenders are released.
 
-#### Identified Operational Friction & Critical Pressures
-Commercial sales and solutions architecture teams encounter significant hurdles when discovering projects only through public RFPs. By the time a tender is released, hardware specifications have already been locked in by competitors. Furthermore, long equipment manufacturing lead times make it difficult to respond to short-fuse contractor bids without advance pipeline visibility.
+#### 2. Direct Resolution of Your Stated Requirements
+In response to your inquiry, we have structured a dedicated intelligence feed around **{top_offering_name}**:
+- **Lifecycle Stage-Gate Tracking:** Comprehensive visibility from initial land acquisition, zoning approval, and Front-End Engineering Design (FEED) through procurement tender release across {top_sector}.
+- **Technical Parameter Visibility:** Access to planned capacity specifications, cooling and power requirements, and scheduled equipment procurement dates.
+- **Key Decision-Maker Directory:** Verified contact mapping linking asset owners, lead MEP design consultancies, and general contractors.
 
-#### Strategic Solution Architecture ({top_offering_name})
-Our Project Intelligence Platform delivers pre-RFP visibility into the complete lifecycle of upcoming developments across {top_sector}. The platform tracks developments from initial land acquisition, zoning approval, and Front-End Engineering Design (FEED) through procurement tender release, providing detailed cooling and power requirements, capacity ratings, and verified stakeholder contact directories.
+#### 3. Delivery Scope & Integration Architecture
+- **Data Delivery Formats:** Salesforce/HubSpot CRM integration, automated pipeline CSV/JSON feeds, and executive portal access.
+- **Update Frequency:** Real-time project milestone tracking with bi-weekly engineering design updates.
 
-#### Quantified Strategic ROI & Value Creation
-Engaging engineering consultancies during blueprint drafting grants {company_name} an 18-month advance window to lock in proprietary equipment specifications, dramatically increasing tender win rates and protecting commercial gross margins.
+#### 4. Expected Strategic Value & Impact
+Engaging engineering consultancies during blueprint drafting grants an 18-month advance window to lock in proprietary equipment specifications, protecting commercial gross margins and substantially elevating tender win rates.
 
-#### Proposed Engagement & Next Steps
-We would welcome a brief 15-minute executive briefing next week to share a live sample dataset of upcoming capital projects and permitting stage-gates across your core target markets.
+#### 5. Proposed Next Steps
+We are prepared to provide your commercial architecture team with a live sample dataset of upcoming FEED-stage projects in {top_sector} to review during a brief working session next week.
 
 ---
-*Prepared by Enterprise Strategic Intelligence Group*"""
+*Prepared by Enterprise Strategic Solutions Group*"""
         else:
-            pitch = f"""### EXECUTIVE OUTREACH DOSSIER & STRATEGIC BRIEF
+            pitch = f"""### EXECUTIVE CLIENT RESPONSE & STRATEGIC PROPOSAL
 
 **TO:** {decision_maker}, {company_name}  
-**FROM:** Senior Managing Director, Global Commercial Strategy  
-**SUBJECT:** Strategic Intelligence Partnership: Early-Stage Pipeline Tracking in {top_sector}
+**FROM:** Senior Managing Director, Global Commercial Solutions  
+**SUBJECT:** Proposal & Response: Capital Project Pipeline Intelligence in {top_sector}
 
 ---
 
-#### Strategic Context & Executive Thesis
-{company_name} operates as an established commercial enterprise in {top_sector}. To maximize deal velocity and capture high-margin contracts, commercial leadership requires forward-looking visibility into major capital expenditure programs before public tenders.
+#### 1. Executive Acknowledgment & Strategic Alignment
+Thank you for reaching out to our firm regarding your capital project intelligence requirements. We understand that maximizing commercial efficiency requires forward-looking visibility into major project developments before public procurement tenders.
 
-#### Identified Operational Friction
-Commercial sales teams encounter friction from late tender awareness and reliance on speculative market rumors rather than verified stage-gate filings.
+#### 2. Direct Resolution of Your Stated Requirements
+In response to your inquiry, our **{top_offering_name}** delivers:
+- **Comprehensive Stage-Gate Tracking:** Verified monitoring of capital developments from initial permitting through procurement tender release in {top_sector}.
+- **Technical & Commercial Parameters:** Access to project valuations, capacity ratings, and equipment schedules.
+- **Stakeholder Directory:** Direct contact mapping of project owners and general contractors.
 
-#### Strategic Solution Architecture ({top_offering_name})
-Our platform delivers comprehensive stage-gate tracking across announced, permitted, and under-construction capital developments, complete with direct stakeholder contact mapping.
+#### 3. Expected Strategic Value & Impact
+Grants a 12-to-18-month first-mover advantage to pre-position your solutions and capture high-margin contract awards.
 
-#### Quantified Strategic ROI
-Grants a 12-to-18-month first-mover advantage to pre-position commercial solutions ahead of competitive bids.
-
-#### Proposed Engagement & Next Steps
-We propose a 15-minute briefing next week to review a live dataset of upcoming projects in your key growth corridors.
+#### 4. Proposed Next Steps
+We are ready to provide a live sample dataset across your priority target sectors and schedule a technical briefing to configure your custom delivery parameters.
 
 ---
-*Prepared by Enterprise Strategic Intelligence Group*"""
+*Prepared by Enterprise Strategic Solutions Group*"""
 
         return {
             "fit_score": matched_services[0].get("match_pct", 98.0) if matched_services else 98.0,

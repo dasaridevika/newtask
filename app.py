@@ -110,29 +110,36 @@ st.markdown("""
 
 # Title Header
 st.title("Lead Research")
-st.caption("AI-Powered Semantic Comparison, Vector Search & Executive Outreach Platform")
+st.caption("Inbound Client Inquiry Resolution, AI Semantic Matching & Strategic Proposal Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
 
-# URL Search Input with perfect vertical alignment
+# Input Form
 col_url, col_btn = st.columns([5, 1], vertical_alignment="bottom")
 with col_url:
     target_url = st.text_input(
-        "Target Enterprise Domain / Website URL",
+        "Target Client Domain / Website URL",
         value="",
-        placeholder="Enter company website URL or domain"
+        placeholder="e.g. https://www.aeainvestors.com or https://www.vertiv.com"
     )
 with col_btn:
-    run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
+    run_btn = st.button("Analyze & Match", type="primary", use_container_width=True)
+
+# Optional Specific Inbound Inquiry Message Input
+client_inquiry = st.text_input(
+    "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
+    value="",
+    placeholder="e.g. 'Looking for pipeline tracking across upcoming industrial manufacturing buildouts and chemical plant modernization dockets.'"
+)
 
 if run_btn and target_url:
-    with st.status("Executing LLM Semantic Comparison & Vector Similarity Search...", expanded=True) as status:
-        st.write(f"1. Ingesting live multi-source corporate intelligence for `{target_url}`...")
+    with st.status("Analyzing Client Inquiry & Matching Strategic Offerings...", expanded=True) as status:
+        st.write(f"1. Ingesting client corporate intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
-        st.write("2. Synthesizing executive profile, operational scope, and strategic bottlenecks...")
-        company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"])
+        st.write("2. Synthesizing client operational scope, inquiry context, and strategic bottlenecks...")
+        company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"], client_inquiry=client_inquiry)
 
         st.write("3. Querying 1024-dimensional catalog embeddings matrix for candidate sectors...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
@@ -141,9 +148,9 @@ if run_btn and target_url:
         st.write("4. Executing deep LLM semantic comparison & similarity evaluation across catalog...")
         matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
 
-        st.write("5. Assembling strategic solution architectures and executive outreach brief...")
+        st.write("5. Assembling strategic response architecture and tailored client proposal...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="LLM Semantic Comparison & Outreach Complete", state="complete", expanded=False)
+        status.update(label="Inquiry Analysis & Response Proposal Complete", state="complete", expanded=False)
 
     st.write("")
 
@@ -155,7 +162,7 @@ if run_btn and target_url:
     with m1:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Target Entity</div>
+            <div class="metric-label">Client Entity</div>
             <div class="metric-val">{company_details.get('company_name', serp_data['domain'])}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -169,14 +176,14 @@ if run_btn and target_url:
     with m3:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">LLM Semantic Match</div>
+            <div class="metric-label">Inquiry Match Score</div>
             <div class="metric-val metric-val-green">{top_sim}</div>
         </div>
         """, unsafe_allow_html=True)
     with m4:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Primary Matched Offering</div>
+            <div class="metric-label">Primary Matched Solution</div>
             <div class="metric-val metric-val-cyan">{top_name}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -185,33 +192,33 @@ if run_btn and target_url:
 
     # Clean, Organized Tabs
     tab_overview, tab_mapping, tab_outreach = st.tabs([
-        "Strategic Executive Overview",
+        "Client Context & Inquiry Overview",
         "Requirement-to-Product Mapping",
-        "Comprehensive Executive Outreach"
+        "Tailored Client Response & Strategic Proposal"
     ])
 
-    # Tab 1: Strategic Executive Overview
+    # Tab 1: Client Context & Inquiry Overview
     with tab_overview:
-        st.subheader("Strategic Executive Overview & Client Needs")
-        st.caption("Deep narrative assessment of the target's operating model, capital scope, and underlying bottlenecks:")
+        st.subheader("Client Context & Inquiry Overview")
+        st.caption("Deep narrative assessment of the client's operating model, inquiry context, and operational bottlenecks:")
 
         with st.container(border=True):
-            st.markdown("#### Strategic Executive Profile & Macro Position")
+            st.markdown("#### Client Profile & Operational Scope")
             st.write(company_details.get("executive_profile_analysis", ""))
             st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
 
         with st.container(border=True):
-            st.markdown("#### Stated Market Requirements & Strategic Scope")
+            st.markdown("#### What the Client is Seeking (Inquiry Analysis)")
             st.write(company_details.get("expectations_and_needs_narrative", ""))
 
         with st.container(border=True):
-            st.markdown("#### Underlying Operational Friction & Information Asymmetry")
+            st.markdown("#### Operational Friction & Business Drivers")
             st.write(company_details.get("operational_friction_analysis", ""))
 
-    # Tab 2: Requirement-to-Product Mapping (LLM Semantic Comparison Results)
+    # Tab 2: Requirement-to-Product Mapping
     with tab_mapping:
         st.subheader("Requirement-to-Product Mapping")
-        st.caption(f"Evaluated and ranked by LLM Semantic Reasoning Engine across 462 catalog sectors:")
+        st.caption(f"Evaluated and ranked by LLM Semantic Reasoning Engine across 462 catalog sectors to fulfill the client's request:")
 
         mappings = analysis.get("exact_product_mappings", [])
         if mappings:
@@ -221,9 +228,9 @@ if run_btn and target_url:
                 tier_label = m.get("tier_label", f"Strategic Solution {i+1}")
 
                 with st.container(border=True):
-                    st.markdown(f'<span class="tier-badge">{tier_label} &bull; {match_pct}% MATCH</span>', unsafe_allow_html=True)
+                    st.markdown(f'<span class="tier-badge">{tier_label} &bull; {match_pct}% FIT</span>', unsafe_allow_html=True)
                     st.markdown(f"### {m.get('exact_offering_name')}")
-                    st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
+                    st.markdown(f"**Fulfills Client Requirement:** `{m.get('mapped_requirement')}`")
                     
                     if rationale:
                         st.markdown(f"**Strategic Fit Rationale:** *{rationale}*")
@@ -233,45 +240,46 @@ if run_btn and target_url:
                     st.markdown("**Catalog Sector Definition:**")
                     st.info(m.get("offering_definition", ""))
 
-                    st.markdown("#### Strategic Solution Architecture")
+                    st.markdown("#### Solution Architecture & Data Deliverables")
                     st.write(m.get("comprehensive_narrative", ""))
 
-                    st.markdown("#### Quantified Commercial Advantage & Strategic ROI")
+                    st.markdown("#### Quantified Value & Operational Impact")
                     st.write(m.get("roi_narrative", ""))
         else:
             st.info("No direct catalog mappings available.")
 
-    # Tab 3: Comprehensive Executive Outreach Dossier
+    # Tab 3: Tailored Client Response & Strategic Proposal
     with tab_outreach:
-        st.subheader("Comprehensive Executive Outreach Dossier")
-        st.caption("Authoritative, C-level briefing tailored specifically to target leadership:")
+        st.subheader("Tailored Client Response & Strategic Proposal")
+        st.caption("Authoritative, consultative response memo ready to send directly to the client:")
 
         with st.container(border=True):
             st.markdown(analysis.get("personalized_pitch", ""))
 
-        with st.expander("View Raw Outreach Text for Copying", expanded=False):
+        with st.expander("View Raw Proposal Text for Copying", expanded=False):
             st.code(analysis.get("personalized_pitch", ""), language="markdown")
 
     # Download Button
     st.divider()
     full_result = {
         "url": target_url,
-        "company_profile": {
+        "client_inquiry": client_inquiry,
+        "client_profile": {
             "name": company_details.get("company_name"),
             "archetype": company_details.get("archetype"),
             "industry": company_details.get("industry_focus"),
-            "executive_profile_analysis": company_details.get("executive_profile_analysis"),
-            "expectations_and_needs_analysis": company_details.get("expectations_and_needs_narrative"),
-            "operational_friction_analysis": company_details.get("operational_friction_analysis"),
+            "profile_analysis": company_details.get("executive_profile_analysis"),
+            "seeking_analysis": company_details.get("expectations_and_needs_narrative"),
+            "operational_friction": company_details.get("operational_friction_analysis"),
             "target_persona": company_details.get("buying_role_hypothesis")
         },
         "llm_semantic_comparison_results": matched_services,
         "matched_offerings": mappings,
-        "executive_outreach_dossier": analysis.get("personalized_pitch")
+        "client_response_proposal": analysis.get("personalized_pitch")
     }
     st.download_button(
-        label="Download Full Strategic Brief (JSON)",
+        label="Download Full Client Proposal (JSON)",
         data=json.dumps(full_result, indent=2),
-        file_name=f"{serp_data['domain']}_strategic_brief.json",
+        file_name=f"{serp_data['domain']}_client_proposal.json",
         mime="application/json"
     )
