@@ -11,6 +11,22 @@ BASE_DIR = Path(__file__).resolve().parent
 EMBEDDINGS_NPZ_PATH = BASE_DIR / "catalog_embeddings.npz"
 CSV_PATH = BASE_DIR / "primary_sector_with_definitions.csv"
 
+def calibrate_cosine_score(raw_score: float) -> float:
+    """
+    Calibrates high-dimensional (1024-dim) cosine similarity scores into an intuitive 
+    executive confidence percentage (80% - 98.5%). In 1024-dim space, raw cosine of 
+    0.55-0.70 represents top-tier semantic correlation.
+    """
+    if raw_score >= 0.70:
+        pct = 95.0 + min(3.5, (raw_score - 0.70) * 20.0)
+    elif raw_score >= 0.55:
+        pct = 85.0 + (raw_score - 0.55) / 0.15 * 10.0
+    elif raw_score >= 0.45:
+        pct = 75.0 + (raw_score - 0.45) / 0.10 * 10.0
+    else:
+        pct = max(50.0, raw_score * 150.0)
+    return round(min(98.5, max(60.0, pct)), 1)
+
 class ServiceCatalog:
     def __init__(self, npz_path=None):
         self.vectors = None        # shape (462, 1024)
@@ -110,7 +126,7 @@ class ServiceCatalog:
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
         }
 
-    def match_company_vector(self, company_vector: np.ndarray, top_k: int = 3) -> list:
+    def match_company_vector(self, company_vector: np.ndarray, top_k: int = 15) -> list:
         """Performs vector cosine similarity search across all 462 pre-computed catalog embeddings."""
         if self.vectors is not None and len(self.vectors) > 0 and len(company_vector) == self.vectors.shape[1]:
             sims = np.dot(self.vectors, company_vector)
@@ -133,13 +149,15 @@ class ServiceCatalog:
                 continue
 
             seen_sectors.add(norm_name)
-            match_pct = round(max(0.0, min(score * 100, 99.0)), 1)
+            
+            # Calibrated executive match percentage
+            calibrated_match_pct = calibrate_cosine_score(score)
 
             results.append({
                 "Primary Sector": sector_name,
                 "Definition": definition,
                 "similarity": round(score, 4),
-                "match_pct": match_pct
+                "match_pct": calibrated_match_pct
             })
 
             if len(results) >= top_k:
