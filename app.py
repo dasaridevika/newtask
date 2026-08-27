@@ -424,8 +424,13 @@ if run_btn and target_url:
         st.code(f"Vector Preview (First 16 dimensions of 1024):\n{company_embed_info['vector'][:16]} ...", language="text")
 
         st.markdown("#### 3. Top Hybrid Candidate Sectors (Dense Vector + Sub-linear TF-IDF + Morphological Match)")
-        cand_df = pd.DataFrame(candidate_sectors)[["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "matched_keywords", "Definition"]]
-        st.dataframe(cand_df, use_container_width=True)
+        if candidate_sectors:
+            cand_df = pd.DataFrame(candidate_sectors)
+            desired_cols = ["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "matched_keywords", "Definition"]
+            cols_to_show = [c for c in desired_cols if c in cand_df.columns]
+            st.dataframe(cand_df[cols_to_show], use_container_width=True)
+        else:
+            st.info("No candidate sectors evaluated.")
 
     # Download Button
     st.divider()

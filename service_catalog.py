@@ -170,12 +170,12 @@ class ServiceCatalog:
             sec_name = str(self.sectors[idx]).strip()
             definition = str(self.definitions[idx]).strip()
 
-            # Dynamic phrase & morphological matching (e.g. data center / data centers / datacenter)
+            # Dynamic phrase & morphological matching
             clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
-            sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", clean_sec)]
+            sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec) if t not in ["plant", "facility", "building", "office", "system", "other", "production", "services"]]
             
             exact_phrase_bonus = 0.0
-            if len(clean_sec) > 3:
+            if len(clean_sec) > 4 and clean_sec not in ["office building", "commercial building", "other building", "building"]:
                 if clean_sec in company_lower or (clean_sec + "s") in company_lower or clean_sec.replace(" ", "") in company_lower:
                     exact_phrase_bonus = 0.20
                 elif sec_tokens and sum(1 for t in sec_tokens if t in company_lower) == len(sec_tokens):
