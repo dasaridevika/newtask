@@ -53,22 +53,6 @@ st.markdown("""
         color: #38bdf8;
     }
 
-    /* Fact & Inference Cards */
-    .fact-card {
-        background: #0f172a;
-        border-left: 4px solid #38bdf8;
-        border-radius: 4px;
-        padding: 12px 16px;
-        margin-bottom: 10px;
-    }
-    .inference-card {
-        background: #0f172a;
-        border-left: 4px solid #a855f7;
-        border-radius: 4px;
-        padding: 12px 16px;
-        margin-bottom: 10px;
-    }
-
     /* Tier Badge */
     .tier-badge {
         display: inline-block;
@@ -91,7 +75,7 @@ def get_service_title(srv):
 
 # Header Section
 st.title("⚡ Enterprise Lead Research & Offering Matcher")
-st.caption("Deep Crawling (`Crawl4AI`) → 1024-Dim Vector Similarity Search (`@cf/baai/bge-large-en-v1.5`) → Strategic Requirement Mapping")
+st.caption("LLM & Deep Crawl Analysis of Client Works & Projects → 1024-Dim Embedding Similarity Search Across Catalog → Top K Matched Offerings")
 
 # Input Section
 col_url, col_btn = st.columns([5, 1], vertical_alignment="bottom")
@@ -121,7 +105,7 @@ if run_btn and target_url:
         serp_data = search_company_serp(target_url)
         evidence_store = serp_data.get("evidence_store")
 
-        st.write("2. Extracting business model, project track record, and operational friction...")
+        st.write("2. Analyzing client works, delivered projects, and future project roadmaps via Worker LLM...")
         company_details = ai.extract_company_details(
             serp_data["content"],
             domain=serp_data["domain"],
@@ -129,7 +113,7 @@ if run_btn and target_url:
             evidence_store=evidence_store
         )
 
-        st.write("3. Generating 1024-dim dense query vector & running Hybrid Ranking across 462 catalog sectors...")
+        st.write("3. Generating 1024-dim dense query vector from client works/projects & running Similarity Search against 462 company embeddings...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"], client_inquiry=client_inquiry)
         candidate_sectors = catalog.match_company_vector(
             company_embed_info["vector"],
@@ -139,7 +123,7 @@ if run_btn and target_url:
             top_k=int(top_k_val)
         )
 
-        st.write("4. Executing grounded LLM semantic evaluation and requirement mapping...")
+        st.write("4. Executing grounded LLM semantic evaluation to map exact company products/services to client requirements...")
         matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
 
         st.write("5. Assembling bespoke solution architectures & quantified ROI...")
@@ -191,72 +175,19 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Clean, Multi-Tab Executive Architecture
-    tab_overview, tab_projects, tab_mapping = st.tabs([
-        "Executive Intelligence & Profile",
-        "Client Projects & Strategic Roadmap",
-        "Solution Offering Mapping & Top K Leaderboard"
+    # 2-Tab Focused Architecture
+    tab_projects, tab_mapping = st.tabs([
+        "🏗️ Client Works & Projects Intelligence",
+        "🎯 Exact Product/Service Offering Mapping (Top K Similarity Results)"
     ])
 
-    # Tab 1: Executive Intelligence & Strategic Profile
-    with tab_overview:
-        st.subheader("Executive Intelligence & Operating Profile")
-
-        # Section A: Executive Profile & Business Model
-        with st.container(border=True):
-            st.markdown("#### Strategic Executive Profile & Operational Anatomy")
-            st.write(company_details.get("executive_profile_analysis", ""))
-            
-            persona = company_details.get("buying_role_hypothesis", "Managing Director / VP of Capital Projects")
-            if len(persona) > 45 or "likely" in persona.lower():
-                persona = "Managing Director / Investment Committee" if "private equity" in str(company_details.get("archetype", "")).lower() else "VP of Capital Projects / Procurement"
-
-            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Decision Maker:** `{persona}`")
-
-        # Section B: Business Model & Revenue Drivers
-        col_bm, col_fric = st.columns(2)
-        with col_bm:
-            with st.container(border=True):
-                st.markdown("#### 💼 Business Model & Revenue Drivers")
-                bm_text = company_details.get("business_model_and_revenue_drivers", "")
-                if bm_text:
-                    st.write(bm_text)
-                else:
-                    st.write("Value creation driven by specialized project delivery, capital asset deployment, or specialized manufacturing contracts.")
-
-        with col_fric:
-            with st.container(border=True):
-                st.markdown("#### ⚠️ Implied Operational Friction & Market Bottlenecks")
-                fric_text = company_details.get("operational_friction_and_pain_points", "")
-                if fric_text:
-                    st.write(fric_text)
-                else:
-                    st.write("Managing cross-regional execution, permitting lead times, and multi-tier supply chain discovery.")
-
-        # Section C: Verified Source-Grounded Facts
-        with st.container(border=True):
-            st.markdown("#### 📌 Verified Source-Grounded Facts")
-            observed_facts = company_details.get("observed_facts", [])
-            if observed_facts:
-                for f in observed_facts:
-                    stmt = f.get("statement", "")
-                    s_url = f.get("source_url", "")
-                    st.markdown(f"""
-                    <div class="fact-card">
-                        <div style="font-weight:600; color:#f8fafc; font-size:0.95rem; margin-bottom:4px;">{stmt}</div>
-                        <div style="font-size:0.75rem; color:#94a3b8;">Source: <a href="{s_url}" target="_blank" style="color:#38bdf8;">{s_url}</a></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Verified from primary domain homepage.")
-
-    # Tab 2: Projects & Strategic Roadmap (Past, Present & Future)
+    # Tab 1: Client Works & Projects Intelligence
     with tab_projects:
-        st.subheader("Client Projects Intelligence & Strategic Roadmap")
-        st.caption("Factual chronological audit of delivered projects, current active operations, and future capital roadmaps:")
+        st.subheader("Client Works & Project Roadmaps")
+        st.caption("Chronological analysis of delivered works, active operational footprint, and future project roadmaps:")
 
         # 1. Delivered Historical Projects
-        st.markdown("### 1. Delivered Projects & Proven Track Record")
+        st.markdown("### 1. Delivered Works & Proven Track Record")
         hist_projects = company_details.get("delivered_historical_projects", [])
         if hist_projects:
             for p in hist_projects:
@@ -275,7 +206,7 @@ if run_btn and target_url:
 
         # 2. Current Active Operations
         st.divider()
-        st.markdown("### 2. Current Live Operations & Asset Footprint")
+        st.markdown("### 2. Current Working Operations & Active Capabilities")
         curr_ops = company_details.get("current_active_operations", [])
         if curr_ops:
             for op in curr_ops:
@@ -288,21 +219,21 @@ if run_btn and target_url:
 
         # 3. Future Roadmaps & Expansion
         st.divider()
-        st.markdown("### 3. Future Roadmaps & Strategic Expansion Targets")
+        st.markdown("### 3. Future Project Roadmaps & Strategic Objectives")
         future_maps = company_details.get("future_roadmaps_and_expansion", [])
         if future_maps:
             for fut in future_maps:
                 with st.container(border=True):
                     st.markdown(f"#### 🎯 {fut.get('initiative', 'Strategic Initiative')}")
                     st.markdown(f"**Strategic Objective:** {fut.get('strategic_objective', '')}")
-                    st.markdown(f"**Implied Operational Need:** `{fut.get('implied_need', '')}`")
+                    st.markdown(f"**Implied Project Requirement:** `{fut.get('implied_need', '')}`")
         else:
             st.info("Future expansion targets deduced from corporate growth posture.")
 
-    # Tab 3: Solution Offering Mapping & Top K Leaderboard
+    # Tab 2: Exact Product/Service Offering Mapping (Top K Similarity Results)
     with tab_mapping:
-        st.subheader("Requirement-to-Product Offering Mapping")
-        st.caption("1024-Dimensional Hybrid Vector Similarity Search (`@cf/baai/bge-large-en-v1.5`) evaluated across 462 catalog sectors:")
+        st.subheader("Exact Product/Service Offering Mapping")
+        st.caption(f"Results of 1024-dimensional embedding similarity search comparing client works & requirements against all 462 company offerings (Top {len(candidate_sectors)} Results):")
 
         mappings = analysis.get("exact_product_mappings", [])
         if mappings:
@@ -319,17 +250,17 @@ if run_btn and target_url:
                     with col_t2:
                         vec_score = score_bd.get("vector_cosine", 0.65)
                         lex_score = score_bd.get("lexical_boost", 0.20)
-                        st.caption(f"Vec: `{vec_score}` | Boost: `{lex_score}`")
+                        st.caption(f"Vec Cosine: `{vec_score}` | Boost: `{lex_score}`")
 
                     st.markdown(f"### {m.get('exact_offering_name')}")
-                    st.markdown(f"**Fulfills Client Requirement:** `{m.get('mapped_requirement')}`")
+                    st.markdown(f"**How It Fulfills Client Works & Requirements:** `{m.get('mapped_requirement')}`")
                     
                     if rationale:
-                        st.markdown(f"**Strategic Fit Rationale:** *{rationale}*")
+                        st.markdown(f"**Exact Mapping Rationale:** *{rationale}*")
 
                     st.divider()
                     
-                    st.markdown("**Catalog Sector Definition:**")
+                    st.markdown("**Offering Sector Definition:**")
                     st.info(m.get("offering_definition", ""))
 
                     st.markdown("#### Solution Architecture & Data Deliverables")
@@ -339,15 +270,15 @@ if run_btn and target_url:
                     st.write(m.get("roi_narrative", ""))
 
             st.divider()
-            with st.expander(f"🏆 View Complete Top {len(candidate_sectors)} Ranked Catalog Sectors (Full Match Leaderboard)", expanded=True):
-                if candidate_sectors:
-                    cand_df = pd.DataFrame(candidate_sectors)
-                    desired_cols = ["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "matched_keywords", "Definition"]
-                    cols_to_show = [c for c in desired_cols if c in cand_df.columns]
-                    st.dataframe(cand_df[cols_to_show], use_container_width=True)
+            st.markdown(f"### 🏆 Complete Top {len(candidate_sectors)} Ranked Offerings (Embedding Similarity Leaderboard)")
+            if candidate_sectors:
+                cand_df = pd.DataFrame(candidate_sectors)
+                desired_cols = ["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "matched_keywords", "Definition"]
+                cols_to_show = [c for c in desired_cols if c in cand_df.columns]
+                st.dataframe(cand_df[cols_to_show], use_container_width=True)
 
-            with st.expander("🔍 Crawl Audit & Embedding Model Parameters", expanded=False):
-                st.markdown(f"**Pages Ingested:** `{len(evidence_store.pages) if evidence_store else 0}` | **Model:** `Cloudflare Workers AI (@cf/baai/bge-large-en-v1.5)` | **Dimensions:** `1024-Dim`")
+            with st.expander("🔍 Crawl Audit & Embedding Model Metadata", expanded=False):
+                st.markdown(f"**Pages Ingested:** `{len(evidence_store.pages) if evidence_store else 0}` | **Embedding Model:** `Cloudflare Workers AI (@cf/baai/bge-large-en-v1.5)` | **Dimensions:** `1024-Dim`")
                 if evidence_store and evidence_store.pages:
                     for p in evidence_store.pages:
                         st.caption(f"- [{p.page_type.upper()}] [{p.title}]({p.url}) (Credibility Weight: `{p.credibility_weight}`)")
@@ -359,35 +290,14 @@ if run_btn and target_url:
     full_result = {
         "url": target_url,
         "client_inquiry": client_inquiry,
-        "evidence_audit": {
-            "total_pages_ingested": len(evidence_store.pages) if evidence_store else 0,
-            "confidence_assessment": conf_assessment if 'conf_assessment' in locals() else {},
-            "crawled_pages": [
-                {
-                    "url": p.url,
-                    "title": p.title,
-                    "page_type": str(p.page_type),
-                    "credibility_weight": p.credibility_weight,
-                    "canonical_snippets": p.canonical_snippets
-                }
-                for p in (evidence_store.pages if evidence_store else [])
-            ]
-        },
-        "company_profile": {
-            "name": company_details.get("company_name"),
-            "archetype": company_details.get("archetype"),
-            "industry": company_details.get("industry_focus"),
-            "profile_analysis": company_details.get("executive_profile_analysis"),
-            "business_model": company_details.get("business_model_and_revenue_drivers"),
-            "delivered_projects": company_details.get("delivered_historical_projects"),
-            "active_operations": company_details.get("current_active_operations"),
-            "future_roadmaps": company_details.get("future_roadmaps_and_expansion"),
-            "observed_facts": company_details.get("observed_facts", []),
-            "strategic_inferences": company_details.get("strategic_inferences", [])
+        "client_works_and_projects": {
+            "delivered_historical_projects": company_details.get("delivered_historical_projects", []),
+            "current_active_operations": company_details.get("current_active_operations", []),
+            "future_roadmaps_and_expansion": company_details.get("future_roadmaps_and_expansion", [])
         },
         "llm_semantic_comparison_results": matched_services,
-        "matched_offerings": mappings,
-        "top_k_ranked_candidates": candidate_sectors
+        "exact_matched_offerings": mappings,
+        "top_k_similarity_search_results": candidate_sectors
     }
     st.download_button(
         label="Download Evidence-Backed Intelligence Dossier (JSON)",
