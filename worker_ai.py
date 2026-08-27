@@ -448,13 +448,16 @@ STRICT QUALITATIVE REQUIREMENTS (NO ROBOTIC TEMPLATES):
   * For Warehouses/Logistics: reference distribution square footage, automated fulfilment hubs, intermodal freight routes, and regional logistics corridor permits.
   * For Industrial/Manufacturing: reference equipment procurement lead-times, environmental permitting stage-gates, and capacity utilization.
 
+CRITICAL NEGATIVE CONSTRAINTS & DISQUALIFICATION:
+- You must STRICTLY REJECT and DISQUALIFY academic, correctional, or residential non-commercial sectors (such as University, School, Penitentiary, Animal Shelter, Barrack, Villa, Armoury) for financial sponsors, private equity firms, and commercial enterprises. Sponsoring a student recruiting program (e.g. Out for Undergrad) is HR hiring, NOT capital investment in universities. NEVER select University or School for a commercial enterprise or investor.
+- Always select genuine commercial, digital infrastructure, healthcare, logistics, manufacturing, or energy transition sectors that directly match their verified business model and portfolio company needs.
+
 For each selected sector, provide:
 1. llm_match_rationale: 3 to 4 detailed sentences explaining the precise commercial, operational, and investment thesis alignment for this client's specific archetype and portfolio.
 2. requirement_solved: 2 to 3 detailed sentences explaining the specific technical, regulatory, or diligence bottleneck solved (e.g. overcoming lagging public broker data, tracking regional utility interconnects).
 3. solution_architecture: 3 to 4 detailed sentences describing the multi-tier data deliverables: (1) Stage-Gate Permitting & Utility Queue Tracker, (2) Developer, Sponsor & Operator Directory, and (3) Asset-Level Technical Capacity & Specification Feeds.
 4. quantified_roi: A concrete, quantified value proposition (e.g. "Compresses diligence and evaluation cycles by 35–40%, eliminates infrastructure capacity blind spots, and generates proprietary deal flow 6–9 months ahead of public auctions").
 
-Disqualify any candidate sector lacking genuine operational or investment relevance.
 Return strictly valid JSON.
 
 Return this JSON shape:

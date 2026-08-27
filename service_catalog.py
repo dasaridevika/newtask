@@ -234,6 +234,16 @@ class ServiceCatalog:
                 if ind_tokens and any(t in sec_lower for t in ind_tokens):
                     domain_alignment_bonus = 0.15
 
+            # Non-Commercial & Institutional Disqualification Gate
+            non_commercial_sectors = {
+                "university", "school", "penitentiary", "animal shelter", "barrack",
+                "armoury", "villa", "athletic track", "amusement facility", "prisons"
+            }
+            if clean_sec in non_commercial_sectors:
+                is_genuine_institution = any(k in archetype_lower or k in industry_lower for k in ["university", "education", "school", "academic", "prison", "correctional"])
+                if not is_genuine_institution:
+                    continue  # Completely eliminate false-positive institutional sectors for commercial firms
+
             # Mathematical Hybrid Score
             lexical_component = min(0.40, (raw_tfidf_score * 1.5) + exact_phrase_bonus + acronym_bonus + domain_alignment_bonus)
             hybrid_score = max(0.0, raw_vec_score + lexical_component)
