@@ -31,8 +31,23 @@ NON_COMMERCIAL_INSTITUTIONS = {
     "university", "school", "penitentiary", "animal shelter", "barrack",
     "armoury", "villa", "athletic track", "amusement facility", "prisons",
     "aircraft manufacturing plant", "nuclear power plant", "amusement park",
-    "stadium", "sports complex", "crematorium", "cemetery"
+    "stadium", "sports complex", "crematorium", "cemetery",
+    "high-rise apartment", "prefabricated apartment", "condominium",
+    "launching pad", "other institutional buildings"
 }
+
+MEGA_INFRASTRUCTURE_KEYWORDS = [
+    "special economic zone", "upstream", "offshore oil", "refinery", "crude distillation",
+    "blast furnace", "smelter", "nuclear power", "sustainable aviation fuel",
+    "compressed-air energy", "compressed air energy", "flow battery", "road infrastructure", "road", "port facility",
+    "material recovery", "aircraft manufacturing", "oil & gas facilities", "oil & gas",
+    "steam turbine", "silicone monomer", "ethylene vinyl acetate", "polyethylene",
+    "gas turbine", "electrolyzer", "petrochemical", "coking plant", "coal mine",
+    "liquefied natural gas", "lng terminal", "crude oil", "launching pad",
+    "apartment", "condominium", "lead acid", "battery production",
+    "multi-family", "cable laying vessel", "agriculture and forestry", "mixed-use building",
+    "highway", "bridge", "tunnel", "railroad", "canal"
+]
 
 def determine_evidence_level(
     sec_name: str, 
@@ -45,22 +60,37 @@ def determine_evidence_level(
     Returns (level_label, confidence_multiplier).
     """
     clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
+    clean_sec_flat = re.sub(r"[^a-zA-Z0-9 ]", " ", sec_name).lower()
+    clean_sec_flat = re.sub(r"\s+", " ", clean_sec_flat).strip()
+    sec_lower = f"{sec_name} {definition}".lower()
     sec_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec)) - DOMAIN_STOPWORDS
 
     industry_lower = str(company_details.get("industry_focus", "")).lower() if company_details else ""
     archetype_lower = str(company_details.get("archetype", "")).lower() if company_details else ""
 
-    # 1. IMMEDIATE DISQUALIFICATION GATE (LEVEL 5)
-    if clean_sec in NON_COMMERCIAL_INSTITUTIONS:
-        is_inst = any(k in archetype_lower or k in industry_lower for k in ["university", "education", "school", "prison", "defense", "military", "aerospace", "sports"])
+    # 1. IMMEDIATE DISQUALIFICATION GATES (LEVEL 5)
+    # Gate A: Non-Commercial, Residential & Institutional
+    if clean_sec in NON_COMMERCIAL_INSTITUTIONS or clean_sec_flat in NON_COMMERCIAL_INSTITUTIONS:
+        is_inst = any(k in archetype_lower or k in industry_lower for k in ["university", "education", "school", "prison", "defense", "military", "aerospace", "sports", "residential"])
         if not is_inst:
             return "LEVEL 5 (Unsupported / Out-of-Scope)", 0.0
 
-    # Heavy asset / mega-infrastructure mismatch check for middle-market funds
-    if "private equity" in archetype_lower or "middle market" in industry_lower:
-        if clean_sec in ["refinery", "oil refinery", "crude distillation unit", "blast furnace", "smelter", "nuclear power plant"]:
-            return "LEVEL 5 (Unsupported / Scale Mismatch)", 0.0
+    # Gate B: Exited / Divested Focus Negation
+    if company_details:
+        exited_list = company_details.get("exited_or_divested_sectors", [])
+        for ex in exited_list:
+            ex_clean = ex.lower().strip()
+            if clean_sec in ex_clean or any(t in ex_clean for t in sec_tokens if len(t) >= 4):
+                return "LEVEL 5 (Exited / Divested Focus)", 0.0
 
+    # Gate C: Heavy Asset / Sovereign Mega-Infrastructure Mismatch for Buyout Sponsors
+    if any(k in archetype_lower for k in ["private equity", "buyout", "middle market", "small business", "fund", "sponsor", "investor"]):
+        if any(kw in clean_sec_flat for kw in MEGA_INFRASTRUCTURE_KEYWORDS):
+            # Only allow if explicitly requested in client inquiry
+            if not (client_inquiry and any(kw in client_inquiry.lower() for kw in MEGA_INFRASTRUCTURE_KEYWORDS)):
+                return "LEVEL 5 (Scale Mismatch / Mega-Infrastructure)", 0.0
+
+    # 2. CHECK INBOUND INQUIRY (LEVEL 1)
     inquiry_lower = client_inquiry.lower()
     if inquiry_lower and len(inquiry_lower) > 3:
         if clean_sec in inquiry_lower or (sec_tokens and all(re.search(r"\b" + re.escape(t) + r"\b", inquiry_lower) for t in sec_tokens)):
@@ -69,23 +99,55 @@ def determine_evidence_level(
     if not company_details:
         return "LEVEL 4 (Speculative / Semantic Only)", 0.40
 
-    # 2. CHECK EXPLICIT CORE SECTOR (LEVEL 1)
+    # 3. CHECK EXPLICIT PORTFOLIO TARGET SECTORS (LEVEL 1 / 2)
+    target_secs = company_details.get("portfolio_target_sectors", [])
+    clean_sec_norm = clean_sec.replace(" ", "").replace("-", "")
+    for ts in target_secs:
+        ts_lower = ts.lower().strip()
+        ts_norm = ts_lower.replace(" ", "").replace("-", "")
+        if ts_norm in clean_sec_norm or clean_sec_norm in ts_norm:
+            return "LEVEL 1 (Explicit Stated Focus)", 0.95
+        ts_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", ts_lower)) - DOMAIN_STOPWORDS
+        if ts_tokens and any(t in clean_sec or t in sec_lower for t in ts_tokens):
+            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+
+    # 4. CHECK EXPLICIT CORE INDUSTRY (LEVEL 1)
     if clean_sec in industry_lower:
         return "LEVEL 1 (Explicit Core Sector)", 0.95
     if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", industry_lower) for t in sec_tokens):
         return "LEVEL 1 (Explicit Core Sector)", 0.95
 
-    # 3. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
+    # 5. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
     past_text = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])]).lower()
     active_text = " ".join([o.get("operation_name", "") + " " + o.get("details", "") for o in company_details.get("current_active_operations", [])]).lower()
     portfolio_text = f"{past_text} {active_text}"
+
+    # Check for direct footprint mentions
+    if "distribution" in portfolio_text or "warehouse" in portfolio_text or "facility" in portfolio_text:
+        if clean_sec in ["warehouse", "distribution hub", "commercial building"]:
+            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+    if "healthcare" in portfolio_text or "clinic" in portfolio_text:
+        if clean_sec in ["other health care building", "general hospital", "clinic"]:
+            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+    if "managed services" in portfolio_text or "cybersecurity" in portfolio_text or "technology" in portfolio_text:
+        if clean_sec in ["other communication infrastructure", "data center"]:
+            return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
 
     if clean_sec in portfolio_text:
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
     if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", portfolio_text) for t in sec_tokens):
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
 
-    # 4. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
+    # 6. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
+    future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
+    if clean_sec in future_text:
+        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
+    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", future_text) for t in sec_tokens):
+        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
+
+    return "LEVEL 4 (Speculative / Semantic Only)", 0.40
+
+    # 6. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
     future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
     if clean_sec in future_text:
         return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
@@ -179,11 +241,12 @@ class ServiceCatalog:
         biz_model = company_details.get("business_model_and_revenue_drivers", "")
         archetype = company_details.get("archetype", "Enterprise")
 
+        target_secs = ", ".join(company_details.get("portfolio_target_sectors", []))
         past_proj = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])])
         future_proj = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])])
 
-        strategy_text = f"Enterprise: {company_name}. Archetype: {archetype}. Core Focus Sectors & Strategy: {industry}. Business Model: {biz_model}."
-        portfolio_text = f"Portfolio Operations & Track Record: {summary} {past_proj} {future_proj}."
+        strategy_text = f"Enterprise: {company_name}. Archetype: {archetype}. Core Focus Sectors & Target Platforms: {industry} {target_secs}. Business Model: {biz_model}."
+        portfolio_text = f"Portfolio Operations & Facility Footprint: {summary} {past_proj} {future_proj}."
 
         strat_vec = self._get_worker_embedding(strategy_text)
         port_vec = self._get_worker_embedding(portfolio_text)

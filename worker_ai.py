@@ -197,6 +197,8 @@ Return a single valid JSON object with exactly these keys:
     }
   ],
   "operational_friction_and_pain_points": string,
+  "portfolio_target_sectors": [string],
+  "exited_or_divested_sectors": [string],
   "observed_facts": [
     {
       "statement": string,
@@ -241,6 +243,14 @@ CRAWLED EVIDENCE CHUNKS:
                         "company_name": {"type": "string"},
                         "archetype": {"type": "string"},
                         "industry_focus": {"type": "string"},
+                        "portfolio_target_sectors": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "exited_or_divested_sectors": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
                         "executive_profile_analysis": {"type": "string"},
                         "business_model_and_revenue_drivers": {"type": "string"},
                         "detailed_requirements_analysis": {

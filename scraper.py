@@ -225,14 +225,18 @@ def extract_links(raw_html: str, base_url: str) -> List[str]:
         full_url = urllib.parse.urljoin(base_url, m).split("#")[0].split("?")[0].rstrip("/")
         parsed_m = urllib.parse.urlparse(full_url)
 
-        if (parsed_m.netloc == domain or parsed_m.netloc == f"www.{domain}" or domain in parsed_m.netloc) and full_url not in seen:
-            seen.add(full_url)
-            path = parsed_m.path.strip("/")
-            if path and not re.search(r"\.(pdf|png|jpg|jpeg|gif|svg|zip|mp4|css|js)$", path, re.I) and full_url != base_url:
-                discovered_links.append(full_url)
+    def link_priority(u: str) -> int:
+        u_lower = u.lower()
+        if any(k in u_lower for k in ["portfolio", "enterprise", "elevate", "middle-market", "investment", "product", "service", "solution", "sector", "industry", "private-debt"]):
+            return 0
+        if any(k in u_lower for k in ["about", "strategy", "case-study", "history", "company"]):
+            return 1
+        if any(k in u_lower for k in ["news", "press", "esg", "culture"]):
+            return 2
+        return 3
 
-    discovered_links.sort(key=lambda u: len(urllib.parse.urlparse(u).path.strip("/").split("/")))
-    return discovered_links[:10]
+    discovered_links.sort(key=lambda u: (link_priority(u), len(urllib.parse.urlparse(u).path.strip("/").split("/"))))
+    return discovered_links[:12]
 
 def fetch_page_content(url: str, timeout: int = 7) -> tuple:
     try:
@@ -346,7 +350,6 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
             store.pages.append(home_evidence)
             store.signals.extend(extract_universal_signals(ext["clean_text"], url))
 
-            # 2. Extract and crawl internal subpages deeply
             internal_links = []
             if home_res.links and isinstance(home_res.links, dict):
                 internal = home_res.links.get("internal", [])
@@ -356,9 +359,19 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                         if href not in internal_links:
                             internal_links.append(href)
 
-            # Sort subpages by shortest path depth and crawl top 6 subpages concurrently
-            internal_links.sort(key=lambda u: len(urllib.parse.urlparse(u).path.strip("/").split("/")))
-            for sub_url in internal_links[:6]:
+            def crawl_priority(u: str) -> int:
+                u_lower = u.lower()
+                if any(k in u_lower for k in ["enterprise", "elevate", "private-debt", "middle-market-private-equity", "portfolio", "product", "service", "solution", "strategy", "investment"]):
+                    return 0
+                if any(k in u_lower for k in ["about", "history", "case-study"]):
+                    return 1
+                if any(k in u_lower for k in ["esg", "news", "culture"]):
+                    return 2
+                return 3
+
+            # Prioritize high-value business, portfolio, and strategy pages
+            internal_links.sort(key=lambda u: (crawl_priority(u), len(urllib.parse.urlparse(u).path.strip("/").split("/"))))
+            for sub_url in internal_links[:10]:
                 try:
                     sub_res = await crawler.arun(url=sub_url)
                     if sub_res and sub_res.success and len(sub_res.markdown or "") > 100:
