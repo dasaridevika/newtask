@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import time
 import requests
 
 def detect_archetype(company_name: str, domain: str, industry: str, summary: str) -> str:
@@ -28,31 +29,57 @@ class WorkerAI:
             or "https://lead-research-ai-worker.devika-worker.workers.dev"
         )
         self.model = os.getenv("CF_AI_MODEL", "@cf/meta/llama-3.2-3b-instruct")
+        self.session = requests.Session()
+        self.session.headers.update({"Content-Type": "application/json"})
 
-    def _call_llm(self, prompt: str, system_prompt: str) -> str:
+    def _call_llm(self, prompt: str, system_prompt: str, max_retries: int = 2) -> str:
+        """Calls Cloudflare Workers AI with intelligent retries, connection pooling, and timeouts."""
         if not self.worker_url:
             return ""
-        try:
-            resp = requests.post(
-                self.worker_url,
-                json={"model": self.model, "system": system_prompt, "prompt": prompt},
-                headers={"Content-Type": "application/json"},
-                timeout=60
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                return data.get("response") or data.get("text", "")
-        except Exception as e:
-            print(f"[Worker AI Error]: {e}")
+        
+        payload = {
+            "model": self.model,
+            "system": system_prompt,
+            "prompt": prompt
+        }
+
+        for attempt in range(max_retries + 1):
+            try:
+                resp = self.session.post(
+                    self.worker_url,
+                    json=payload,
+                    timeout=45
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    res_text = data.get("response") or data.get("text", "")
+                    if res_text and len(res_text.strip()) > 0:
+                        return res_text.strip()
+                elif resp.status_code == 504:
+                    time.sleep(1.5)
+            except Exception as e:
+                if attempt == max_retries:
+                    print(f"[Worker AI Connection Error]: {e}")
+                time.sleep(1.0)
         return ""
 
     def _parse_json(self, raw_text: str) -> dict:
+        """Robust multi-pattern JSON parser with automatic syntax repair."""
+        if not raw_text:
+            return {}
         try:
+            # 1. Clean markdown code blocks
             cleaned = re.sub(r"^```json\s*", "", raw_text.strip(), flags=re.MULTILINE)
+            cleaned = re.sub(r"^```\s*", "", cleaned.strip(), flags=re.MULTILINE)
             cleaned = re.sub(r"```$", "", cleaned.strip(), flags=re.MULTILINE)
+            
+            # 2. Extract outermost JSON object
             match = re.search(r"\{.*\}", cleaned, re.DOTALL)
             if match:
-                return json.loads(match.group(0))
+                json_str = match.group(0)
+                # Repair common LLM trailing comma issues
+                json_str = re.sub(r",\s*([\]\}])", r"\1", json_str)
+                return json.loads(json_str)
         except Exception:
             pass
         return {}
@@ -61,10 +88,13 @@ class WorkerAI:
         clean_name = domain.split(".")[0].replace("www", "").capitalize() if domain else "Enterprise"
         inquiry_text = f"\nClient Inbound Inquiry / Message:\n\"{client_inquiry}\"\n" if client_inquiry else ""
 
+        # Pre-process scraped text to retain highest signal content
+        condensed_text = re.sub(r"\n\s*\n+", "\n\n", scraped_text[:10000]).strip()
+
         system_prompt = (
             "You are a Senior Managing Director & Head of Enterprise Client Solutions.\n"
             "An enterprise client has approached our firm with an inquiry regarding their strategic requirements.\n"
-            "Analyze the client company from the crawled text to produce an exhaustive, deep narrative dossier.\n"
+            "Analyze the client company from the crawled text and their inquiry to produce an exhaustive, deep narrative dossier.\n"
             "CRITICAL INSTRUCTIONS:\n"
             "1. Write comprehensive narrative prose paragraphs with senior executive depth.\n"
             "2. DO NOT use bullet points or numbered lists in the narrative text.\n"
@@ -80,7 +110,7 @@ class WorkerAI:
             "}"
         )
 
-        prompt = f"Target Enterprise Domain: {domain}{inquiry_text}\n\nCrawled Intelligence:\n{scraped_text[:12000]}"
+        prompt = f"Target Enterprise Domain: {domain}{inquiry_text}\n\nCrawled Intelligence:\n{condensed_text}"
         raw = self._call_llm(prompt, system_prompt)
         parsed = self._parse_json(raw)
 
@@ -151,6 +181,7 @@ class WorkerAI:
         return parsed
 
     def llm_similarity_comparison(self, company_details: dict, candidate_sectors: list) -> list:
+        """Deep multi-factor LLM semantic reasoning and similarity evaluation engine."""
         company_name = company_details.get("company_name", "Target Company")
         archetype = company_details.get("archetype", "Enterprise")
         industry = company_details.get("industry_focus", "Industrial Sector")
@@ -307,7 +338,7 @@ class WorkerAI:
         top_offering_name = mappings[0]["exact_offering_name"] if mappings else "Project Intelligence Database"
         top_sector = matched_services[0].get("Primary Sector", "Target Sector") if matched_services else "Infrastructure"
 
-        # Clean, Continuous Narrative Proposal (Zero Awkward Numbering, Zero Footers)
+        # Clean, Continuous Narrative Proposal
         if archetype == "Private Equity Sponsor & Asset Manager":
             pitch = f"""**TO:** {decision_maker}, {company_name}  
 **FROM:** Senior Managing Director, Global Private Equity Strategy Group  
