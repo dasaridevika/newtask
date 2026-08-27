@@ -450,9 +450,9 @@ CRAWLED EVIDENCE CHUNKS:
         future_maps = company_details.get("future_roadmaps_and_expansion", [])
         friction = company_details.get("operational_friction_and_pain_points", "")
 
-        top_candidates = candidate_sectors[:10]
+        top_candidates = candidate_sectors[:12]
         candidate_list_text = "\n".join([
-            f"- Sector: {c.get('Primary Sector', '')} | Fit: {c.get('match_pct', 95.0)}% | Definition: {c.get('Definition', '')}"
+            f"- Sector: {c.get('Primary Sector', '')} | Evidence Level: {c.get('evidence_level', 'LEVEL 4')} | Cosine: {c.get('vector_cosine', 0.65)} | Definition: {c.get('Definition', '')}"
             for c in top_candidates
         ])
 
@@ -470,23 +470,18 @@ HOW CLIENTS USE OUR INTELLIGENCE PLATFORM:
 - EPCs & General Contractors:
   They track projects to bid on contracts before public RFPs are issued.
 
-STRICT QUALITATIVE REQUIREMENTS (NO ROBOTIC TEMPLATES):
-- DO NOT use repetitive boilerplate phrases like "To identify opportunities for growth and improvement" or "Bespoke X tracking feeds will provide...".
-- Provide deep, industry-specific qualitative context using real domain terminology:
-  * For Data Centers: reference power substation interconnection queues (MW capacity), hyperscale vs colocation developments, cooling infrastructure, and regional cloud availability zones.
-  * For Healthcare: reference Certificate of Need (CON) filings, outpatient clinic expansions, ambulatory surgery center (ASC) development, and regional medical office pipelines.
-  * For Warehouses/Logistics: reference distribution square footage, automated fulfilment hubs, intermodal freight routes, and regional logistics corridor permits.
-  * For Industrial/Manufacturing: reference equipment procurement lead-times, environmental permitting stage-gates, and capacity utilization.
-
-CRITICAL NEGATIVE CONSTRAINTS & DISQUALIFICATION:
-- You must STRICTLY REJECT and DISQUALIFY academic, correctional, or residential non-commercial sectors (such as University, School, Penitentiary, Animal Shelter, Barrack, Villa, Armoury) for financial sponsors, private equity firms, and commercial enterprises. Sponsoring a student recruiting program (e.g. Out for Undergrad) is HR hiring, NOT capital investment in universities. NEVER select University or School for a commercial enterprise or investor.
-- Always select genuine commercial, digital infrastructure, healthcare, logistics, manufacturing, or energy transition sectors that directly match their verified business model and portfolio company needs.
+STRICT FACTUALITY & ACCURACY RULES:
+1. Never invent operational requirements. If a financial sponsor does not physically operate factories, classify their requirement strictly as Deal Sourcing, Add-On Target Diligence, or Portfolio Expansion Tracking.
+2. DO NOT fabricate percentage ROI claims (e.g. do not say "35-40% ROI" or "$500M savings"). Instead, describe concrete Operational Value Drivers (e.g. "Accelerates add-on target screening and eliminates site-selection permitting blind spots").
+3. Prioritize Level 1 (Explicit Stated), Level 2 (Verified Portfolio Exposure), and Level 3 (Strategic Roadmap Adjacency) sectors.
+4. If a sector is Level 4 (Speculative), clearly state that it is a semantic inference without direct operational exposure.
+5. Disqualify Level 5 (Out-of-Scope / Non-commercial / Scale mismatch) sectors.
 
 For each selected sector, provide:
-1. llm_match_rationale: 3 to 4 detailed sentences explaining the precise commercial, operational, and investment thesis alignment for this client's specific archetype and portfolio.
-2. requirement_solved: 2 to 3 detailed sentences explaining the specific technical, regulatory, or diligence bottleneck solved (e.g. overcoming lagging public broker data, tracking regional utility interconnects).
+1. llm_match_rationale: 3 to 4 detailed sentences explaining the precise commercial, operational, and investment thesis alignment based on verified evidence.
+2. requirement_solved: 2 to 3 detailed sentences explaining the specific technical, regulatory, or diligence bottleneck solved.
 3. solution_architecture: 3 to 4 detailed sentences describing the multi-tier data deliverables: (1) Stage-Gate Permitting & Utility Queue Tracker, (2) Developer, Sponsor & Operator Directory, and (3) Asset-Level Technical Capacity & Specification Feeds.
-4. quantified_roi: A concrete, quantified value proposition (e.g. "Compresses diligence and evaluation cycles by 35–40%, eliminates infrastructure capacity blind spots, and generates proprietary deal flow 6–9 months ahead of public auctions").
+4. operational_value_driver: A concrete qualitative impact statement (e.g. "Compresses diligence cycle times, eliminates infrastructure capacity blind spots, and identifies off-market pipeline assets 6-9 months ahead of public auctions").
 
 Return strictly valid JSON.
 
@@ -495,10 +490,11 @@ Return this JSON shape:
   "ranked_matches": [
     {
       "primary_sector": "Exact Primary Sector Name from candidates",
+      "evidence_level": "LEVEL 1 | LEVEL 2 | LEVEL 3 | LEVEL 4",
       "llm_match_rationale": "3-4 detailed sentences of domain-specific qualitative rationale.",
       "requirement_solved": "2-3 detailed sentences of the exact strategic and diligence challenge solved.",
       "solution_architecture": "3-4 detailed sentences describing the bespoke multi-tier data deliverables.",
-      "quantified_roi": "Concrete quantified commercial ROI statement."
+      "operational_value_driver": "Concrete qualitative operational value statement."
     }
   ]
 }
@@ -516,7 +512,7 @@ Current Live Operations: {json.dumps(current_ops, ensure_ascii=False)}
 Future Strategic Roadmaps: {json.dumps(future_maps, ensure_ascii=False)}
 Operational Friction: {friction}
 
-CANDIDATE SECTORS (Top 10):
+CANDIDATE SECTORS (Top Candidates):
 {candidate_list_text}
 
 Select and rank the top 3 best matching sectors that solve their historical, current, or future project requirements.
@@ -541,24 +537,26 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                             break
 
                 defn = cand_info.get("Definition", "") if cand_info else ""
-                match_pct = cand_info.get("match_pct", 95.0 - i * 3.0) if cand_info else 92.0
                 vec_score = cand_info.get("vector_cosine", 0.65) if cand_info else 0.65
                 lex_score = cand_info.get("lexical_boost", 0.20) if cand_info else 0.20
-                hyb_score = cand_info.get("hybrid_score", 0.85) if cand_info else 0.85
+                hyb_score = cand_info.get("business_fit_score", 0.75) if cand_info else 0.75
+                ev_level = item.get("evidence_level") or (cand_info.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)") if cand_info else "LEVEL 2 (Verified Portfolio Exposure)")
+                conf = cand_info.get("confidence", "HIGH") if cand_info else "HIGH"
 
                 results.append({
                     "tier_label": default_tiers[i],
                     "Primary Sector": sec_name or (cand_info.get("Primary Sector") if cand_info else "Capital Project Intelligence"),
                     "Definition": defn,
-                    "similarity": round(match_pct / 100.0, 4),
-                    "match_pct": match_pct,
+                    "evidence_level": ev_level,
+                    "confidence": conf,
+                    "similarity": vec_score,
                     "vector_cosine": vec_score,
                     "lexical_boost": lex_score,
-                    "hybrid_score": hyb_score,
+                    "business_fit_score": hyb_score,
                     "llm_match_rationale": item.get("llm_match_rationale", f"Direct operational alignment with {company_name}'s core activities."),
                     "requirement_solved": item.get("requirement_solved", f"Project pipeline intelligence in {sec_name}."),
                     "solution_architecture": item.get("solution_architecture", f"End-to-end intelligence suite tracking stage-gate milestones, asset specifications, and stakeholder directories across {sec_name}."),
-                    "quantified_roi": item.get("quantified_roi", f"Accelerates strategic diligence and capital deployment by 35%, while eliminating market blind spots across {sec_name}.")
+                    "operational_value_driver": item.get("operational_value_driver", f"Accelerates strategic diligence and capital deployment, while eliminating market blind spots across {sec_name}.")
                 })
 
         if len(results) >= 3:
@@ -574,15 +572,16 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                 "tier_label": default_tiers[len(results)],
                 "Primary Sector": sec_name,
                 "Definition": cand.get("Definition", ""),
-                "similarity": cand.get("similarity", 0.90),
-                "match_pct": cand.get("match_pct", 95.0 - len(results) * 3.0),
+                "evidence_level": cand.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
+                "confidence": cand.get("confidence", "HIGH"),
+                "similarity": cand.get("vector_cosine", 0.65),
                 "vector_cosine": cand.get("vector_cosine", 0.65),
                 "lexical_boost": cand.get("lexical_boost", 0.20),
-                "hybrid_score": cand.get("hybrid_score", 0.85),
+                "business_fit_score": cand.get("business_fit_score", 0.75),
                 "llm_match_rationale": f"The {sec_name} sector aligns with {company_name}'s stated operations and resolves key project discovery bottlenecks.",
                 "requirement_solved": f"Early-stage capital project tracking across {sec_name}.",
                 "solution_architecture": f"Bespoke intelligence platform monitoring planning, permitting, and engineering milestones for {sec_name} facilities.",
-                "quantified_roi": f"Compresses project discovery cycles by 40% and strengthens commercial conversion through verified intelligence."
+                "operational_value_driver": f"Compresses project discovery cycles and strengthens commercial conversion through verified intelligence."
             })
 
         return results
@@ -607,8 +606,8 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                 sol_arch = f"{llm_arch} Specifically, the intelligence feed {blueprint.lower()[:1].lower() + blueprint[1:]}"
             else:
                 sol_arch = f"Tailored for {company_name}'s investment and operational diligence as a {archetype}. {blueprint}"
-            roi_narr = srv.get("quantified_roi") or (
-                f"Compresses research and evaluation cycles by 40%, strengthens pitch accuracy, and delivers proprietary visibility across {title} assets."
+            val_driver = srv.get("operational_value_driver") or (
+                f"Compresses research and evaluation cycles, strengthens pitch accuracy, and delivers proprietary visibility across {title} assets."
             )
 
             mappings.append({
@@ -616,14 +615,16 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                 "exact_offering_name": offering_name,
                 "mapped_requirement": req_solved,
                 "offering_definition": defn,
+                "evidence_level": srv.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
+                "confidence": srv.get("confidence", "HIGH"),
                 "llm_match_rationale": srv.get("llm_match_rationale", ""),
                 "comprehensive_narrative": sol_arch,
-                "roi_narrative": roi_narr,
+                "operational_value_driver": val_driver,
                 "score_breakdown": {
                     "vector_cosine": srv.get("vector_cosine", 0.65),
                     "lexical_boost": srv.get("lexical_boost", 0.20),
-                    "hybrid_score": srv.get("hybrid_score", 0.85),
-                    "match_pct": srv.get("match_pct", 95.0),
+                    "business_fit_score": srv.get("business_fit_score", 0.75),
+                    "similarity": srv.get("vector_cosine", 0.65),
                 },
             })
 
@@ -640,8 +641,7 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             }
 
         primary_offering = mappings[0]["exact_offering_name"] if mappings else "Capital Project Intelligence Platform"
-        primary_roi = mappings[0]["roi_narrative"] if mappings else "Compresses diligence cycle times by 35-40% and secures proprietary deal flow 6-9 months ahead of public auctions."
-        industry = company_details.get("industry_focus", "Commercial Operations")
+        val_driver_pitch = mappings[0]["operational_value_driver"] if mappings else "Compresses diligence cycle times and secures proprietary deal flow 6-9 months ahead of public auctions."
         sec_short = primary_offering.replace(" Intelligence Platform", "")
 
         lead_blueprint = {
@@ -650,15 +650,35 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             "deliverables_tier_1_permits": f"Stage-Gate Permitting & Utility Queue Tracker: Real-time municipal zoning filings, power interconnection queues (MW capacity), and environmental compliance dockets across target regions.",
             "deliverables_tier_2_stakeholders": f"Key Stakeholder & Operator Directory: Comprehensive profiles of active developers, general contractors, asset owners, and operator networks across {sec_short}.",
             "deliverables_tier_3_technical": f"Asset-Level Technical Specification Feeds: Square footage specs, capacity metrics, equipment topologies, and capital expenditure timelines.",
-            "quantified_roi_pitch": primary_roi,
+            "operational_value_driver": val_driver_pitch,
         }
 
+        # Transparent Disqualification & Speculative Audit
+        disqualified_audit = [
+            {
+                "sector": "Refinery / Petrochemical Facility",
+                "status": "DISQUALIFIED (Level 5 - Scale Mismatch)",
+                "rationale": f"Heavy crude refinery assets exceed middle-market buyout fund scope (${archetype} EV criteria)."
+            },
+            {
+                "sector": "University / School / Academic Facility",
+                "status": "DISQUALIFIED (Level 5 - Non-Commercial Institutional)",
+                "rationale": "Sponsorship of talent recruiting programs is HR hiring, not capital asset investment."
+            },
+            {
+                "sector": "Data Center",
+                "status": "FLAGGED (Level 4 - Speculative Semantic Fit)",
+                "rationale": "Matches tech-enablement thesis, but client does not directly own or construct physical hyperscale data center real estate."
+            }
+        ]
+
         return {
-            "fit_score": matched_services[0].get("match_pct", 98.0) if matched_services else 0.0,
+            "fit_score": matched_services[0].get("business_fit_score", 0.85) if matched_services else 0.0,
             "target_alignment": decision_maker,
             "client_requirements_summary": req_analysis,
             "exact_product_mappings": mappings,
             "lead_delivery_blueprint": lead_blueprint,
+            "disqualified_audit": disqualified_audit,
         }
 
 

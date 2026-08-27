@@ -11,7 +11,7 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 BASE_DIR = Path(__file__).resolve().parent
 EMBEDDINGS_NPZ_PATH = BASE_DIR / "catalog_embeddings.npz"
 
-# Comprehensive stopwords list to prevent generic words from triggering spurious lexical matches
+# Comprehensive stopwords to prevent generic noise words from triggering spurious lexical matches
 DOMAIN_STOPWORDS = {
     "plant", "facility", "facilities", "system", "systems", "production", "manufacturing", 
     "building", "buildings", "complex", "center", "centers", "infrastructure", "other", 
@@ -22,22 +22,77 @@ DOMAIN_STOPWORDS = {
     "about", "after", "again", "against", "because", "been", "before", "being", "below",
     "between", "both", "during", "each", "further", "having", "here", "more", "most",
     "once", "only", "same", "some", "such", "than", "then", "there", "they", "this", "those",
-    "very", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "wherever"
+    "very", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "wherever",
+    "data", "market", "markets", "care", "health", "specific", "track", "record", "project", "operations"
 }
 
-def calibrate_cosine_score(raw_score: float) -> float:
+# Sectors that are strictly out-of-scope for standard commercial / middle-market enterprises
+NON_COMMERCIAL_INSTITUTIONS = {
+    "university", "school", "penitentiary", "animal shelter", "barrack",
+    "armoury", "villa", "athletic track", "amusement facility", "prisons",
+    "aircraft manufacturing plant", "nuclear power plant", "amusement park",
+    "stadium", "sports complex", "crematorium", "cemetery"
+}
+
+def determine_evidence_level(
+    sec_name: str, 
+    definition: str, 
+    company_details: Optional[dict], 
+    client_inquiry: str = ""
+) -> Tuple[str, float]:
     """
-    Calibrates hybrid similarity scores into an intuitive executive confidence percentage (75% - 98.5%).
+    Classifies a candidate offering into strict Ground-Truth Evidence Levels (1 to 5).
+    Returns (level_label, confidence_multiplier).
     """
-    if raw_score >= 0.70:
-        pct = 95.0 + min(3.5, (raw_score - 0.70) * 15.0)
-    elif raw_score >= 0.55:
-        pct = 85.0 + (raw_score - 0.55) / 0.15 * 10.0
-    elif raw_score >= 0.45:
-        pct = 75.0 + (raw_score - 0.45) / 0.10 * 10.0
-    else:
-        pct = max(50.0, raw_score * 150.0)
-    return round(min(98.5, max(60.0, pct)), 1)
+    clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
+    sec_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec)) - DOMAIN_STOPWORDS
+
+    industry_lower = str(company_details.get("industry_focus", "")).lower() if company_details else ""
+    archetype_lower = str(company_details.get("archetype", "")).lower() if company_details else ""
+
+    # 1. IMMEDIATE DISQUALIFICATION GATE (LEVEL 5)
+    if clean_sec in NON_COMMERCIAL_INSTITUTIONS:
+        is_inst = any(k in archetype_lower or k in industry_lower for k in ["university", "education", "school", "prison", "defense", "military", "aerospace", "sports"])
+        if not is_inst:
+            return "LEVEL 5 (Unsupported / Out-of-Scope)", 0.0
+
+    # Heavy asset / mega-infrastructure mismatch check for middle-market funds
+    if "private equity" in archetype_lower or "middle market" in industry_lower:
+        if clean_sec in ["refinery", "oil refinery", "crude distillation unit", "blast furnace", "smelter", "nuclear power plant"]:
+            return "LEVEL 5 (Unsupported / Scale Mismatch)", 0.0
+
+    inquiry_lower = client_inquiry.lower()
+    if inquiry_lower and len(inquiry_lower) > 3:
+        if clean_sec in inquiry_lower or (sec_tokens and all(re.search(r"\b" + re.escape(t) + r"\b", inquiry_lower) for t in sec_tokens)):
+            return "LEVEL 1 (Explicit Stated Requirement)", 1.0
+
+    if not company_details:
+        return "LEVEL 4 (Speculative / Semantic Only)", 0.40
+
+    # 2. CHECK EXPLICIT CORE SECTOR (LEVEL 1)
+    if clean_sec in industry_lower:
+        return "LEVEL 1 (Explicit Core Sector)", 0.95
+    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", industry_lower) for t in sec_tokens):
+        return "LEVEL 1 (Explicit Core Sector)", 0.95
+
+    # 3. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
+    past_text = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])]).lower()
+    active_text = " ".join([o.get("operation_name", "") + " " + o.get("details", "") for o in company_details.get("current_active_operations", [])]).lower()
+    portfolio_text = f"{past_text} {active_text}"
+
+    if clean_sec in portfolio_text:
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
+    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", portfolio_text) for t in sec_tokens):
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
+
+    # 4. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
+    future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
+    if clean_sec in future_text:
+        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
+    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", future_text) for t in sec_tokens):
+        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
+
+    return "LEVEL 4 (Speculative / Semantic Only)", 0.40
 
 class ServiceCatalog:
     def __init__(self, npz_path=None):
@@ -67,7 +122,7 @@ class ServiceCatalog:
 
         cleaned_corpus = []
         for s, d in zip(self.sectors, self.definitions):
-            combined = f"{s} {s} {d}".lower()
+            combined = f"{s} {d}".lower()
             tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", combined) if t not in DOMAIN_STOPWORDS]
             cleaned_corpus.append(" ".join(tokens))
 
@@ -114,8 +169,9 @@ class ServiceCatalog:
 
     def embed_company(self, company_details: dict, scraped_text: str = "", client_inquiry: str = "") -> dict:
         """
-        Creates a dense 1024-dim query vector combining the client's explicit inquiry,
-        verified industry domain, past projects track record, and future strategic roadmap.
+        Multi-Vector Representation Architecture:
+        Generates distinct semantic vectors for Investment Strategy, Portfolio Operations,
+        and Inbound Inquiries, then creates an L2-normalized weighted composite vector.
         """
         company_name = company_details.get("company_name", "Target Enterprise")
         industry = company_details.get("industry_focus", "")
@@ -126,27 +182,34 @@ class ServiceCatalog:
         past_proj = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])])
         future_proj = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])])
 
-        inquiry_clause = f"Client Inbound Requirement & Inquiry: {client_inquiry}. " if client_inquiry else ""
+        strategy_text = f"Enterprise: {company_name}. Archetype: {archetype}. Core Focus Sectors & Strategy: {industry}. Business Model: {biz_model}."
+        portfolio_text = f"Portfolio Operations & Track Record: {summary} {past_proj} {future_proj}."
 
-        full_query = (
-            f"{inquiry_clause}"
-            f"Target Enterprise: {company_name}. "
-            f"Industry Focus: {industry}. "
-            f"Archetype: {archetype}. "
-            f"Business Model: {biz_model}. "
-            f"Core Operations & Offerings: {summary} {past_proj} {future_proj}."
-        ).strip()
+        strat_vec = self._get_worker_embedding(strategy_text)
+        port_vec = self._get_worker_embedding(portfolio_text)
 
-        vector = self._get_worker_embedding(full_query)
-        if vector is None:
-            vector = np.zeros(self.vectors.shape[1] if self.vectors is not None else 1024, dtype=np.float32)
+        dim = self.vectors.shape[1] if self.vectors is not None else 1024
+        if strat_vec is None:
+            strat_vec = np.zeros(dim, dtype=np.float32)
+        if port_vec is None:
+            port_vec = np.zeros(dim, dtype=np.float32)
+
+        if client_inquiry and len(client_inquiry.strip()) > 3:
+            inq_vec = self._get_worker_embedding(f"Specific Client Inquiry & Stated Requirement: {client_inquiry}")
+            if inq_vec is None:
+                inq_vec = np.zeros(dim, dtype=np.float32)
+            composite = 0.45 * strat_vec + 0.35 * port_vec + 0.20 * inq_vec
+        else:
+            composite = 0.55 * strat_vec + 0.45 * port_vec
+
+        norm = np.linalg.norm(composite)
+        normalized_vector = composite / (norm if norm > 0 else 1e-10)
 
         return {
-            "query_text": full_query,
-            "vector": vector,
-            "dimension": len(vector),
-            "model_name": self.model_name,
-            "vector_preview": [round(float(x), 4) for x in vector[:8]]
+            "query_text": f"{strategy_text} {portfolio_text}",
+            "vector": normalized_vector,
+            "dimension": len(normalized_vector),
+            "model_name": self.model_name
         }
 
     def _extract_matching_keywords(self, sector_name: str, definition: str, company_text: str) -> List[str]:
@@ -172,14 +235,14 @@ class ServiceCatalog:
         top_k: int = 15
     ) -> list:
         """
-        High-Precision Multi-Factor Hybrid Ranking:
-        Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF,
-        morphological phrase matching, domain category gating, and transparent keyword explainability.
+        Evidence-Grounded Multi-Factor Matching:
+        Combines 1024-dim dense vector cosine similarity with Multiplicative Lexical Gating,
+        Ground-Truth Evidence Level classification (Levels 1 to 5), and transparent rejection of unsupported sectors.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
 
-        # 1. Dense Vector Cosine Similarity (Dense Semantic Field in < 0.1ms)
+        # 1. Dense Vector Cosine Similarity (Dense Semantic Field)
         dense_sims = np.dot(self.vectors, company_vector)
 
         # 2. Dynamic Sub-linear TF-IDF Similarity
@@ -191,63 +254,30 @@ class ServiceCatalog:
         else:
             tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
 
-        # 3. Domain Gating Signals from verified profile & inquiry
-        industry_lower = ""
-        archetype_lower = ""
-        past_and_future = ""
-        if company_details:
-            industry_lower = str(company_details.get("industry_focus", "")).lower()
-            archetype_lower = str(company_details.get("archetype", "")).lower()
-            past_and_future = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])]).lower()
-            past_and_future += " " + " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
-
-        combined_evidence = f"{client_inquiry.lower()} {industry_lower} {archetype_lower} {past_and_future} {company_lower}"
-
         hybrid_scores = []
         for idx in range(len(self.sectors)):
             raw_vec_score = float(dense_sims[idx])
             raw_tfidf_score = float(tfidf_sims[idx])
             sec_name = str(self.sectors[idx]).strip()
             definition = str(self.definitions[idx]).strip()
-            sec_lower = f"{sec_name} {definition}".lower()
-
-            # Dynamic phrase & morphological matching
             clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
-            sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec) if t not in DOMAIN_STOPWORDS]
-            
-            exact_phrase_bonus = 0.0
-            if len(clean_sec) > 4 and clean_sec not in ["office building", "commercial building", "other building", "building", "school", "penitentiary", "garages and service station"]:
-                if clean_sec in combined_evidence or (clean_sec + "s") in combined_evidence or clean_sec.replace(" ", "") in combined_evidence:
-                    exact_phrase_bonus = 0.25
-                elif sec_tokens and sum(1 for t in sec_tokens if t in combined_evidence) == len(sec_tokens):
-                    exact_phrase_bonus = 0.18
 
-            # Acronym matching (e.g. PV, BESS, LNG, EV, AI, EDC, HDPE)
-            acronyms = re.findall(r"\(([A-Za-z0-9\-]+)\)", sec_name)
-            acronym_bonus = 0.15 if any(len(a) >= 2 and re.search(r"\b" + re.escape(a.lower()) + r"\b", combined_evidence) for a in acronyms) else 0.0
+            # Classify into Evidence Level (1 to 5)
+            evidence_level, confidence_multiplier = determine_evidence_level(sec_name, definition, company_details, client_inquiry)
 
-            # Domain Category Alignment Check
-            domain_alignment_bonus = 0.0
-            if industry_lower:
-                # Direct industry name tokens in sector name
-                ind_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", industry_lower) if t not in DOMAIN_STOPWORDS]
-                if ind_tokens and any(t in sec_lower for t in ind_tokens):
-                    domain_alignment_bonus = 0.15
+            # Skip Level 5 (Unsupported / Out-of-Scope) sectors completely
+            if confidence_multiplier == 0.0:
+                continue
 
-            # Non-Commercial & Institutional Disqualification Gate
-            non_commercial_sectors = {
-                "university", "school", "penitentiary", "animal shelter", "barrack",
-                "armoury", "villa", "athletic track", "amusement facility", "prisons"
-            }
-            if clean_sec in non_commercial_sectors:
-                is_genuine_institution = any(k in archetype_lower or k in industry_lower for k in ["university", "education", "school", "academic", "prison", "correctional"])
-                if not is_genuine_institution:
-                    continue  # Completely eliminate false-positive institutional sectors for commercial firms
+            # Multiplicative Lexical Factor
+            lexical_factor = min(0.25, (raw_tfidf_score * 1.2))
+            if clean_sec in company_lower or (clean_sec + "s") in company_lower:
+                lexical_factor = min(0.25, lexical_factor + 0.10)
 
-            # Mathematical Hybrid Score
-            lexical_component = min(0.40, (raw_tfidf_score * 1.5) + exact_phrase_bonus + acronym_bonus + domain_alignment_bonus)
-            hybrid_score = max(0.0, raw_vec_score + lexical_component)
-            calibrated_pct = calibrate_cosine_score(hybrid_score)
+            # Evidence-Grounded Multi-Factor Business Fit Score
+            # Multiplicative scaling ensures lexical tokens amplify, but cannot manufacture, vector relevance
+            base_score = raw_vec_score * (1.0 + lexical_factor)
+            business_fit_score = base_score * (0.50 + 0.50 * confidence_multiplier)
 
             matched_keywords = self._extract_matching_keywords(sec_name, definition, company_text)
 
@@ -256,15 +286,16 @@ class ServiceCatalog:
                 "Primary Sector": sec_name,
                 "Definition": definition,
                 "vector_cosine": round(raw_vec_score, 4),
-                "lexical_boost": round(lexical_component, 4),
-                "hybrid_score": round(hybrid_score, 4),
-                "similarity": round(hybrid_score, 4),
-                "match_pct": calibrated_pct,
+                "lexical_boost": round(lexical_factor, 4),
+                "business_fit_score": round(business_fit_score, 4),
+                "similarity": round(raw_vec_score, 4),
+                "evidence_level": evidence_level,
+                "confidence": "HIGH" if confidence_multiplier >= 0.85 else ("MEDIUM" if confidence_multiplier >= 0.70 else "SPECULATIVE"),
                 "matched_keywords": matched_keywords
             })
 
-        # Sort by hybrid score descending
-        hybrid_scores.sort(key=lambda x: x["hybrid_score"], reverse=True)
+        # Sort by business fit score descending
+        hybrid_scores.sort(key=lambda x: x["business_fit_score"], reverse=True)
 
         # Deduplicate and return top_k
         results = []
