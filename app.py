@@ -130,11 +130,12 @@ if run_btn and target_url:
         )
 
         st.write("3. Generating 1024-dim dense query vector & running Hybrid Ranking across 462 catalog sectors...")
-        company_embed_info = catalog.embed_company(company_details, serp_data["content"])
+        company_embed_info = catalog.embed_company(company_details, serp_data["content"], client_inquiry=client_inquiry)
         candidate_sectors = catalog.match_company_vector(
             company_embed_info["vector"],
             company_text=serp_data["content"],
             company_details=company_details,
+            client_inquiry=client_inquiry,
             top_k=int(top_k_val)
         )
 

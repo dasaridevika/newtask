@@ -112,21 +112,29 @@ class ServiceCatalog:
             print(f"[Embedding Error]: {e}")
         return None
 
-    def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
+    def embed_company(self, company_details: dict, scraped_text: str = "", client_inquiry: str = "") -> dict:
         """
-        Creates a dense query vector focusing on the company's core verified industry domain
-        and primary operational capabilities.
+        Creates a dense 1024-dim query vector combining the client's explicit inquiry,
+        verified industry domain, past projects track record, and future strategic roadmap.
         """
         company_name = company_details.get("company_name", "Target Enterprise")
         industry = company_details.get("industry_focus", "")
         summary = company_details.get("executive_profile_analysis", "")
+        biz_model = company_details.get("business_model_and_revenue_drivers", "")
         archetype = company_details.get("archetype", "Enterprise")
 
+        past_proj = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])])
+        future_proj = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])])
+
+        inquiry_clause = f"Client Inbound Requirement & Inquiry: {client_inquiry}. " if client_inquiry else ""
+
         full_query = (
-            f"Company: {company_name}. "
+            f"{inquiry_clause}"
+            f"Target Enterprise: {company_name}. "
             f"Industry Focus: {industry}. "
             f"Archetype: {archetype}. "
-            f"Core Operations & Offerings: {summary}."
+            f"Business Model: {biz_model}. "
+            f"Core Operations & Offerings: {summary} {past_proj} {future_proj}."
         ).strip()
 
         vector = self._get_worker_embedding(full_query)
@@ -155,7 +163,14 @@ class ServiceCatalog:
                 matches.append(t)
         return sorted(matches[:6])
 
-    def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", company_details: Optional[dict] = None, top_k: int = 15) -> list:
+    def match_company_vector(
+        self,
+        company_vector: np.ndarray,
+        company_text: str = "",
+        company_details: Optional[dict] = None,
+        client_inquiry: str = "",
+        top_k: int = 15
+    ) -> list:
         """
         High-Precision Multi-Factor Hybrid Ranking:
         Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF,
@@ -168,22 +183,25 @@ class ServiceCatalog:
         dense_sims = np.dot(self.vectors, company_vector)
 
         # 2. Dynamic Sub-linear TF-IDF Similarity
-        company_lower = company_text.lower()
-        if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_text) > 20:
+        company_lower = (company_text + " " + client_inquiry).lower()
+        if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_lower) > 20:
             clean_company_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", company_lower) if t not in DOMAIN_STOPWORDS]
             company_tfidf = self.tfidf_vectorizer.transform([" ".join(clean_company_tokens)])
             tfidf_sims = (self.tfidf_matrix * company_tfidf.T).toarray().flatten()
         else:
             tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
 
-        # 3. Domain Gating Signals from verified profile
+        # 3. Domain Gating Signals from verified profile & inquiry
         industry_lower = ""
         archetype_lower = ""
+        past_and_future = ""
         if company_details:
             industry_lower = str(company_details.get("industry_focus", "")).lower()
             archetype_lower = str(company_details.get("archetype", "")).lower()
+            past_and_future = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])]).lower()
+            past_and_future += " " + " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
 
-        combined_evidence = f"{industry_lower} {archetype_lower} {company_lower}"
+        combined_evidence = f"{client_inquiry.lower()} {industry_lower} {archetype_lower} {past_and_future} {company_lower}"
 
         hybrid_scores = []
         for idx in range(len(self.sectors)):
