@@ -182,12 +182,16 @@ with col_url:
 with col_btn:
     run_btn = st.button("Analyze & Match", type="primary", use_container_width=True)
 
-# Optional Specific Inbound Inquiry Message Input
-client_inquiry = st.text_input(
-    "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
-    value="",
-    placeholder="e.g. 'Looking for commercial expansion intelligence, asset tracking, or market visibility in target regions.'"
-)
+# Inbound Inquiry and Top K Selector
+col_inq, col_k = st.columns([4, 1])
+with col_inq:
+    client_inquiry = st.text_input(
+        "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
+        value="",
+        placeholder="e.g. 'Looking for commercial expansion intelligence, asset tracking, or market visibility in target regions.'"
+    )
+with col_k:
+    top_k_val = st.number_input("Top K Matches", min_value=3, max_value=30, value=10, step=1)
 
 if run_btn and target_url:
     with st.status("Harvesting Structured Evidence & Executing Hybrid Matching...", expanded=True) as status:
@@ -209,7 +213,7 @@ if run_btn and target_url:
             company_embed_info["vector"],
             company_text=serp_data["content"],
             company_details=company_details,
-            top_k=15
+            top_k=int(top_k_val)
         )
 
         st.write("4. Executing grounded LLM semantic evaluation and requirement mapping...")
@@ -453,6 +457,21 @@ if run_btn and target_url:
 
                     st.markdown("#### Quantified Commercial Advantage & Strategic ROI")
                     st.write(m.get("roi_narrative", ""))
+
+            st.divider()
+            with st.expander(f"🏆 View Complete Top {len(candidate_sectors)} Ranked Catalog Sectors (Full Match Leaderboard)", expanded=False):
+                for rank_idx, cand in enumerate(candidate_sectors):
+                    col_rk1, col_rk2 = st.columns([4, 1])
+                    with col_rk1:
+                        st.markdown(f"**#{rank_idx+1}. {cand.get('Primary Sector')}**")
+                        st.caption(cand.get("Definition", ""))
+                        if cand.get("matched_keywords"):
+                            kw_tags = " ".join([f"`{k}`" for k in cand.get("matched_keywords", [])])
+                            st.caption(f"Overlapping Domain Keywords: {kw_tags}")
+                    with col_rk2:
+                        st.markdown(f"**{cand.get('match_pct')}% Fit**")
+                        st.caption(f"Vec: `{cand.get('vector_cosine')}` | Boost: `{cand.get('lexical_boost')}`")
+                    st.divider()
         else:
             st.info("No direct catalog mappings available.")
 
@@ -541,7 +560,8 @@ if run_btn and target_url:
             "target_persona": company_details.get("buying_role_hypothesis")
         },
         "llm_semantic_comparison_results": matched_services,
-        "matched_offerings": mappings
+        "matched_offerings": mappings,
+        "top_k_ranked_candidates": candidate_sectors
     }
     st.download_button(
         label="Download Evidence-Backed Intelligence Dossier (JSON)",
