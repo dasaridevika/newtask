@@ -651,7 +651,6 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             "deliverables_tier_2_stakeholders": f"Key Stakeholder & Operator Directory: Comprehensive profiles of active developers, general contractors, asset owners, and operator networks across {sec_short}.",
             "deliverables_tier_3_technical": f"Asset-Level Technical Specification Feeds: Square footage specs, capacity metrics, equipment topologies, and capital expenditure timelines.",
             "quantified_roi_pitch": primary_roi,
-            "executive_outreach_pitch": f"Subject: Accelerating Diligence & Project Pipeline Visibility for {company_name}\n\nHi [Name],\n\nI noticed {company_name}'s focus on expanding {industry} operations and portfolio scalability. Overcoming diligence blind spots and tracking early-stage capital projects before public RFPs is a major operational challenge.\n\nWe have mapped {company_name}'s requirements to our {primary_offering}. Our platform delivers real-time stage-gate permitting milestone trackers, verified stakeholder directories, and technical capacity feeds across target jurisdictions.\n\nTeams utilizing this intelligence typically compress diligence cycles by 35-40% and secure proprietary pipeline visibility 6 to 9 months ahead of public auctions.\n\nWould you be open to a brief 10-minute briefing next week to explore the live pipeline data?"
         }
 
         return {

@@ -186,7 +186,7 @@ if run_btn and target_url:
     tab_reqs, tab_offer, tab_deliver = st.tabs([
         "📋 1. Client Requirements Analysis",
         "🎯 2. What We Can Offer Them (Top K Matches)",
-        "📦 3. What to Deliver the Lead (Blueprint & Pitch)"
+        "📦 3. What to Deliver the Lead (Deliverables Blueprint)"
     ])
 
     req_summary = analysis.get("client_requirements_summary", {})
@@ -298,16 +298,8 @@ if run_btn and target_url:
         st.divider()
 
         with st.container(border=True):
-            st.markdown("### 📈 Pitch-Ready Quantified ROI & Value Proposition")
+            st.markdown("### 📈 Quantified Strategic Advantage & Operational Impact")
             st.write(lead_blueprint.get("quantified_roi_pitch", "Compresses diligence and evaluation cycles by 35-40%, eliminates infrastructure capacity blind spots, and generates proprietary deal flow 6-9 months ahead of public auctions."))
-
-        st.divider()
-
-        with st.container(border=True):
-            st.markdown("### ✉️ Executive Outreach Email & Pitch Script")
-            st.caption("Ready-to-send pitch template tailored to the target decision maker:")
-            pitch_text = lead_blueprint.get("executive_outreach_pitch", "")
-            st.text_area("Outreach Message (Copy & Send)", value=pitch_text, height=220)
 
     # Download Button
     st.divider()
