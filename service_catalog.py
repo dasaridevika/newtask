@@ -4,23 +4,11 @@ import requests
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Set
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 BASE_DIR = Path(__file__).resolve().parent
 EMBEDDINGS_NPZ_PATH = BASE_DIR / "catalog_embeddings.npz"
-
-# High-precision domain triggers for hybrid lexical alignment
-SECTOR_DOMAIN_TRIGGERS = {
-    "solar": ["solar", "photovoltaic", "pv", "bifacial", "perovskite", "inverter", "clean energy", "renewable", "solar farm", "solar cell", "solar module"],
-    "data_center": ["data center", "datacenter", "cooling", "thermal management", "liquid cooling", "cdu", "ups", "switchgear", "rack", "hyperscale", "colocation"],
-    "chemical": ["chemical", "polymer", "resin", "polyethylene", "polyvinyl", "petrochemical", "feedstock", "catalyst", "refinery", "acid", "ethylene"],
-    "private_equity": ["private equity", "buyout", "aum", "fund", "portfolio company", "sponsor", "due diligence", "m&a", "add-on", "private debt", "credit"],
-    "power_grid": ["transmission", "substation", "grid", "high voltage", "interconnection", "transformer", "distribution", "megawatt", "utility", "power line"],
-    "logistics": ["freight", "warehouse", "logistics", "supply chain", "distribution center", "intermodal", "railway", "fleet", "fulfillment"],
-    "manufacturing": ["manufacturing", "fabrication", "oem", "assembly", "plant", "machinery", "industrial equipment", "automation"],
-    "hydrogen": ["hydrogen", "electrolyzer", "fuel cell", "green hydrogen", "blue hydrogen", "ammonia"],
-    "battery": ["battery", "bess", "energy storage", "lithium", "cell manufacturing", "gigafactory", "grid storage"]
-}
 
 def calibrate_cosine_score(raw_score: float) -> float:
     """
@@ -69,7 +57,7 @@ class ServiceCatalog:
                 self.worker_url.rstrip("/") + "/ai/embed",
                 json={"model": self.model_name, "text": [text]},
                 headers={"Content-Type": "application/json"},
-                timeout=20
+                timeout=25
             )
             if resp.status_code == 200:
                 data = resp.json().get("data", [])
@@ -86,7 +74,7 @@ class ServiceCatalog:
         return None
 
     def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
-        """Creates a high-signal dense vector query representation from company intelligence."""
+        """Creates a dense vector query representation dynamically for any type of enterprise."""
         company_name = company_details.get("company_name", "Target Enterprise")
         industry = company_details.get("industry_focus", "")
         summary = company_details.get("executive_profile_analysis", "")
@@ -112,72 +100,63 @@ class ServiceCatalog:
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
         }
 
-    def _calculate_lexical_boost(self, sector_name: str, definition: str, company_text: str) -> float:
-        """Calculates exact keyword and domain alignment boost to ensure high precision."""
-        sector_lower = f"{sector_name} {definition}".lower()
+    def _calculate_universal_lexical_boost(self, sector_name: str, definition: str, company_text: str) -> float:
+        """
+        Universal, domain-agnostic lexical relevance calculator.
+        Dynamically extracts tokens, compound terms, and acronyms from any of the 462 catalog sectors
+        and checks for term presence and frequency across the target company's extracted text.
+        """
         company_lower = company_text.lower()
-
+        sec_name_clean = re.sub(r"\(.*?\)", "", sector_name).lower().strip()
+        
         boost = 0.0
 
-        # Exact sector name match
-        clean_sec = re.sub(r"\(.*?\)", "", sector_name).lower().strip()
-        if len(clean_sec) > 3 and clean_sec in company_lower:
+        # 1. Exact Full Sector Name Match (e.g. "Data Center", "Solar Photovoltaic", "Grain Elevator", "Hospital")
+        if len(sec_name_clean) > 3 and sec_name_clean in company_lower:
             boost += 0.35
 
-        # 1. Data Center alignment
-        has_datacenter = any(k in company_lower for k in ["data center", "datacenter", "hyperscale", "liquid cooling", "thermal management", "critical power", "switchgear", "ups"])
-        is_datacenter_sector = "data center" in sector_lower
-        if has_datacenter and is_datacenter_sector:
-            boost += 0.40
+        # 2. Key Acronyms or Parenthetical Specifics (e.g. "(PV)", "(HDPE)", "(EDC)", "(BESS)", "(LNG)")
+        acronyms = re.findall(r"\(([A-Za-z0-9\-]+)\)", sector_name)
+        for acr in acronyms:
+            if len(acr) >= 2 and re.search(r"\b" + re.escape(acr.lower()) + r"\b", company_lower):
+                boost += 0.20
 
-        # 2. Solar alignment
-        has_solar = any(k in company_lower for k in ["solar", "photovoltaic", "pv module", "solar panel", "solar cell", "solar power", "bifacial"])
-        is_solar_sector = any(k in sector_lower for k in ["solar", "photovoltaic", "pv"])
-        if has_solar and is_solar_sector:
-            boost += 0.40
-        elif has_solar and not is_solar_sector and any(k in sector_lower for k in ["chemical", "polymer", "petroleum", "coal"]):
-            boost -= 0.30
+        # 3. Dynamic Keyword Token Matching from Sector Name & Definition
+        tokens = [
+            t for t in re.findall(r"\b[a-zA-Z]{4,}\b", sec_name_clean)
+            if t not in ["plant", "facility", "station", "system", "production", "manufacturing", "building", "complex", "center", "infrastructure", "other"]
+        ]
 
-        # 3. Private Equity alignment
-        is_pe = any(k in company_lower for k in ["private equity", "buyout", "aum", "fund", "portfolio company", "asset management"])
-        if is_pe and any(k in sector_lower for k in ["chemical", "packaging", "manufacturing", "industrial", "polymer", "food", "healthcare"]):
-            boost += 0.15
+        if tokens:
+            matches = sum(1 for t in tokens if re.search(r"\b" + re.escape(t) + r"\b", company_lower))
+            match_ratio = matches / len(tokens)
+            boost += match_ratio * 0.30
 
-        # 4. General Domain Trigger overlap
-        for domain, keywords in SECTOR_DOMAIN_TRIGGERS.items():
-            if domain in ["solar", "data_center"]:
-                continue
-            sector_matches = any(k in sector_lower for k in keywords)
-            company_matches = sum(1 for k in keywords if re.search(r"\b" + re.escape(k) + r"\b", company_lower))
-
-            if sector_matches and company_matches > 0:
-                boost += min(0.20, company_matches * 0.04)
-
-        return boost
+        return min(0.50, boost)
 
     def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", top_k: int = 15) -> list:
         """
-        Executes Multi-Factor Hybrid Ranking:
-        Combines 1024-dim dense vector cosine similarity with lexical keyword boosting,
-        domain synergy, and disqualifier penalties.
+        Universal Multi-Factor Hybrid Ranking:
+        Combines 1024-dim dense vector cosine similarity with dynamic, universal token matching
+        across all 462 sectors without hardcoded industry boundaries.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
 
-        # 1. Dense Vector Cosine Similarities (Matrix Dot Product in < 0.1ms)
+        # 1. Dense Vector Cosine Similarities across all 462 sectors (Matrix Dot Product in < 0.1ms)
         dense_sims = np.dot(self.vectors, company_vector)
 
-        # 2. Hybrid Scoring per Sector
+        # 2. Universal Hybrid Scoring per Sector
         hybrid_scores = []
         for idx in range(len(self.sectors)):
             raw_vec_score = float(dense_sims[idx])
             sec_name = str(self.sectors[idx]).strip()
             definition = str(self.definitions[idx]).strip()
 
-            # Calculate domain keyword boost
-            lex_boost = self._calculate_lexical_boost(sec_name, definition, company_text)
+            # Dynamic universal token boost
+            lex_boost = self._calculate_universal_lexical_boost(sec_name, definition, company_text)
 
-            # Combined hybrid score (Dense Cosine + Lexical Boost)
+            # Combined hybrid score (Dense Vector Cosine + Universal Lexical Boost)
             hybrid_score = max(0.0, raw_vec_score + lex_boost)
             calibrated_pct = calibrate_cosine_score(hybrid_score)
 
@@ -195,7 +174,7 @@ class ServiceCatalog:
         # 3. Sort by hybrid score descending
         hybrid_scores.sort(key=lambda x: x["hybrid_score"], reverse=True)
 
-        # 4. Deduplicate and take top_k
+        # 4. Deduplicate and return top_k
         results = []
         seen = set()
         for item in hybrid_scores:

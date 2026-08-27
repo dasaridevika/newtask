@@ -50,10 +50,10 @@ class PageEvidence:
 
 @dataclass
 class BusinessSignal:
-    category: str  # e.g., "products", "industry", "technology", "client", "expansion", "pain_point"
+    category: str
     signal: str
     source_url: str
-    confidence: str  # "high", "medium", "low"
+    confidence: str
     snippet: str
 
 @dataclass
@@ -74,7 +74,6 @@ class EvidenceStore:
     def get_aggregated_text(self, max_chars: int = 12000) -> str:
         """Assembles structured, weighted text from all evidence pages."""
         sections = []
-        # Sort pages by credibility weight descending
         sorted_pages = sorted(self.pages, key=lambda p: p.credibility_weight, reverse=True)
         for page in sorted_pages:
             headings_str = " | ".join(page.headings[:5]) if page.headings else "N/A"
@@ -93,41 +92,41 @@ class EvidenceStore:
         return asdict(self)
 
 def classify_page(url: str, title: str, headings: List[str], text_sample: str) -> tuple:
-    """Classifies a page into PageType with credibility weighting."""
+    """Classifies any enterprise webpage into PageType with credibility weighting."""
     path = urllib.parse.urlparse(url).path.lower().strip("/")
     combined_meta = f"{path} {title} {' '.join(headings)}".lower()
 
     if not path or path in ["", "index.html", "index.php", "home"]:
         return PageType.HOME, 1.0
 
-    if any(k in combined_meta for k in ["product", "offering", "equipment", "hardware", "modules", "systems", "solutions", "service", "capabilities"]):
+    if any(k in combined_meta for k in ["product", "offering", "equipment", "hardware", "modules", "systems", "solutions", "service", "capabilities", "platform", "technology", "tech"]):
         return PageType.PRODUCTS_SERVICES, 1.4
 
-    if any(k in combined_meta for k in ["case-stud", "case_study", "projects", "portfolio", "success-stories", "customers", "installations"]):
+    if any(k in combined_meta for k in ["case-stud", "case_study", "projects", "portfolio", "success-stories", "customers", "installations", "deployments", "clients"]):
         return PageType.CASE_STUDY, 1.3
 
     if any(k in combined_meta for k in ["about", "company", "who-we-are", "history", "mission", "overview"]):
         return PageType.ABOUT, 1.1
 
-    if any(k in combined_meta for k in ["press", "news", "announcement", "media", "blog", "insights"]):
+    if any(k in combined_meta for k in ["press", "news", "announcement", "media", "blog", "insights", "events"]):
         return PageType.NEWS_PRESS, 0.9
 
     if any(k in combined_meta for k in ["career", "jobs", "join-us", "hiring", "openings"]):
         return PageType.CAREERS, 0.8
 
-    if any(k in combined_meta for k in ["leader", "board", "team", "executive", "management"]):
+    if any(k in combined_meta for k in ["leader", "board", "team", "executive", "management", "govern"]):
         return PageType.LEADERSHIP, 0.9
 
-    if any(k in combined_meta for k in ["contact", "get-in-touch", "locations", "offices"]):
+    if any(k in combined_meta for k in ["contact", "get-in-touch", "locations", "offices", "global"]):
         return PageType.CONTACT, 0.7
 
-    if any(k in combined_meta for k in ["privacy", "terms", "legal", "cookie", "disclaimer", "accessibility"]):
+    if any(k in combined_meta for k in ["privacy", "terms", "legal", "cookie", "disclaimer", "compliance"]):
         return PageType.LEGAL, 0.2
 
     return PageType.OTHER, 0.6
 
 def clean_html(raw_html: str) -> dict:
-    """Extracts structured metadata, title, headings, clean text, and canonical snippets."""
+    """Extracts structured metadata, title, headings, clean text, and canonical snippets for any website."""
     title_match = re.search(r"<title[^>]*>(.*?)</title>", raw_html, re.I | re.DOTALL)
     title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else "Enterprise Page"
     title = title.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
@@ -139,26 +138,23 @@ def clean_html(raw_html: str) -> dict:
         if 4 < len(clean_h) < 120 and clean_h not in headings:
             headings.append(clean_h)
 
-    # Strip scripts, styles, navigation, footer, svgs
     text = re.sub(r"<(script|style|nav|header|footer|svg|noscript|iframe)[^>]*>.*?</\1>", " ", raw_html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
     text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
     text = re.sub(r"\s+", " ", text).strip()
 
-    # Extract high-value sentences for canonical snippets
     sentences = re.split(r"(?<=[.!?])\s+", text)
     canonical_snippets = []
-    signal_keywords = [
+    general_signal_keywords = [
         "manufactur", "develop", "provide", "specialize", "leader", "operat", "solution",
-        "power", "solar", "photovoltaic", "thermal", "cooling", "data center", "investment",
-        "private equity", "fund", "portfolio", "acquir", "infrastructure", "capacity", "megawatt",
-        "gigawatt", "clean energy", "patent", "facility", "plant", "oem", "supply"
+        "service", "platform", "technology", "supply", "capacity", "global", "facility",
+        "commercial", "industrial", "client", "market", "customer", "deliver", "scale"
     ]
 
     for sent in sentences:
         clean_s = sent.strip()
         if 40 < len(clean_s) < 260:
-            if any(k in clean_s.lower() for k in signal_keywords):
+            if any(k in clean_s.lower() for k in general_signal_keywords):
                 if clean_s not in canonical_snippets:
                     canonical_snippets.append(clean_s)
                     if len(canonical_snippets) >= 6:
@@ -181,9 +177,8 @@ def extract_links(raw_html: str, base_url: str) -> List[str]:
     seen = set()
 
     priority_keywords = [
-        "product", "solution", "service", "case-stud", "portfolio", "technology", "tech",
-        "solar", "module", "system", "infrastructure", "thermal", "cooling", "power", 
-        "manufacturing", "about", "company", "projects", "press", "news"
+        "product", "solution", "service", "offering", "case-stud", "portfolio", "technology", "tech",
+        "infrastructure", "platform", "manufacturing", "about", "company", "projects", "press", "news"
     ]
 
     for m in matches:
@@ -209,68 +204,58 @@ def fetch_page_content(url: str, timeout: int = 7) -> tuple:
         pass
     return url, "", 500
 
-def extract_deterministic_signals(text: str, url: str) -> List[BusinessSignal]:
-    """Deterministic signal extraction for domain-specific industrial categories."""
+def extract_universal_signals(text: str, url: str) -> List[BusinessSignal]:
+    """Universal signal extraction for ANY type of enterprise."""
     signals = []
     lower = text.lower()
 
-    # 1. Solar / Renewable Energy Signals
-    solar_matches = re.findall(r"\b(solar (?:module|panel|cell|power|farm|energy|inverter)|photovoltaic|bifacial|perovskite|pv module|utility-scale solar|distributed generation|bess|battery storage)\b", lower)
-    if solar_matches:
-        unique_matches = list(set(solar_matches))
-        signals.append(BusinessSignal(
-            category="products_and_capabilities",
-            signal=f"Solar & Clean Energy Manufacturing: {', '.join(unique_matches[:4])}",
-            source_url=url,
-            confidence="high",
-            snippet=f"Detected specialized clean energy terms: {', '.join(unique_matches)}"
-        ))
+    # 1. Product / Core Offering Capabilities
+    offering_matches = re.findall(r"\b(manufactures|develops|produces|delivers|provides|engineers|distributes|operates)\s+([a-zA-Z0-9\s\-]{4,35}?)(?:\.|\,|and|\;)", text, re.I)
+    if offering_matches:
+        for verb, obj in offering_matches[:3]:
+            obj_clean = obj.strip()
+            if len(obj_clean) > 4 and not any(k in obj_clean.lower() for k in ["a", "the", "this", "our", "all"]):
+                signals.append(BusinessSignal(
+                    category="core_offerings",
+                    signal=f"{verb.capitalize()} {obj_clean}",
+                    source_url=url,
+                    confidence="high",
+                    snippet=f"Detected primary capability: {verb} {obj_clean}"
+                ))
 
-    # 2. Mission-Critical Thermal / Power OEM Signals
-    thermal_matches = re.findall(r"\b(thermal management|liquid cooling|direct-to-chip|cdu|chiller|switchgear|uninterruptible power supply|ups system|modular data center|busway|power distribution)\b", lower)
-    if thermal_matches:
-        unique_matches = list(set(thermal_matches))
-        signals.append(BusinessSignal(
-            category="products_and_capabilities",
-            signal=f"Mission-Critical Power & Thermal Systems: {', '.join(unique_matches[:4])}",
-            source_url=url,
-            confidence="high",
-            snippet=f"Detected critical infrastructure terms: {', '.join(unique_matches)}"
-        ))
-
-    # 3. Private Equity / Buyout / Asset Management Signals
-    pe_matches = re.findall(r"\b(assets under management|aum|middle market|private equity|buyout|private debt|growth equity|portfolio companies|investment strategy|add-on acquisition)\b", lower)
-    if pe_matches:
-        unique_matches = list(set(pe_matches))
-        signals.append(BusinessSignal(
-            category="business_model",
-            signal=f"Institutional Private Equity & Asset Management: {', '.join(unique_matches[:4])}",
-            source_url=url,
-            confidence="high",
-            snippet=f"Detected private equity investment strategy: {', '.join(unique_matches)}"
-        ))
-
-    # 4. Expansion / Growth / Construction Signals
-    expansion_matches = re.findall(r"\b(new facility|manufacturing plant|gigawatt factory|capacity expansion|commissioned|breaking ground|capital expenditure|capex|mw capacity)\b", lower)
-    if expansion_matches:
-        unique_matches = list(set(expansion_matches))
+    # 2. Capital Growth & Expansion Signals
+    growth_matches = re.findall(r"\b(new facility|expanding capacity|acquisition|merger|partnership|joint venture|investment of \$?[0-9]+|commissioned|global expansion)\b", lower)
+    if growth_matches:
+        unique_growth = list(set(growth_matches))
         signals.append(BusinessSignal(
             category="growth_and_capex",
-            signal=f"Capital Expansion & Infrastructure Buildout: {', '.join(unique_matches[:3])}",
+            signal=f"Commercial Expansion & Investment: {', '.join(unique_growth[:3])}",
             source_url=url,
             confidence="high",
-            snippet=f"Detected physical asset scaling: {', '.join(unique_matches)}"
+            snippet=f"Detected capital growth indicators: {', '.join(unique_growth)}"
+        ))
+
+    # 3. Market Scale & Operational Metric Signals
+    scale_matches = re.findall(r"\b([0-9]+(?:\.[0-9]+)?\s*(?:billion|million|mw|gw|tons|sq\s*ft|employees|countries|facilities))\b", lower)
+    if scale_matches:
+        unique_scale = list(set(scale_matches))
+        signals.append(BusinessSignal(
+            category="operational_scale",
+            signal=f"Reported Commercial Scale: {', '.join(unique_scale[:3])}",
+            source_url=url,
+            confidence="medium",
+            snippet=f"Detected scale metrics: {', '.join(unique_scale)}"
         ))
 
     return signals
 
 def fetch_search_insights(company_name: str, domain: str) -> List[str]:
-    """Retrieves verified third-party search intelligence snippets."""
+    """Retrieves verified third-party search intelligence snippets for any company."""
     insights = []
     queries = [
         f'"{company_name}" operations products technology overview',
-        f'"{company_name}" manufacturing facilities capacity plants',
-        f'"{company_name}" industry focus business model'
+        f'"{company_name}" facilities business model scale',
+        f'"{company_name}" industry focus solutions'
     ]
 
     for q in queries:
@@ -293,8 +278,7 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
 
 def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
     """
-    Main entry point: crawls target domain, classifies pages into structured PageEvidence objects,
-    extracts business signals, and returns a verified EvidenceStore.
+    Crawls and extracts structured evidence for ANY type of business domain.
     """
     if not query_or_url.startswith("http"):
         url = "https://" + query_or_url
@@ -331,7 +315,7 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
             status_code=status_code
         )
         store.pages.append(home_evidence)
-        store.signals.extend(extract_deterministic_signals(extracted["clean_text"], url))
+        store.signals.extend(extract_universal_signals(extracted["clean_text"], url))
 
         # 2. Parallel Subpage Ingestion
         sub_links = extract_links(home_html, base_url)
@@ -357,19 +341,18 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                                 status_code=sub_status
                             )
                             store.pages.append(evidence)
-                            store.signals.extend(extract_deterministic_signals(sub_ext["clean_text"], sub_url))
+                            store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
 
-    # 3. Third-party Search Verification
-    search_insights = fetch_search_insights(clean_name, domain)
-    store.search_insights = search_insights
+    # 3. Third-party Search Insights
+    store.search_insights = fetch_search_insights(clean_name, domain)
 
-    # 4. Confidence Rubric Calculation
+    # 4. Confidence Score Calculation
     total_pages = len(store.pages)
     types_found = {p.page_type for p in store.pages}
     has_product_page = PageType.PRODUCTS_SERVICES in types_found or PageType.SOLUTIONS in types_found
     
     if total_pages >= 4 and has_product_page and len(store.signals) >= 2:
-        store.confidence_score = 0.94
+        store.confidence_score = 0.95
         store.confidence_label = "high"
     elif total_pages >= 2:
         store.confidence_score = 0.82
@@ -378,7 +361,6 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
         store.confidence_score = 0.65
         store.confidence_label = "low"
 
-    # Assemble backward-compatible dictionary payload for downstream consumers
     aggregated_text = store.get_aggregated_text()
 
     return {
