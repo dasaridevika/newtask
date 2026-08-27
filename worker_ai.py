@@ -166,8 +166,8 @@ Return a single valid JSON object with exactly these keys:
 
 Field guidance:
 - company_name: Use the official company name if evident; otherwise infer conservatively from the domain.
-- archetype: Choose a specific enterprise archetype such as SaaS Operator, Manufacturer, Utility Developer, Healthcare Provider, General Contractor, Private Equity Sponsor, Distributor, Logistics Operator, or Technology OEM.
-- industry_focus: State the primary industry or operating domain in one short phrase.
+- archetype: Accurately identify the true operating model based strictly on evidence (e.g. Private Equity Sponsor / Asset Manager for investment firms & funds, Manufacturer / Technology OEM for physical equipment & hardware makers, Utility / Energy Developer for power and renewable operators, Software / SaaS Operator for cloud software companies, Healthcare Provider for clinical networks, EPC / General Contractor for construction/engineering firms, Logistics / Distribution Operator for supply chain firms).
+- industry_focus: State the primary industry or operating domain in one short phrase (e.g. Middle Market Private Equity & Buyouts, Solar & Clean Energy, Critical Power & Thermal Management, Semiconductor Manufacturing).
 - executive_profile_analysis: 3 to 5 sentences summarizing what the company does, based only on evidence.
 - observed_facts: Only include claims explicitly supported by evidence.
 - strategic_inferences: Include only cautious inferences that follow logically from the facts.
