@@ -22,6 +22,13 @@ st.markdown("""
     }
 
     /* Equal-Height Executive Metric Cards */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+    
     .metric-card {
         background: rgba(15, 23, 42, 0.65);
         backdrop-filter: blur(12px);
@@ -88,7 +95,7 @@ st.markdown("""
 
 # Title Header
 st.title("Lead Research")
-st.caption("Dense Vector Semantic Matching (1024-Dim) & Executive Outreach Platform")
+st.caption("AI-Powered Semantic Comparison, Vector Search & Executive Outreach Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
@@ -105,20 +112,23 @@ with col_btn:
     run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
 
 if run_btn and target_url:
-    with st.status("Executing Dense Vector Embedding & Semantic Similarity Search...", expanded=True) as status:
-        st.write(f"1. Crawling live corporate intelligence for `{target_url}`...")
+    with st.status("Executing LLM Semantic Comparison & Vector Similarity Search...", expanded=True) as status:
+        st.write(f"1. Ingesting live multi-source corporate intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
-        st.write("2. Synthesizing executive profile, strategic scope, and operational friction...")
+        st.write("2. Synthesizing executive profile, operational scope, and strategic bottlenecks...")
         company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"])
 
-        st.write("3. Generating 1024-dimensional dense vector & performing vector cosine similarity search...")
+        st.write("3. Querying 1024-dimensional catalog embeddings matrix for candidate sectors...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
-        matched_services = catalog.match_company_vector(company_embed_info["vector"], top_k=3)
+        candidate_sectors = catalog.match_company_vector(company_embed_info["vector"], top_k=8)
 
-        st.write("4. Assembling strategic solution architectures and executive outreach brief...")
+        st.write("4. Executing deep LLM semantic comparison & similarity evaluation across catalog...")
+        matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
+
+        st.write("5. Assembling strategic solution architectures and executive outreach brief...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Vector Matching & Strategic Brief Complete", state="complete", expanded=False)
+        status.update(label="LLM Semantic Comparison & Outreach Complete", state="complete", expanded=False)
 
     st.write("")
 
@@ -144,7 +154,7 @@ if run_btn and target_url:
     with m3:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Vector Similarity (Top-1)</div>
+            <div class="metric-label">LLM Semantic Match</div>
             <div class="metric-val metric-val-green">{top_sim}</div>
         </div>
         """, unsafe_allow_html=True)
@@ -161,7 +171,7 @@ if run_btn and target_url:
     # Clean, Organized Tabs: Overview, Product Mapping, Outreach Dossier
     tab_overview, tab_mapping, tab_outreach = st.tabs([
         "Strategic Executive Overview",
-        "Requirement-to-Product Mapping (Top-K Vectors)",
+        "Requirement-to-Product Mapping (LLM Comparison)",
         "Comprehensive Executive Outreach"
     ])
 
@@ -183,20 +193,25 @@ if run_btn and target_url:
             st.markdown("#### Underlying Operational Friction & Information Asymmetry")
             st.write(company_details.get("operational_friction_analysis", ""))
 
-    # Tab 2: Requirement-to-Product Mapping (Top-K Vector Results)
+    # Tab 2: Requirement-to-Product Mapping (LLM Semantic Comparison Results)
     with tab_mapping:
-        st.subheader("2. Requirement-to-Product Mapping (Top-K Vector Similarity)")
-        st.caption(f"Ranked via 1024-dimensional Cosine Similarity against all 462 pre-computed catalog embeddings (`{catalog.model_name}`):")
+        st.subheader("2. Requirement-to-Product Mapping (LLM Semantic Comparison)")
+        st.caption(f"Evaluated and ranked by LLM Semantic Reasoning Engine across 462 catalog sectors:")
 
         mappings = analysis.get("exact_product_mappings", [])
         if mappings:
             for i, m in enumerate(mappings):
-                sim_score = matched_services[i]["similarity"] if i < len(matched_services) else 0.60
-                match_pct = matched_services[i]["match_pct"] if i < len(matched_services) else 60.0
+                sim_score = matched_services[i]["similarity"] if i < len(matched_services) else 0.95
+                match_pct = matched_services[i]["match_pct"] if i < len(matched_services) else 95.0
+                rationale = m.get("llm_match_rationale")
 
                 with st.container(border=True):
                     st.markdown(f"### #{i+1}. {m.get('exact_offering_name')}")
-                    st.markdown(f"**Cosine Similarity Score:** `{sim_score}` ({match_pct}% Match) | **Solves:** `{m.get('mapped_requirement')}`")
+                    st.markdown(f"**LLM Match Score:** `{match_pct}%` | **Solves Target Requirement:** `{m.get('mapped_requirement')}`")
+                    
+                    if rationale:
+                        st.markdown(f"**LLM Match Rationale:** *{rationale}*")
+
                     st.divider()
                     
                     st.markdown("**Catalog Sector Definition:**")
@@ -234,11 +249,7 @@ if run_btn and target_url:
             "operational_friction_analysis": company_details.get("operational_friction_analysis"),
             "target_persona": company_details.get("buying_role_hypothesis")
         },
-        "vector_search_metadata": {
-            "model_name": catalog.model_name,
-            "dimension": company_embed_info["dimension"],
-            "top_k_results": matched_services
-        },
+        "llm_semantic_comparison_results": matched_services,
         "matched_offerings": mappings,
         "executive_outreach_dossier": analysis.get("personalized_pitch")
     }

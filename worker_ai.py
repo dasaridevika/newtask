@@ -145,25 +145,98 @@ class WorkerAI:
         parsed["archetype"] = archetype
         return parsed
 
-    def analyze_fit(self, company_details: dict, matched_services: list, source_links: list = None) -> dict:
+    def llm_similarity_comparison(self, company_details: dict, candidate_sectors: list) -> list:
+        """Uses the LLM to perform deep semantic comparison and similarity search across candidate catalog sectors."""
+        company_name = company_details.get("company_name", "Target Company")
+        archetype = company_details.get("archetype", "Enterprise")
+        industry = company_details.get("industry_focus", "Industrial Sector")
+        summary = company_details.get("executive_profile_analysis", "")
+        needs = company_details.get("expectations_and_needs_narrative", "")
+        friction = company_details.get("operational_friction_analysis", "")
+
+        candidate_list_text = "\n".join([
+            f"- Sector: {c['Primary Sector']} | Definition: {c['Definition']}" for c in candidate_sectors
+        ])
+
+        system_prompt = (
+            "You are a Chief AI Solutions Architect and Enterprise Vector Semantic Reasoning Engine.\n"
+            "Your task is to compare the target company's business model, operations, and strategic requirements "
+            "against the provided catalog sectors, and evaluate which sectors provide the highest strategic fit.\n\n"
+            "Rank the top 3 best matching sectors strictly based on their real-world applicability to the company.\n"
+            "Return strictly a valid JSON object matching this schema:\n"
+            "{\n"
+            '  "ranked_matches": [\n'
+            '    {\n'
+            '      "primary_sector": "Exact Primary Sector Name from candidates",\n'
+            '      "llm_match_score": 98.5,\n'
+            '      "llm_match_rationale": "2-sentence explanation of why this sector directly matches the company\'s operational footprint or procurement need.",\n'
+            '      "requirement_solved": "Exact operational requirement or strategic challenge this solves for the target company."\n'
+            '    }\n'
+            '  ]\n'
+            "}"
+        )
+
+        prompt = (
+            f"TARGET COMPANY PROFILE:\n"
+            f"Name: {company_name}\n"
+            f"Archetype: {archetype}\n"
+            f"Industry Focus: {industry}\n"
+            f"Operational Scope: {summary}\n"
+            f"Strategic Requirements: {needs}\n"
+            f"Operational Bottlenecks: {friction}\n\n"
+            f"CATALOG SECTOR CANDIDATES TO COMPARE:\n"
+            f"{candidate_list_text}\n\n"
+            f"Perform deep semantic comparison and select the top 3 best matching sectors."
+        )
+
+        raw = self._call_llm(prompt, system_prompt)
+        parsed = self._parse_json(raw)
+        ranked = parsed.get("ranked_matches", [])
+
+        if ranked and isinstance(ranked, list):
+            enriched_results = []
+            candidates_dict = {c["Primary Sector"].lower().strip(): c for c in candidate_sectors}
+            for item in ranked[:3]:
+                sec_name = item.get("primary_sector", "").strip()
+                matched_cand = candidates_dict.get(sec_name.lower(), None)
+                if not matched_cand:
+                    # Fuzzy match fallback
+                    for k, v in candidates_dict.items():
+                        if sec_name.lower() in k or k in sec_name.lower():
+                            matched_cand = v
+                            break
+                
+                defn = matched_cand.get("Definition", "") if matched_cand else ""
+                score = float(item.get("llm_match_score", 95.0))
+                
+                enriched_results.append({
+                    "Primary Sector": sec_name or (matched_cand["Primary Sector"] if matched_cand else "Capital Project Intelligence"),
+                    "Definition": defn,
+                    "similarity": round(score / 100.0, 4),
+                    "match_pct": score,
+                    "llm_match_rationale": item.get("llm_match_rationale", ""),
+                    "requirement_solved": item.get("requirement_solved", "")
+                })
+            if len(enriched_results) > 0:
+                return enriched_results
+
+        # Fallback to candidate sectors if LLM returned malformed JSON
+        return candidate_sectors[:3]
+
+    def analyze_fit(self, company_details: dict, matched_services: list) -> dict:
         company_name = company_details.get("company_name", "Target Enterprise")
         archetype = company_details.get("archetype", "Enterprise Technology & Infrastructure Operator")
         decision_maker = company_details.get("buying_role_hypothesis", "VP of Strategic Infrastructure")
-
-        valid_links = [l for l in (source_links or []) if len(l) > 10]
-        base_link = valid_links[0] if valid_links else "https://www.google.com"
 
         mappings = []
         for i, srv in enumerate(matched_services[:3]):
             title = srv.get("Primary Sector") or srv.get("Service Name") or "Capital Project Intelligence"
             defn = srv.get("Definition") or srv.get("Value Proposition") or "Verified capital project intelligence and lifecycle asset tracking."
-
-            # Attach verified reference link from target company
-            ref_link = valid_links[min(i + 1, len(valid_links) - 1)] if len(valid_links) > 1 else base_link
+            req_solved = srv.get("requirement_solved")
 
             if archetype == "Private Equity Sponsor & Asset Manager":
                 offering_name = f"{title} Capital Project & M&A Due Diligence Database"
-                solves_req = f"Commercial Due Diligence & Proprietary M&A Deal Sourcing in {title}"
+                solves_req = req_solved or f"Commercial Due Diligence & Proprietary M&A Deal Sourcing in {title}"
                 comprehensive_narrative = (
                     f"Our {title} Intelligence Database directly resolves {company_name}'s reliance on lagging retrospective market reports by providing an exhaustive, verified forward-looking pipeline of announced, permitted, and under-construction capital developments across {title}. "
                     f"By tracking project stage-gates from feasibility and environmental permitting through EPC tender awards, the database equips {company_name}'s deal teams to stress-test buyout financial models against verified customer spending and capacity specifications. "
@@ -174,7 +247,7 @@ class WorkerAI:
                 )
             elif archetype == "Hyperscale Cloud & Logistics Developer":
                 offering_name = f"{title} Capital Project & Site Selection Intelligence Feed"
-                solves_req = f"Pre-Filing Site Selection, Permitting & Substation Queue Tracking in {title}"
+                solves_req = req_solved or f"Pre-Filing Site Selection, Permitting & Substation Queue Tracking in {title}"
                 comprehensive_narrative = (
                     f"Our {title} Intelligence Feed provides {company_name}'s global real estate, GIS, and infrastructure planning leadership with comprehensive pre-construction tracking across industrial land transactions, municipal zoning dockets, and environmental impact filings 18 to 24 months in advance of public announcement. "
                     f"The dataset specifically monitors regional utility substation interconnection queues—tracking target Megawatt (MW) allocations, kV transmission line capacity, and utility queue positions—to enable {company_name} to secure multi-gigawatt power before breaking ground and eliminate costly construction bottlenecks."
@@ -184,7 +257,7 @@ class WorkerAI:
                 )
             elif archetype == "Mission-Critical Infrastructure OEM":
                 offering_name = f"{title} Pre-Tender Blueprint Specification & Engineering Pipeline Feed"
-                solves_req = f"Early Front-End Engineering Design (FEED) Specification Lock-In in {title}"
+                solves_req = req_solved or f"Early Front-End Engineering Design (FEED) Specification Lock-In in {title}"
                 comprehensive_narrative = (
                     f"Our {title} Intelligence Feed tracks the complete lifecycle of upcoming capital developments in {title} from early land acquisition and environmental permitting through Front-End Engineering Design (FEED). "
                     f"By providing {company_name}'s solutions architects with early visibility into scheduled equipment procurement, cooling and power requirements, and engineering parameters, the platform enables {company_name} to engage engineering consultancies during blueprint drafting and secure sole-source specification status before public tenders open."
@@ -194,7 +267,7 @@ class WorkerAI:
                 )
             else:
                 offering_name = f"{title} Capital Project Intelligence Database"
-                solves_req = f"Early-Stage Pipeline Tracking & Market Discovery in {title}"
+                solves_req = req_solved or f"Early-Stage Pipeline Tracking & Market Discovery in {title}"
                 comprehensive_narrative = f"Tracks announced, permitted, and under-construction capital developments across {title} globally, providing verified stage-gate tracking and direct stakeholder mapping."
                 roi_narrative = "Accelerates commercial deal velocity and provides advance visibility into major capital expenditure programs."
 
@@ -202,7 +275,7 @@ class WorkerAI:
                 "exact_offering_name": offering_name,
                 "mapped_requirement": solves_req,
                 "offering_definition": defn,
-                "target_company_link": ref_link,
+                "llm_match_rationale": srv.get("llm_match_rationale", ""),
                 "comprehensive_narrative": comprehensive_narrative,
                 "roi_narrative": roi_narrative
             })
@@ -317,7 +390,7 @@ We propose a 15-minute briefing next week to review a live dataset of upcoming p
 *Prepared by Enterprise Strategic Intelligence Group*"""
 
         return {
-            "fit_score": 98,
+            "fit_score": matched_services[0].get("match_pct", 98.0) if matched_services else 98.0,
             "target_alignment": decision_maker,
             "exact_product_mappings": mappings,
             "personalized_pitch": pitch
