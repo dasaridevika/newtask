@@ -11,6 +11,20 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 BASE_DIR = Path(__file__).resolve().parent
 EMBEDDINGS_NPZ_PATH = BASE_DIR / "catalog_embeddings.npz"
 
+# Comprehensive stopwords list to prevent generic words from triggering spurious lexical matches
+DOMAIN_STOPWORDS = {
+    "plant", "facility", "facilities", "system", "systems", "production", "manufacturing", 
+    "building", "buildings", "complex", "center", "centers", "infrastructure", "other", 
+    "services", "service", "support", "management", "supporting", "integrated", "development",
+    "long", "term", "site", "sites", "program", "programs", "business", "businesses", 
+    "individual", "professional", "commercial", "industrial", "private", "growth", "scale",
+    "home", "family", "built", "through", "with", "from", "that", "into", "these", "their",
+    "about", "after", "again", "against", "because", "been", "before", "being", "below",
+    "between", "both", "during", "each", "further", "having", "here", "more", "most",
+    "once", "only", "same", "some", "such", "than", "then", "there", "they", "this", "those",
+    "very", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "wherever"
+}
+
 def calibrate_cosine_score(raw_score: float) -> float:
     """
     Calibrates hybrid similarity scores into an intuitive executive confidence percentage (75% - 98.5%).
@@ -51,19 +65,23 @@ class ServiceCatalog:
         if "model_name" in data:
             self.model_name = str(data["model_name"])
 
-        # Fit a corpus-wide sub-linear TF-IDF model dynamically across all 462 catalog sectors
-        corpus = [f"{s} {s} {d}" for s, d in zip(self.sectors, self.definitions)]
+        # Clean corpus for TF-IDF by stripping generic stop words
+        cleaned_corpus = []
+        for s, d in zip(self.sectors, self.definitions):
+            combined = f"{s} {s} {d}".lower()
+            tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", combined) if t not in DOMAIN_STOPWORDS]
+            cleaned_corpus.append(" ".join(tokens))
+
         self.tfidf_vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
             sublinear_tf=True,
-            stop_words="english",
             max_features=6000
         )
-        self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(corpus)
+        self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(cleaned_corpus)
         return len(self.sectors)
 
     def _get_worker_embedding(self, text: str) -> np.ndarray:
-        """Generates a 1024-dim dense vector using Cloudflare Workers AI with LRU caching."""
+        """Generates a 1024-dim dense vector using Cloudflare Workers AI with caching."""
         cache_key = text.strip().lower()
         if cache_key in self._embedding_cache:
             return self._embedding_cache[cache_key]
@@ -97,26 +115,24 @@ class ServiceCatalog:
 
     def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
         """
-        Creates an enriched dual-vector semantic representation:
-        Combines operational capabilities with stated strategic requirements.
+        Creates a high-signal dense query vector representing the company's verified industry focus,
+        target business segments, and operational scope.
         """
         company_name = company_details.get("company_name", "Target Enterprise")
         industry = company_details.get("industry_focus", "")
         summary = company_details.get("executive_profile_analysis", "")
-        needs = company_details.get("expectations_and_needs_narrative", "")
-        friction = company_details.get("operational_friction_analysis", "")
+        archetype = company_details.get("archetype", "Enterprise")
 
-        # Profile Vector: What the company operates and manufactures
-        profile_text = f"Company: {company_name}. Core Industry: {industry}. Operations & Infrastructure: {summary}."
-        
-        # Requirement Vector: What project intelligence and datasets they need
-        need_text = f"Target Scope: {needs}. Bottlenecks & Friction: {friction}."
-        
-        full_query = f"{profile_text} {need_text}".strip()
+        # Focus query on core operational and industrial sectors
+        full_query = (
+            f"Company: {company_name}. "
+            f"Archetype: {archetype}. "
+            f"Industry Focus: {industry}. "
+            f"Core Operations & Target Sectors: {summary}."
+        ).strip()
 
         vector = self._get_worker_embedding(full_query)
         if vector is None:
-            # Fallback to zero vector if offline
             vector = np.zeros(self.vectors.shape[1] if self.vectors is not None else 1024, dtype=np.float32)
 
         return {
@@ -128,14 +144,12 @@ class ServiceCatalog:
         }
 
     def _extract_matching_keywords(self, sector_name: str, definition: str, company_text: str) -> List[str]:
-        """Identifies exact domain keywords and tokens found in both the catalog sector and the evidence."""
+        """Identifies specific domain keywords found in both the catalog sector and the evidence."""
         company_lower = company_text.lower()
         combined_sector = f"{sector_name} {definition}".lower()
         
-        # Extract meaningful tokens (4+ letters, non-generic)
         tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", combined_sector))
-        generic_words = {"plant", "facility", "system", "production", "manufacturing", "building", "complex", "center", "infrastructure", "other", "where", "which", "their", "these", "commercial", "industrial"}
-        informative_tokens = tokens - generic_words
+        informative_tokens = tokens - DOMAIN_STOPWORDS
         
         matches = []
         for t in informative_tokens:
@@ -146,8 +160,8 @@ class ServiceCatalog:
     def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", top_k: int = 15) -> list:
         """
         Pure Mathematical Multi-Factor Hybrid Ranking:
-        Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF,
-        exact morphological n-gram matching, and transparent keyword overlap explainability across all 462 sectors.
+        Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF
+        and exact domain phrase matching across all 462 sectors.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
@@ -158,7 +172,9 @@ class ServiceCatalog:
         # 2. Dynamic Sub-linear TF-IDF Similarity
         company_lower = company_text.lower()
         if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_text) > 20:
-            company_tfidf = self.tfidf_vectorizer.transform([company_text])
+            # Strip generic stopwords from company text before computing TF-IDF
+            clean_company_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", company_lower) if t not in DOMAIN_STOPWORDS]
+            company_tfidf = self.tfidf_vectorizer.transform([" ".join(clean_company_tokens)])
             tfidf_sims = (self.tfidf_matrix * company_tfidf.T).toarray().flatten()
         else:
             tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
@@ -172,10 +188,10 @@ class ServiceCatalog:
 
             # Dynamic phrase & morphological matching
             clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
-            sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec) if t not in ["plant", "facility", "building", "office", "system", "other", "production", "services"]]
+            sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec) if t not in DOMAIN_STOPWORDS]
             
             exact_phrase_bonus = 0.0
-            if len(clean_sec) > 4 and clean_sec not in ["office building", "commercial building", "other building", "building"]:
+            if len(clean_sec) > 4 and clean_sec not in ["office building", "commercial building", "other building", "building", "school", "penitentiary", "garages and service station"]:
                 if clean_sec in company_lower or (clean_sec + "s") in company_lower or clean_sec.replace(" ", "") in company_lower:
                     exact_phrase_bonus = 0.20
                 elif sec_tokens and sum(1 for t in sec_tokens if t in company_lower) == len(sec_tokens):
@@ -185,12 +201,11 @@ class ServiceCatalog:
             acronyms = re.findall(r"\(([A-Za-z0-9\-]+)\)", sec_name)
             acronym_bonus = 0.15 if any(len(a) >= 2 and re.search(r"\b" + re.escape(a.lower()) + r"\b", company_lower) for a in acronyms) else 0.0
 
-            # Mathematical Hybrid Score: Vector Cosine + Dynamic TF-IDF + Exact Morphological Match
+            # Mathematical Hybrid Score: Vector Cosine + Dynamic TF-IDF + Exact Domain Match
             lexical_component = min(0.35, (raw_tfidf_score * 1.5) + exact_phrase_bonus + acronym_bonus)
             hybrid_score = max(0.0, raw_vec_score + lexical_component)
             calibrated_pct = calibrate_cosine_score(hybrid_score)
 
-            # Extract matching keywords for explainability
             matched_keywords = self._extract_matching_keywords(sec_name, definition, company_text)
 
             hybrid_scores.append({

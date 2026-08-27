@@ -307,23 +307,23 @@ CRAWLED EVIDENCE CHUNKS:
         needs = company_details.get("unknowns_and_gaps", [])
         friction = company_details.get("strategic_inferences", [])
 
-        top_candidates = candidate_sectors[:5]
+        top_candidates = candidate_sectors[:10]
         candidate_list_text = "\n".join([
-            f"- Candidate #{i+1}: {c.get('Primary Sector', '')} | Match: {c.get('match_pct', 95.0)}% | Definition: {c.get('Definition', '')}"
-            for i, c in enumerate(top_candidates)
+            f"- Sector: {c.get('Primary Sector', '')} | Fit: {c.get('match_pct', 95.0)}% | Definition: {c.get('Definition', '')}"
+            for c in top_candidates
         ])
 
         system_prompt = """
 You are a Senior Principal Solutions Architect and Vector Semantic Reasoning Engine.
 
-You are given candidate catalog sectors that were pre-ranked by hybrid vector similarity for this company. Your task is to review the top candidate sectors and provide a concise rationale explaining why each candidate sector aligns with the company's verified operations and solves their requirements.
+You are given candidate catalog sectors that were pre-ranked by hybrid vector similarity for this company. 
+Your task is to select and rank the TOP 3 candidate sectors that have direct, genuine operational or strategic relevance to the company's verified industry focus, operations, or stated investment portfolio.
 
 Rules:
-- Use only the provided company profile and candidate definitions.
-- Do not invent operational requirements.
-- Do not overstate certainty.
+- Select only sectors that have real-world operational or commercial applicability to the client.
+- Disqualify and reject any candidate sector that has no logical business connection (e.g., do not select Schools, Penitentiaries, or Office Buildings for Private Equity or Industrial OEMs unless specifically relevant).
 - Return strictly valid JSON.
-- Keep the rationale specific and practical.
+- Provide a concise 2-sentence rationale explaining the operational and commercial fit.
 
 Return this JSON shape:
 {
@@ -346,10 +346,10 @@ Executive Summary: {summary}
 Known Gaps: {json.dumps(needs, ensure_ascii=False)}
 Strategic Inferences: {json.dumps(friction, ensure_ascii=False)}
 
-HYBRID RANKED CANDIDATE SECTORS:
+CANDIDATE SECTORS (Top 10):
 {candidate_list_text}
 
-Evaluate the top 3 candidate sectors and explain why they match.
+Select and rank the top 3 best matching sectors that have genuine operational fit for this enterprise.
 """.strip()
 
         raw = self._call_llm(prompt, system_prompt)
@@ -358,42 +358,58 @@ Evaluate the top 3 candidate sectors and explain why they match.
 
         default_tiers = ["Primary Strategic Solution", "Secondary Strategic Solution", "Adjacent Expansion Solution"]
         results = []
-        llm_lookup = {item.get("primary_sector", "").lower().strip(): item for item in ranked if isinstance(item, dict)}
+        candidates_by_name = {c.get("Primary Sector", "").lower().strip(): c for c in candidate_sectors}
 
+        if ranked and isinstance(ranked, list):
+            for i, item in enumerate(ranked[:3]):
+                sec_name = item.get("primary_sector", "").strip()
+                cand_info = candidates_by_name.get(sec_name.lower())
+                if not cand_info:
+                    for k, v in candidates_by_name.items():
+                        if sec_name.lower() in k or k in sec_name.lower():
+                            cand_info = v
+                            break
+
+                defn = cand_info.get("Definition", "") if cand_info else ""
+                match_pct = cand_info.get("match_pct", 95.0 - i * 3.0) if cand_info else 92.0
+                vec_score = cand_info.get("vector_cosine", 0.65) if cand_info else 0.65
+                lex_score = cand_info.get("lexical_boost", 0.20) if cand_info else 0.20
+                hyb_score = cand_info.get("hybrid_score", 0.85) if cand_info else 0.85
+
+                results.append({
+                    "tier_label": default_tiers[i],
+                    "Primary Sector": sec_name or (cand_info.get("Primary Sector") if cand_info else "Capital Project Intelligence"),
+                    "Definition": defn,
+                    "similarity": round(match_pct / 100.0, 4),
+                    "match_pct": match_pct,
+                    "vector_cosine": vec_score,
+                    "lexical_boost": lex_score,
+                    "hybrid_score": hyb_score,
+                    "llm_match_rationale": item.get("llm_match_rationale", f"Direct operational alignment with {company_name}."),
+                    "requirement_solved": item.get("requirement_solved", f"Project pipeline intelligence in {sec_name}.")
+                })
+
+        if len(results) >= 3:
+            return results
+
+        # Fallback to top candidates if LLM output was partial
         for i, cand in enumerate(top_candidates[:3]):
+            if len(results) >= 3:
+                break
             sec_name = cand.get("Primary Sector", "Unknown Sector")
-            defn = cand.get("Definition", "")
-            match_pct = cand.get("match_pct", 95.0 - i * 3.0)
-
-            llm_item = llm_lookup.get(sec_name.lower().strip())
-            if not llm_item:
-                for k, v in llm_lookup.items():
-                    if k in sec_name.lower() or sec_name.lower() in k:
-                        llm_item = v
-                        break
-
-            rationale = (
-                llm_item.get("llm_match_rationale")
-                if llm_item
-                else f"The {sec_name} sector aligns with the company's stated profile and likely addresses the highest-priority operational gap."
-            )
-            req_solved = (
-                llm_item.get("requirement_solved")
-                if llm_item
-                else f"Core operational challenge addressed by {sec_name}."
-            )
-
+            if any(r["Primary Sector"].lower() == sec_name.lower() for r in results):
+                continue
             results.append({
-                "tier_label": default_tiers[i],
+                "tier_label": default_tiers[len(results)],
                 "Primary Sector": sec_name,
-                "Definition": defn,
+                "Definition": cand.get("Definition", ""),
                 "similarity": cand.get("similarity", 0.90),
-                "match_pct": match_pct,
+                "match_pct": cand.get("match_pct", 95.0 - len(results) * 3.0),
                 "vector_cosine": cand.get("vector_cosine", 0.65),
                 "lexical_boost": cand.get("lexical_boost", 0.20),
                 "hybrid_score": cand.get("hybrid_score", 0.85),
-                "llm_match_rationale": rationale,
-                "requirement_solved": req_solved,
+                "llm_match_rationale": f"The {sec_name} sector aligns with the company's stated operations and resolves key project discovery bottlenecks.",
+                "requirement_solved": f"Early-stage capital project tracking across {sec_name}."
             })
 
         return results
