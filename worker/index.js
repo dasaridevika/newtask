@@ -1,4 +1,4 @@
-﻿export default {
+export default {
   async fetch(request, env, ctx) {
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
@@ -13,6 +13,7 @@
 
     const url = new URL(request.url);
 
+    // 1. Health & Status Check Endpoint
     if (request.method === "GET" && (url.pathname === "/" || url.pathname === "/health")) {
       return new Response(
         JSON.stringify({ 
@@ -20,11 +21,7 @@
           service: "Cloudflare Workers AI LLM & Embedding Engine",
           models: {
             llm: env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct",
-            embeddings: [
-              "@cf/baai/bge-large-en-v1.5",
-              "@cf/google/embeddinggemma-300m",
-              "@cf/baai/bge-base-en-v1.5"
-            ]
+            embedding: env.EMBEDDING_MODEL || "@cf/baai/bge-large-en-v1.5"
           },
           timestamp: new Date().toISOString() 
         }),
@@ -42,10 +39,10 @@
     try {
       const body = await request.json();
 
-      // 1. Text Embedding Endpoint
+      // 2. 1024-Dimensional Text Embedding Endpoint
       if (url.pathname === "/ai/embed" || body.action === "embed") {
         const text = body.text || body.texts || [];
-        const embedModel = body.model || env.EMBEDDING_MODEL || "@cf/baai/bge-large-en-v1.5";
+        const embedModel = env.EMBEDDING_MODEL || "@cf/baai/bge-large-en-v1.5";
         const textArray = Array.isArray(text) ? text : [text];
         
         const embeddingResult = await env.AI.run(embedModel, {
@@ -62,7 +59,7 @@
         );
       }
 
-      // 2. Chat & Text Generation Endpoint
+      // 3. LLM Chat & Semantic Reasoning Endpoint
       const model = body.model || env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct";
       const messages = body.messages || [
         { role: "system", content: body.system || "You are an expert AI assistant." },
