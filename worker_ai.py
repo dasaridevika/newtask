@@ -57,8 +57,9 @@ class WorkerAI:
             pass
         return {}
 
-    def extract_company_details(self, scraped_text: str, domain: str = "") -> dict:
+    def extract_company_details(self, scraped_text: str, domain: str = "", client_inquiry: str = "") -> dict:
         clean_name = domain.split(".")[0].replace("www", "").capitalize() if domain else "Enterprise"
+        inquiry_text = f"\nClient Inbound Inquiry / Message:\n\"{client_inquiry}\"\n" if client_inquiry else ""
 
         system_prompt = (
             "You are a Senior Managing Director & Head of Enterprise Client Solutions.\n"
@@ -79,7 +80,7 @@ class WorkerAI:
             "}"
         )
 
-        prompt = f"Target Enterprise Domain: {domain}\n\nCrawled Intelligence:\n{scraped_text[:12000]}"
+        prompt = f"Target Enterprise Domain: {domain}{inquiry_text}\n\nCrawled Intelligence:\n{scraped_text[:12000]}"
         raw = self._call_llm(prompt, system_prompt)
         parsed = self._parse_json(raw)
 
