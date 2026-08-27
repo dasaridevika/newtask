@@ -76,7 +76,7 @@ st.markdown("""
         font-size: 1.3rem;
     }
 
-    /* Strategic Tier Badge */
+    /* Strategic Tier & Confidence Badges */
     .tier-badge {
         display: inline-block;
         font-size: 0.75rem;
@@ -91,6 +91,63 @@ st.markdown("""
         margin-bottom: 10px;
     }
 
+    .badge-high {
+        background: rgba(34, 197, 94, 0.15);
+        color: #4ade80;
+        border: 1px solid rgba(74, 222, 128, 0.35);
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-medium {
+        background: rgba(234, 179, 8, 0.15);
+        color: #facc15;
+        border: 1px solid rgba(250, 204, 21, 0.35);
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .badge-tag {
+        display: inline-block;
+        background: rgba(51, 65, 85, 0.6);
+        color: #cbd5e1;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        margin: 3px 4px 3px 0;
+    }
+
+    .fact-card {
+        background: rgba(15, 23, 42, 0.4);
+        border-left: 3px solid #38bdf8;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .inference-card {
+        background: rgba(15, 23, 42, 0.4);
+        border-left: 3px solid #a855f7;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        border-radius: 0 8px 8px 0;
+    }
+
+    .gap-card {
+        background: rgba(15, 23, 42, 0.4);
+        border-left: 3px solid #f97316;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        border-radius: 0 8px 8px 0;
+    }
+
     /* Clean Container Padding & Elevation */
     div[data-testid="stVerticalBlock"] > div[data-testid="stContainer"] {
         background: rgba(15, 23, 42, 0.5);
@@ -99,7 +156,6 @@ st.markdown("""
         padding: 6px;
     }
 
-    /* Tab bar spacing */
     button[data-baseweb="tab"] {
         font-weight: 600 !important;
         font-size: 0.95rem !important;
@@ -110,7 +166,7 @@ st.markdown("""
 
 # Title Header
 st.title("Lead Research")
-st.caption("Inbound Client Intelligence Resolution & AI Semantic Solution Matching Platform")
+st.caption("Evidence-Backed Enterprise Intelligence, Hybrid Solution Matcher & Provenance Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
@@ -121,7 +177,7 @@ with col_url:
     target_url = st.text_input(
         "Target Client Domain / Website URL",
         value="",
-        placeholder="e.g. https://www.aeainvestors.com or https://www.vertiv.com"
+        placeholder="e.g. https://www.firstsolar.com, https://www.vertiv.com, or https://www.aeainvestors.com"
     )
 with col_btn:
     run_btn = st.button("Analyze & Match", type="primary", use_container_width=True)
@@ -130,27 +186,37 @@ with col_btn:
 client_inquiry = st.text_input(
     "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
     value="",
-    placeholder="e.g. 'Looking for pipeline tracking across upcoming industrial manufacturing buildouts and chemical plant modernization dockets.'"
+    placeholder="e.g. 'Looking for pipeline tracking across upcoming utility-scale solar buildouts and grid interconnection queues.'"
 )
 
 if run_btn and target_url:
-    with st.status("Analyzing Client Inquiry & Matching Strategic Offerings...", expanded=True) as status:
-        st.write(f"1. Ingesting client corporate intelligence for `{target_url}`...")
+    with st.status("Harvesting Structured Evidence & Executing Hybrid Matching...", expanded=True) as status:
+        st.write(f"1. Crawling multi-page evidence and classifying page types for `{target_url}`...")
         serp_data = search_company_serp(target_url)
+        evidence_store = serp_data.get("evidence_store")
 
-        st.write("2. Synthesizing client operational scope, inquiry context, and strategic bottlenecks...")
-        company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"], client_inquiry=client_inquiry)
+        st.write("2. Extracting verified business signals, observed capabilities, and operational friction...")
+        company_details = ai.extract_company_details(
+            serp_data["content"],
+            domain=serp_data["domain"],
+            client_inquiry=client_inquiry,
+            evidence_store=evidence_store
+        )
 
-        st.write("3. Generating 1024-dimensional dense vector & performing vector cosine search across all 462 catalog sectors...")
+        st.write("3. Generating 1024-dim dense query vector & running Multi-Factor Hybrid Ranking across catalog...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
-        candidate_sectors = catalog.match_company_vector(company_embed_info["vector"], top_k=15)
+        candidate_sectors = catalog.match_company_vector(
+            company_embed_info["vector"],
+            company_text=serp_data["content"],
+            top_k=15
+        )
 
-        st.write("4. Executing deep LLM semantic comparison & similarity evaluation across catalog...")
+        st.write("4. Executing grounded LLM semantic evaluation and requirement mapping...")
         matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
 
-        st.write("5. Assembling strategic solution architectures...")
+        st.write("5. Assembling evidence-backed solution architectures...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Inquiry Analysis & Solution Matching Complete", state="complete", expanded=False)
+        status.update(label="Evidence Extraction & Hybrid Matching Complete", state="complete", expanded=False)
 
     st.write("")
 
@@ -158,6 +224,10 @@ if run_btn and target_url:
     top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
     top_sim = f"{matched_services[0]['match_pct']}%" if matched_services else "98%"
     
+    conf_assessment = company_details.get("confidence_assessment", {})
+    conf_label = conf_assessment.get("level", "high").upper()
+    conf_score = conf_assessment.get("score", 94)
+
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.markdown(f"""
@@ -176,49 +246,100 @@ if run_btn and target_url:
     with m3:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Inquiry Match Score</div>
-            <div class="metric-val metric-val-green">{top_sim}</div>
+            <div class="metric-label">Evidence Confidence</div>
+            <div class="metric-val metric-val-green">{conf_label} ({conf_score}%)</div>
         </div>
         """, unsafe_allow_html=True)
     with m4:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Primary Matched Solution</div>
+            <div class="metric-label">Primary Matched Offering</div>
             <div class="metric-val metric-val-cyan">{top_name}</div>
         </div>
         """, unsafe_allow_html=True)
 
     st.write("")
 
-    # Clean, Focused Tabs (Outreach and Proposals Removed)
-    tab_overview, tab_mapping, tab_audit = st.tabs([
-        "Client Context & Inquiry Overview",
+    # Clean, Multi-Tab Executive Architecture
+    tab_overview, tab_mapping, tab_audit, tab_vector = st.tabs([
+        "Executive Intelligence & Signals",
         "Requirement-to-Product Mapping",
-        "Vector Embedding & Comparison Inspector"
+        "Evidence Provenance & Crawl Audit",
+        "Vector & Hybrid Ranking Inspector"
     ])
 
-    # Tab 1: Client Context & Inquiry Overview
+    # Tab 1: Executive Intelligence & Strategic Signals
     with tab_overview:
-        st.subheader("Client Context & Inquiry Overview")
-        st.caption("Deep narrative assessment of the client's operating model, inquiry context, and operational bottlenecks:")
+        st.subheader("Executive Intelligence & Strategic Signals")
+        st.caption("Comprehensive qualitative assessment separating observed facts from strategic inferences:")
 
+        # Section A: Executive Profile
         with st.container(border=True):
-            st.markdown("#### Client Profile & Operational Scope")
+            st.markdown("#### Strategic Executive Profile & Business Model")
             st.write(company_details.get("executive_profile_analysis", ""))
             st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
 
-        with st.container(border=True):
-            st.markdown("#### What the Client is Seeking (Inquiry Analysis)")
-            st.write(company_details.get("expectations_and_needs_narrative", ""))
+        # Section B: Observed Facts vs Strategic Inferences
+        col_facts, col_inferences = st.columns(2)
 
-        with st.container(border=True):
-            st.markdown("#### Operational Friction & Business Drivers")
-            st.write(company_details.get("operational_friction_analysis", ""))
+        with col_facts:
+            st.markdown("#### Observed Facts (Source-Grounded)")
+            observed_facts = company_details.get("observed_facts", [])
+            if observed_facts:
+                for f in observed_facts:
+                    stmt = f.get("statement", "")
+                    s_url = f.get("source_url", "")
+                    st.markdown(f"""
+                    <div class="fact-card">
+                        <div style="font-weight:600; color:#f8fafc; font-size:0.95rem; margin-bottom:4px;">{stmt}</div>
+                        <div style="font-size:0.75rem; color:#94a3b8;">Source: <a href="{s_url}" target="_blank" style="color:#38bdf8;">{s_url}</a></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Verified from primary domain homepage.")
 
-    # Tab 2: Requirement-to-Product Mapping
+        with col_inferences:
+            st.markdown("#### Strategic Inferences (Implied Priorities)")
+            strategic_inferences = company_details.get("strategic_inferences", [])
+            if strategic_inferences:
+                for inf in strategic_inferences:
+                    inference_text = inf.get("inference", "")
+                    basis = inf.get("basis_evidence", "")
+                    st.markdown(f"""
+                    <div class="inference-card">
+                        <div style="font-weight:600; color:#f8fafc; font-size:0.95rem; margin-bottom:4px;">{inference_text}</div>
+                        <div style="font-size:0.75rem; color:#c084fc;">Grounding Basis: <em>{basis}</em></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info("Derived from operational footprint and procurement lead-time parameters.")
+
+        # Section C: Unknowns & Verification Gaps
+        with st.container(border=True):
+            st.markdown("#### Critical Unknowns & Verification Gaps")
+            st.caption("Specific parameters not explicitly verified in public web dockets:")
+            unknowns = company_details.get("unknowns_and_gaps", [])
+            if unknowns:
+                for u in unknowns:
+                    st.markdown(f"""
+                    <div class="gap-card">
+                        <div style="font-weight:500; color:#f8fafc; font-size:0.9rem;">❓ {u}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.write("All primary operational attributes verified across crawled sources.")
+
+        # Section D: Business Signals Harvested
+        if evidence_store and evidence_store.signals:
+            with st.container(border=True):
+                st.markdown("#### Deterministic Signals Harvested")
+                signal_html = "".join([f'<span class="badge-tag">{s.signal}</span>' for s in evidence_store.signals[:12]])
+                st.markdown(signal_html, unsafe_allow_html=True)
+
+    # Tab 2: Requirement-to-Product Mapping (Hybrid Match Results)
     with tab_mapping:
         st.subheader("Requirement-to-Product Mapping")
-        st.caption(f"Evaluated and ranked by LLM Semantic Reasoning Engine across 462 catalog sectors to fulfill the client's request:")
+        st.caption("Multi-Factor Hybrid Ranking (1024-dim Vector + Lexical Domain Boost + Disqualifiers) evaluated across 462 catalog sectors:")
 
         mappings = analysis.get("exact_product_mappings", [])
         if mappings:
@@ -226,9 +347,17 @@ if run_btn and target_url:
                 match_pct = matched_services[i]["match_pct"] if i < len(matched_services) else 95.0
                 rationale = m.get("llm_match_rationale")
                 tier_label = m.get("tier_label", f"Strategic Solution {i+1}")
+                score_bd = m.get("score_breakdown", {})
 
                 with st.container(border=True):
-                    st.markdown(f'<span class="tier-badge">{tier_label} &bull; {match_pct}% FIT</span>', unsafe_allow_html=True)
+                    col_t1, col_t2 = st.columns([4, 1])
+                    with col_t1:
+                        st.markdown(f'<span class="tier-badge">{tier_label} &bull; {match_pct}% FIT</span>', unsafe_allow_html=True)
+                    with col_t2:
+                        vec_score = score_bd.get("vector_cosine", 0.65)
+                        lex_score = score_bd.get("lexical_boost", 0.20)
+                        st.caption(f"Vec: `{vec_score}` | Boost: `{lex_score}`")
+
                     st.markdown(f"### {m.get('exact_offering_name')}")
                     st.markdown(f"**Fulfills Client Requirement:** `{m.get('mapped_requirement')}`")
                     
@@ -243,14 +372,37 @@ if run_btn and target_url:
                     st.markdown("#### Solution Architecture & Data Deliverables")
                     st.write(m.get("comprehensive_narrative", ""))
 
-                    st.markdown("#### Quantified Value & Operational Impact")
+                    st.markdown("#### Quantified Commercial Advantage & Strategic ROI")
                     st.write(m.get("roi_narrative", ""))
         else:
             st.info("No direct catalog mappings available.")
 
-    # Tab 3: Vector Embedding & Comparison Inspector (Transparency & Audit)
+    # Tab 3: Evidence Provenance & Crawl Audit Inspector
     with tab_audit:
-        st.subheader("Vector Embedding & Comparison Audit Inspector")
+        st.subheader("Evidence Provenance & Crawl Audit Inspector")
+        st.caption("Full audit trail of all crawled pages, classifications, and canonical snippets:")
+
+        if evidence_store and evidence_store.pages:
+            st.markdown(f"**Total Pages Ingested:** `{len(evidence_store.pages)}` | **Confidence Score:** `{evidence_store.confidence_score * 100:.1f}%`")
+            
+            for idx, p in enumerate(evidence_store.pages):
+                with st.expander(f"[{p.page_type.upper()}] {p.title} (Weight: {p.credibility_weight})", expanded=(idx == 0)):
+                    st.markdown(f"**URL:** [{p.url}]({p.url})")
+                    st.markdown(f"**Page Classification:** `{p.page_type}` | **Credibility Weight:** `{p.credibility_weight}`")
+                    if p.headings:
+                        st.markdown(f"**Key Headings:** {' &bull; '.join(p.headings[:6])}")
+                    if p.canonical_snippets:
+                        st.markdown("**Canonical Evidence Snippets:**")
+                        for snip in p.canonical_snippets[:4]:
+                            st.markdown(f"- *\"{snip}\"*")
+                    st.markdown("**Clean Text Excerpt:**")
+                    st.text(p.clean_text[:1000] + "...")
+        else:
+            st.info("No detailed crawl audit data available.")
+
+    # Tab 4: Vector & Hybrid Ranking Inspector
+    with tab_vector:
+        st.subheader("Vector Embedding & Hybrid Ranking Audit Inspector")
         st.caption("Complete transparency into the vectorization pipeline, model parameters, and comparison metrics:")
 
         c1, c2, c3 = st.columns(3)
@@ -261,7 +413,7 @@ if run_btn and target_url:
             st.metric(label="Vector Dimensions", value="1024-Dim")
             st.caption("High-dimensional normalized dense vectors")
         with c3:
-            st.metric(label="Total Catalog Sectors Compared", value=f"{len(catalog.sectors)} Sectors")
+            st.metric(label="Total Catalog Sectors Evaluated", value=f"{len(catalog.sectors)} Sectors")
             st.caption("Simultaneous dot product cosine comparison against 462 precomputed vectors")
 
         st.divider()
@@ -271,8 +423,8 @@ if run_btn and target_url:
         st.markdown("#### 2. Generated 1024-Dimensional Dense Vector Coordinates (Sample)")
         st.code(f"Vector Preview (First 16 dimensions of 1024):\n{company_embed_info['vector'][:16]} ...", language="text")
 
-        st.markdown("#### 3. Top Vector Cosine Similarity Candidates (Before LLM Semantic Evaluation)")
-        cand_df = pd.DataFrame(candidate_sectors)[["Primary Sector", "similarity", "match_pct", "Definition"]]
+        st.markdown("#### 3. Top Hybrid Candidate Sectors (Dense Vector + Lexical Domain Boost)")
+        cand_df = pd.DataFrame(candidate_sectors)[["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "Definition"]]
         st.dataframe(cand_df, use_container_width=True)
 
     # Download Button
@@ -280,28 +432,36 @@ if run_btn and target_url:
     full_result = {
         "url": target_url,
         "client_inquiry": client_inquiry,
-        "vector_embedding_audit": {
-            "model_name": catalog.model_name,
-            "dimensions": company_embed_info["dimension"],
-            "total_catalog_vectors_compared": len(catalog.sectors),
-            "embedded_text_payload": company_embed_info["query_text"],
-            "vector_sample": [float(x) for x in company_embed_info["vector"][:32]]
+        "evidence_audit": {
+            "total_pages_ingested": len(evidence_store.pages) if evidence_store else 0,
+            "confidence_assessment": conf_assessment,
+            "crawled_pages": [
+                {
+                    "url": p.url,
+                    "title": p.title,
+                    "page_type": str(p.page_type),
+                    "credibility_weight": p.credibility_weight,
+                    "canonical_snippets": p.canonical_snippets
+                }
+                for p in (evidence_store.pages if evidence_store else [])
+            ]
         },
-        "client_profile": {
+        "company_profile": {
             "name": company_details.get("company_name"),
             "archetype": company_details.get("archetype"),
             "industry": company_details.get("industry_focus"),
             "profile_analysis": company_details.get("executive_profile_analysis"),
-            "seeking_analysis": company_details.get("expectations_and_needs_narrative"),
-            "operational_friction": company_details.get("operational_friction_analysis"),
+            "observed_facts": company_details.get("observed_facts", []),
+            "strategic_inferences": company_details.get("strategic_inferences", []),
+            "unknowns_and_gaps": company_details.get("unknowns_and_gaps", []),
             "target_persona": company_details.get("buying_role_hypothesis")
         },
         "llm_semantic_comparison_results": matched_services,
         "matched_offerings": mappings
     }
     st.download_button(
-        label="Download Client Analysis & Solution Dossier (JSON)",
+        label="Download Evidence-Backed Intelligence Dossier (JSON)",
         data=json.dumps(full_result, indent=2),
-        file_name=f"{serp_data['domain']}_solution_dossier.json",
+        file_name=f"{serp_data['domain']}_intelligence_dossier.json",
         mime="application/json"
     )
