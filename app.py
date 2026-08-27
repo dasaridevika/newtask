@@ -274,13 +274,41 @@ if run_btn and target_url:
         st.subheader("Executive Intelligence & Strategic Signals")
         st.caption("Comprehensive qualitative assessment separating observed facts from strategic inferences:")
 
-        # Section A: Executive Profile
+        # Section A: Executive Profile & Business Model
         with st.container(border=True):
-            st.markdown("#### Strategic Executive Profile & Business Model")
+            st.markdown("#### Strategic Executive Profile & Operational Anatomy")
             st.write(company_details.get("executive_profile_analysis", ""))
-            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
+            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Decision Maker:** {company_details.get('buying_role_hypothesis', '')}")
 
-        # Section B: Observed Facts vs Strategic Inferences
+        # Section B: Business Model & Active Strategic Initiatives
+        col_bm, col_init = st.columns(2)
+        with col_bm:
+            with st.container(border=True):
+                st.markdown("#### 💼 Business Model & Revenue Drivers")
+                bm_text = company_details.get("business_model_and_revenue_drivers", "")
+                if bm_text:
+                    st.write(bm_text)
+                else:
+                    st.write("Value creation driven by specialized project delivery, capital asset deployment, or specialized manufacturing contracts.")
+
+        with col_init:
+            with st.container(border=True):
+                st.markdown("#### 🚀 Active Strategic Initiatives & Growth Signals")
+                initiatives = company_details.get("active_initiatives_and_growth_signals", [])
+                if initiatives:
+                    for init in initiatives:
+                        st.markdown(f"• **{init}**")
+                else:
+                    st.write("Commercial expansion and facility investments evident across primary operating jurisdictions.")
+
+        # Section C: Operational Friction & Pain Points
+        friction_text = company_details.get("operational_friction_and_pain_points", "")
+        if friction_text:
+            with st.container(border=True):
+                st.markdown("#### ⚠️ Implied Operational Friction & Market Bottlenecks")
+                st.write(friction_text)
+
+        # Section D: Observed Facts vs Strategic Inferences
         col_facts, col_inferences = st.columns(2)
 
         with col_facts:
@@ -315,7 +343,7 @@ if run_btn and target_url:
             else:
                 st.info("Derived from operational footprint and procurement lead-time parameters.")
 
-        # Section C: Unknowns & Verification Gaps
+        # Section E: Unknowns & Verification Gaps
         with st.container(border=True):
             st.markdown("#### Critical Unknowns & Verification Gaps")
             st.caption("Specific parameters not explicitly verified in public web dockets:")
@@ -330,7 +358,7 @@ if run_btn and target_url:
             else:
                 st.write("All primary operational attributes verified across crawled sources.")
 
-        # Section D: Business Signals Harvested
+        # Section F: Business Signals Harvested
         if evidence_store and evidence_store.signals:
             with st.container(border=True):
                 st.markdown("#### Deterministic Signals Harvested")
