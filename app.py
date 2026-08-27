@@ -423,8 +423,8 @@ if run_btn and target_url:
         st.markdown("#### 2. Generated 1024-Dimensional Dense Vector Coordinates (Sample)")
         st.code(f"Vector Preview (First 16 dimensions of 1024):\n{company_embed_info['vector'][:16]} ...", language="text")
 
-        st.markdown("#### 3. Top Hybrid Candidate Sectors (Dense Vector + Lexical Domain Boost)")
-        cand_df = pd.DataFrame(candidate_sectors)[["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "Definition"]]
+        st.markdown("#### 3. Top Hybrid Candidate Sectors (Dense Vector + Sub-linear TF-IDF + Morphological Match)")
+        cand_df = pd.DataFrame(candidate_sectors)[["Primary Sector", "vector_cosine", "lexical_boost", "hybrid_score", "match_pct", "matched_keywords", "Definition"]]
         st.dataframe(cand_df, use_container_width=True)
 
     # Download Button

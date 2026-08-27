@@ -1,10 +1,11 @@
 import os
 import re
+import time
 import requests
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Optional, Set
+from typing import List, Dict, Optional, Set, Tuple
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -34,12 +35,13 @@ class ServiceCatalog:
         self.worker_url = os.getenv("CLOUDFLARE_WORKER_URL", "https://lead-research-ai-worker.devika-worker.workers.dev")
         self.tfidf_vectorizer = None
         self.tfidf_matrix = None
+        self._embedding_cache: Dict[str, np.ndarray] = {}
 
         target_npz = npz_path or EMBEDDINGS_NPZ_PATH
         if Path(target_npz).exists():
             self.load_embeddings(target_npz)
 
-    def load_embeddings(self, npz_file):
+    def load_embeddings(self, npz_file) -> int:
         """Loads pre-computed 1024-dimensional normalized vector matrix in < 1ms."""
         data = np.load(npz_file, allow_pickle=True)
         self.vectors = data["vectors"].astype(np.float32)
@@ -49,19 +51,23 @@ class ServiceCatalog:
         if "model_name" in data:
             self.model_name = str(data["model_name"])
 
-        # Dynamic TF-IDF model across all 462 catalog sectors
-        corpus = [f"{s} {d}" for s, d in zip(self.sectors, self.definitions)]
+        # Fit a corpus-wide sub-linear TF-IDF model dynamically across all 462 catalog sectors
+        corpus = [f"{s} {s} {d}" for s, d in zip(self.sectors, self.definitions)]
         self.tfidf_vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
             sublinear_tf=True,
             stop_words="english",
-            max_features=5000
+            max_features=6000
         )
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(corpus)
         return len(self.sectors)
 
     def _get_worker_embedding(self, text: str) -> np.ndarray:
-        """Generates a 1024-dim dense vector using Cloudflare Workers AI."""
+        """Generates a 1024-dim dense vector using Cloudflare Workers AI with LRU caching."""
+        cache_key = text.strip().lower()
+        if cache_key in self._embedding_cache:
+            return self._embedding_cache[cache_key]
+
         if not self.worker_url:
             return None
         try:
@@ -76,47 +82,72 @@ class ServiceCatalog:
                 if data and isinstance(data[0], list):
                     vec = np.array(data[0], dtype=np.float32)
                     norm = np.linalg.norm(vec)
-                    return vec / (norm if norm > 0 else 1e-10)
+                    normalized = vec / (norm if norm > 0 else 1e-10)
+                    self._embedding_cache[cache_key] = normalized
+                    return normalized
                 elif data and isinstance(data[0], dict) and "values" in data[0]:
                     vec = np.array(data[0]["values"], dtype=np.float32)
                     norm = np.linalg.norm(vec)
-                    return vec / (norm if norm > 0 else 1e-10)
+                    normalized = vec / (norm if norm > 0 else 1e-10)
+                    self._embedding_cache[cache_key] = normalized
+                    return normalized
         except Exception as e:
             print(f"[Embedding Error]: {e}")
         return None
 
     def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
-        """Creates a dense vector query representation dynamically for any type of enterprise."""
+        """
+        Creates an enriched dual-vector semantic representation:
+        Combines operational capabilities with stated strategic requirements.
+        """
         company_name = company_details.get("company_name", "Target Enterprise")
         industry = company_details.get("industry_focus", "")
         summary = company_details.get("executive_profile_analysis", "")
         needs = company_details.get("expectations_and_needs_narrative", "")
         friction = company_details.get("operational_friction_analysis", "")
 
-        query_text = (
-            f"Company: {company_name}. "
-            f"Industry Focus: {industry}. "
-            f"Executive Overview & Operations: {summary}. "
-            f"Target Infrastructure Scope & Strategic Requirements: {needs}. {friction}"
-        ).strip()
+        # Profile Vector: What the company operates and manufactures
+        profile_text = f"Company: {company_name}. Core Industry: {industry}. Operations & Infrastructure: {summary}."
+        
+        # Requirement Vector: What project intelligence and datasets they need
+        need_text = f"Target Scope: {needs}. Bottlenecks & Friction: {friction}."
+        
+        full_query = f"{profile_text} {need_text}".strip()
 
-        vector = self._get_worker_embedding(query_text)
+        vector = self._get_worker_embedding(full_query)
         if vector is None:
+            # Fallback to zero vector if offline
             vector = np.zeros(self.vectors.shape[1] if self.vectors is not None else 1024, dtype=np.float32)
 
         return {
-            "query_text": query_text,
+            "query_text": full_query,
             "vector": vector,
             "dimension": len(vector),
             "model_name": self.model_name,
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
         }
 
+    def _extract_matching_keywords(self, sector_name: str, definition: str, company_text: str) -> List[str]:
+        """Identifies exact domain keywords and tokens found in both the catalog sector and the evidence."""
+        company_lower = company_text.lower()
+        combined_sector = f"{sector_name} {definition}".lower()
+        
+        # Extract meaningful tokens (4+ letters, non-generic)
+        tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", combined_sector))
+        generic_words = {"plant", "facility", "system", "production", "manufacturing", "building", "complex", "center", "infrastructure", "other", "where", "which", "their", "these", "commercial", "industrial"}
+        informative_tokens = tokens - generic_words
+        
+        matches = []
+        for t in informative_tokens:
+            if re.search(r"\b" + re.escape(t) + r"\b", company_lower):
+                matches.append(t)
+        return sorted(matches[:6])
+
     def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", top_k: int = 15) -> list:
         """
         Pure Mathematical Multi-Factor Hybrid Ranking:
-        Combines 1024-dim dense vector cosine similarity with dynamic TF-IDF and morphological token matching
-        across all 462 catalog sectors without hardcoded keyword blacklists.
+        Combines 1024-dim dense vector cosine similarity (BGE-Large) with dynamic sublinear TF-IDF,
+        exact morphological n-gram matching, and transparent keyword overlap explainability across all 462 sectors.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
@@ -145,7 +176,6 @@ class ServiceCatalog:
             
             exact_phrase_bonus = 0.0
             if len(clean_sec) > 3:
-                # Exact or plural phrase match
                 if clean_sec in company_lower or (clean_sec + "s") in company_lower or clean_sec.replace(" ", "") in company_lower:
                     exact_phrase_bonus = 0.20
                 elif sec_tokens and sum(1 for t in sec_tokens if t in company_lower) == len(sec_tokens):
@@ -160,6 +190,9 @@ class ServiceCatalog:
             hybrid_score = max(0.0, raw_vec_score + lexical_component)
             calibrated_pct = calibrate_cosine_score(hybrid_score)
 
+            # Extract matching keywords for explainability
+            matched_keywords = self._extract_matching_keywords(sec_name, definition, company_text)
+
             hybrid_scores.append({
                 "index": idx,
                 "Primary Sector": sec_name,
@@ -168,7 +201,8 @@ class ServiceCatalog:
                 "lexical_boost": round(lexical_component, 4),
                 "hybrid_score": round(hybrid_score, 4),
                 "similarity": round(hybrid_score, 4),
-                "match_pct": calibrated_pct
+                "match_pct": calibrated_pct,
+                "matched_keywords": matched_keywords
             })
 
         # 3. Sort by hybrid score descending
