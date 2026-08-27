@@ -2,10 +2,14 @@ import os
 import re
 import requests
 import numpy as np
+import pandas as pd
 from pathlib import Path
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 BASE_DIR = Path(__file__).resolve().parent
 EMBEDDINGS_NPZ_PATH = BASE_DIR / "catalog_embeddings.npz"
+CSV_PATH = BASE_DIR / "primary_sector_with_definitions.csv"
 
 class ServiceCatalog:
     def __init__(self, npz_path=None):
@@ -15,10 +19,18 @@ class ServiceCatalog:
         self.texts = None          # array of text strings
         self.model_name = os.getenv("CF_EMBEDDING_MODEL", "@cf/baai/bge-large-en-v1.5")
         self.worker_url = os.getenv("CLOUDFLARE_WORKER_URL", "https://lead-research-ai-worker.devika-worker.workers.dev")
-        
+        self.tfidf = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
+        self.tfidf_matrix = None
+
         target_npz = npz_path or EMBEDDINGS_NPZ_PATH
         if Path(target_npz).exists():
-            self.load_embeddings(target_npz)
+            try:
+                self.load_embeddings(target_npz)
+            except Exception as e:
+                print(f"[Warning]: Could not load npz ({e}), falling back to CSV.")
+                self.load_from_csv(CSV_PATH)
+        elif CSV_PATH.exists():
+            self.load_from_csv(CSV_PATH)
 
     def load_embeddings(self, npz_file):
         """Loads pre-computed 1024-dimensional normalized vector matrix in < 1ms."""
@@ -29,6 +41,15 @@ class ServiceCatalog:
         self.texts = data["texts"]
         if "model_name" in data:
             self.model_name = str(data["model_name"])
+        return len(self.sectors)
+
+    def load_from_csv(self, csv_file):
+        """Safe fallback to CSV if binary embeddings are ever missing."""
+        df = pd.read_csv(csv_file).dropna(subset=["Primary Sector"]).fillna("")
+        self.sectors = df["Primary Sector"].values
+        self.definitions = df["Definition"].values if "Definition" in df.columns else np.array([""] * len(df))
+        self.texts = np.array([f"Sector: {s}. Definition: {d}" for s, d in zip(self.sectors, self.definitions)])
+        self.tfidf_matrix = self.tfidf.fit_transform(self.texts).toarray()
         return len(self.sectors)
 
     def _get_worker_embedding(self, text: str) -> np.ndarray:
@@ -64,7 +85,6 @@ class ServiceCatalog:
         needs = company_details.get("expectations_and_needs_narrative", "") or " ".join(company_details.get("expectations_and_needs", []))
         friction = company_details.get("operational_friction_analysis", "") or " ".join(company_details.get("core_friction_points", []))
 
-        # Comprehensive semantic query representation
         query_text = (
             f"Company: {company_name}. "
             f"Industry Focus: {industry}. "
@@ -76,7 +96,11 @@ class ServiceCatalog:
         
         # Fallback if offline/network timeout
         if vector is None:
-            vector = np.zeros(self.vectors.shape[1] if self.vectors is not None else 1024, dtype=np.float32)
+            if self.tfidf_matrix is not None:
+                tfidf_vec = self.tfidf.transform([query_text]).toarray()[0]
+                vector = tfidf_vec
+            else:
+                vector = np.zeros(self.vectors.shape[1] if self.vectors is not None else 1024, dtype=np.float32)
 
         return {
             "query_text": query_text,
@@ -88,13 +112,14 @@ class ServiceCatalog:
 
     def match_company_vector(self, company_vector: np.ndarray, top_k: int = 3) -> list:
         """Performs vector cosine similarity search across all 462 pre-computed catalog embeddings."""
-        if self.vectors is None or len(self.vectors) == 0:
+        if self.vectors is not None and len(self.vectors) > 0 and len(company_vector) == self.vectors.shape[1]:
+            sims = np.dot(self.vectors, company_vector)
+        elif self.tfidf_matrix is not None:
+            sims = cosine_similarity(company_vector.reshape(1, -1), self.tfidf_matrix)[0]
+        else:
             return []
 
-        # Matrix Dot Product on normalized vectors = exact Cosine Similarity in < 0.1ms
-        sims = np.dot(self.vectors, company_vector)
         sorted_indices = np.argsort(sims)[::-1]
-
         results = []
         seen_sectors = set()
 
@@ -108,8 +133,6 @@ class ServiceCatalog:
                 continue
 
             seen_sectors.add(norm_name)
-            
-            # Formatted percentage score
             match_pct = round(max(0.0, min(score * 100, 99.0)), 1)
 
             results.append({
