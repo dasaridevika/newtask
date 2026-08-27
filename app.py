@@ -205,7 +205,12 @@ if run_btn and target_url:
         with st.container(border=True):
             st.markdown("#### Strategic Executive Profile & Operational Anatomy")
             st.write(company_details.get("executive_profile_analysis", ""))
-            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Persona:** {company_details.get('buying_role_hypothesis', '')}")
+            
+            persona = company_details.get("buying_role_hypothesis", "Managing Director / VP of Capital Projects")
+            if len(persona) > 45 or "likely" in persona.lower():
+                persona = "Managing Director / Investment Committee" if "private equity" in str(company_details.get("archetype", "")).lower() else "VP of Capital Projects / Procurement"
+
+            st.caption(f"**Industry Domain:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Decision Maker:** `{persona}`")
 
         # Section B: Business Model & Revenue Drivers
         col_bm, col_fric = st.columns(2)
@@ -227,11 +232,9 @@ if run_btn and target_url:
                 else:
                     st.write("Managing cross-regional execution, permitting lead times, and multi-tier supply chain discovery.")
 
-        # Section C: Observed Facts vs Strategic Inferences
-        col_facts, col_inferences = st.columns(2)
-
-        with col_facts:
-            st.markdown("#### Observed Facts (Source-Grounded)")
+        # Section C: Verified Source-Grounded Facts
+        with st.container(border=True):
+            st.markdown("#### 📌 Verified Source-Grounded Facts")
             observed_facts = company_details.get("observed_facts", [])
             if observed_facts:
                 for f in observed_facts:
@@ -245,22 +248,6 @@ if run_btn and target_url:
                     """, unsafe_allow_html=True)
             else:
                 st.info("Verified from primary domain homepage.")
-
-        with col_inferences:
-            st.markdown("#### Strategic Inferences (Implied Priorities)")
-            strategic_inferences = company_details.get("strategic_inferences", [])
-            if strategic_inferences:
-                for inf in strategic_inferences:
-                    inference_text = inf.get("inference", "")
-                    basis = inf.get("basis_evidence", "")
-                    st.markdown(f"""
-                    <div class="inference-card">
-                        <div style="font-weight:600; color:#f8fafc; font-size:0.95rem; margin-bottom:4px;">{inference_text}</div>
-                        <div style="font-size:0.75rem; color:#c084fc;">Grounding Basis: <em>{basis}</em></div>
-                    </div>
-                    """, unsafe_allow_html=True)
-            else:
-                st.info("Derived from operational footprint and procurement lead-time parameters.")
 
     # Tab 2: Projects & Strategic Roadmap (Past, Present & Future)
     with tab_projects:
