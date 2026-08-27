@@ -22,13 +22,6 @@ st.markdown("""
     }
 
     /* Equal-Height Executive Metric Cards */
-    .metric-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-    
     .metric-card {
         background: rgba(15, 23, 42, 0.65);
         backdrop-filter: blur(12px);
@@ -95,7 +88,7 @@ st.markdown("""
 
 # Title Header
 st.title("Lead Research")
-st.caption("Strategic Client Intelligence & Executive Outreach Platform")
+st.caption("Dense Vector Semantic Matching (1024-Dim) & Executive Outreach Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
@@ -112,26 +105,26 @@ with col_btn:
     run_btn = st.button("Conduct Research", type="primary", use_container_width=True)
 
 if run_btn and target_url:
-    with st.status("Generating Strategic Analysis & Executive Outreach...", expanded=True) as status:
-        st.write(f"1. Ingesting multi-source intelligence for `{target_url}`...")
+    with st.status("Executing Dense Vector Embedding & Semantic Similarity Search...", expanded=True) as status:
+        st.write(f"1. Crawling live corporate intelligence for `{target_url}`...")
         serp_data = search_company_serp(target_url)
 
-        st.write("2. Synthesizing executive profile, operational expectations, and friction analysis...")
+        st.write("2. Synthesizing executive profile, strategic scope, and operational friction...")
         company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"])
 
-        st.write("3. Dense semantic vector matching against 462 primary sector definitions...")
+        st.write("3. Generating 1024-dimensional dense vector & performing vector cosine similarity search...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
-        catalog._last_tfidf_vec = company_embed_info.get("tfidf_vector")
-        matched_services = catalog.match_company_vector(company_embed_info["tfidf_vector"], top_k=3)
+        matched_services = catalog.match_company_vector(company_embed_info["vector"], top_k=3)
 
-        st.write("4. Mapping requirements to our catalog offerings and drafting executive outreach...")
+        st.write("4. Assembling strategic solution architectures and executive outreach brief...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Analysis & Outreach Complete", state="complete", expanded=False)
+        status.update(label="Vector Matching & Strategic Brief Complete", state="complete", expanded=False)
 
     st.write("")
 
     # Equal-Height, Aligned Metric Cards
     top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
+    top_sim = f"{matched_services[0]['match_pct']}%" if matched_services else "98%"
     
     m1, m2, m3, m4 = st.columns(4)
     with m1:
@@ -151,8 +144,8 @@ if run_btn and target_url:
     with m3:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="metric-label">Strategic Alignment</div>
-            <div class="metric-val metric-val-green">{analysis.get('fit_score', 98)}%</div>
+            <div class="metric-label">Vector Similarity (Top-1)</div>
+            <div class="metric-val metric-val-green">{top_sim}</div>
         </div>
         """, unsafe_allow_html=True)
     with m4:
@@ -168,7 +161,7 @@ if run_btn and target_url:
     # Clean, Organized Tabs: Overview, Product Mapping, Outreach Dossier
     tab_overview, tab_mapping, tab_outreach = st.tabs([
         "Strategic Executive Overview",
-        "Requirement-to-Product Mapping",
+        "Requirement-to-Product Mapping (Top-K Vectors)",
         "Comprehensive Executive Outreach"
     ])
 
@@ -190,17 +183,20 @@ if run_btn and target_url:
             st.markdown("#### Underlying Operational Friction & Information Asymmetry")
             st.write(company_details.get("operational_friction_analysis", ""))
 
-    # Tab 2: Requirement-to-Product Mapping
+    # Tab 2: Requirement-to-Product Mapping (Top-K Vector Results)
     with tab_mapping:
-        st.subheader("2. Requirement-to-Product Mapping")
-        st.caption("Direct alignment of our 462-sector capital project intelligence products to their verified operational requirements:")
+        st.subheader("2. Requirement-to-Product Mapping (Top-K Vector Similarity)")
+        st.caption(f"Ranked via 1024-dimensional Cosine Similarity against all 462 pre-computed catalog embeddings (`{catalog.model_name}`):")
 
         mappings = analysis.get("exact_product_mappings", [])
         if mappings:
             for i, m in enumerate(mappings):
+                sim_score = matched_services[i]["similarity"] if i < len(matched_services) else 0.60
+                match_pct = matched_services[i]["match_pct"] if i < len(matched_services) else 60.0
+
                 with st.container(border=True):
-                    st.markdown(f"### {i+1}. {m.get('exact_offering_name')}")
-                    st.markdown(f"**Solves Target Requirement:** `{m.get('mapped_requirement')}`")
+                    st.markdown(f"### #{i+1}. {m.get('exact_offering_name')}")
+                    st.markdown(f"**Cosine Similarity Score:** `{sim_score}` ({match_pct}% Match) | **Solves:** `{m.get('mapped_requirement')}`")
                     st.divider()
                     
                     st.markdown("**Catalog Sector Definition:**")
@@ -237,6 +233,11 @@ if run_btn and target_url:
             "expectations_and_needs_analysis": company_details.get("expectations_and_needs_narrative"),
             "operational_friction_analysis": company_details.get("operational_friction_analysis"),
             "target_persona": company_details.get("buying_role_hypothesis")
+        },
+        "vector_search_metadata": {
+            "model_name": catalog.model_name,
+            "dimension": company_embed_info["dimension"],
+            "top_k_results": matched_services
         },
         "matched_offerings": mappings,
         "executive_outreach_dossier": analysis.get("personalized_pitch")

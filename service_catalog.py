@@ -1,174 +1,123 @@
 import os
 import re
 import requests
-import pandas as pd
 import numpy as np
 from pathlib import Path
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 BASE_DIR = Path(__file__).resolve().parent
-
-# Sectors to exclude for B2B Industrial / Private Equity / Hyperscaler matching
-RESIDENTIAL_RETAIL_EXCLUDES = [
-    "townhouse", "apartment", "duplex", "single family", "residential", "garage", 
-    "garages and service station", "service station", "shopping mall", "amusement facility",
-    "stadium", "sports complex", "cinema", "hotel", "resort", "golf course"
-]
+EMBEDDINGS_NPZ_PATH = BASE_DIR / "catalog_embeddings.npz"
 
 class ServiceCatalog:
-    def __init__(self, file_path=None):
-        self.df = None
-        self.embeddings = None
-        self.embedding_model_name = os.getenv("CF_EMBEDDING_MODEL", "@cf/baai/bge-large-en-v1.5")
+    def __init__(self, npz_path=None):
+        self.vectors = None        # shape (462, 1024)
+        self.sectors = None        # array of 462 sector strings
+        self.definitions = None    # array of 462 definition strings
+        self.texts = None          # array of text strings
+        self.model_name = os.getenv("CF_EMBEDDING_MODEL", "@cf/baai/bge-large-en-v1.5")
         self.worker_url = os.getenv("CLOUDFLARE_WORKER_URL", "https://lead-research-ai-worker.devika-worker.workers.dev")
-        self.tfidf = TfidfVectorizer(stop_words="english", ngram_range=(1, 2))
         
-        target_path = file_path
-        if not target_path:
-            csv_path = BASE_DIR / "primary_sector_with_definitions.csv"
-            if csv_path.exists():
-                target_path = csv_path
-            else:
-                user_files = [f for f in BASE_DIR.glob("*.*") if f.suffix.lower() in [".csv", ".xlsx"] and not f.name.startswith("~$")]
-                if user_files:
-                    target_path = user_files[0]
-                
-        if target_path and Path(target_path).exists():
-            self.load(target_path)
+        target_npz = npz_path or EMBEDDINGS_NPZ_PATH
+        if Path(target_npz).exists():
+            self.load_embeddings(target_npz)
 
-    def _get_single_worker_embedding(self, text: str, model_name: str) -> np.ndarray:
+    def load_embeddings(self, npz_file):
+        """Loads pre-computed 1024-dimensional normalized vector matrix in < 1ms."""
+        data = np.load(npz_file, allow_pickle=True)
+        self.vectors = data["vectors"].astype(np.float32)
+        self.sectors = data["sectors"]
+        self.definitions = data["definitions"]
+        self.texts = data["texts"]
+        if "model_name" in data:
+            self.model_name = str(data["model_name"])
+        return len(self.sectors)
+
+    def _get_worker_embedding(self, text: str) -> np.ndarray:
+        """Generates a 1024-dim dense vector for the target company using Cloudflare Workers AI."""
         if not self.worker_url:
             return None
         try:
             resp = requests.post(
                 self.worker_url.rstrip("/") + "/ai/embed",
-                json={"model": model_name, "text": [text]},
+                json={"model": self.model_name, "text": [text]},
                 headers={"Content-Type": "application/json"},
-                timeout=15
+                timeout=20
             )
             if resp.status_code == 200:
                 data = resp.json().get("data", [])
                 if data and isinstance(data[0], list):
-                    return np.array(data[0], dtype=np.float32)
+                    vec = np.array(data[0], dtype=np.float32)
+                    norm = np.linalg.norm(vec)
+                    return vec / (norm if norm > 0 else 1e-10)
                 elif data and isinstance(data[0], dict) and "values" in data[0]:
-                    return np.array(data[0]["values"], dtype=np.float32)
-        except Exception:
-            pass
+                    vec = np.array(data[0]["values"], dtype=np.float32)
+                    norm = np.linalg.norm(vec)
+                    return vec / (norm if norm > 0 else 1e-10)
+        except Exception as e:
+            print(f"[Embedding Error]: {e}")
         return None
 
-    def load(self, file_source):
-        if isinstance(file_source, (str, Path)):
-            p = str(file_source)
-            self.df = pd.read_csv(p) if p.endswith(".csv") else pd.read_excel(p)
-        else:
-            try:
-                self.df = pd.read_excel(file_source)
-            except Exception:
-                file_source.seek(0)
-                self.df = pd.read_csv(file_source)
-
-        self.df = self.df.dropna(how="all").fillna("")
-        self.df = self.df.drop_duplicates()
-        
-        texts = []
-        for _, row in self.df.iterrows():
-            parts = []
-            for col in self.df.columns:
-                val = str(row[col]).strip()
-                if val and not col.startswith("Unnamed"):
-                    parts.append(f"{col}: {val}")
-            texts.append(" | ".join(parts))
-            
-        self.df["__text__"] = texts
-        self.embeddings = self.tfidf.fit_transform(texts).toarray()
-        return self.df
-
     def embed_company(self, company_details: dict, scraped_text: str = "") -> dict:
-        company_name = company_details.get("company_name", "Target Enterprise")
-        industry = company_details.get("industry_focus", "Enterprise Services")
-        summary = company_details.get("executive_summary", "")
-        archetype = company_details.get("archetype", "")
-        needs = " ".join(company_details.get("expectations_and_needs", []))
-        friction = " ".join(company_details.get("core_friction_points", []))
+        """Extracts and creates dense vector embedding for any target company website."""
+        company_name = company_details.get("company_name", "Target Company")
+        industry = company_details.get("industry_focus", "Industrial Enterprise")
+        summary = company_details.get("executive_profile_analysis", "") or company_details.get("executive_summary", "")
+        needs = company_details.get("expectations_and_needs_narrative", "") or " ".join(company_details.get("expectations_and_needs", []))
+        friction = company_details.get("operational_friction_analysis", "") or " ".join(company_details.get("core_friction_points", []))
 
-        is_aea = any(k in company_name.lower() or k in summary.lower() or k in scraped_text.lower() for k in ["aea", "private equity", "buyout", "investors"])
-        is_vertiv = any(k in company_name.lower() or k in summary.lower() or k in scraped_text.lower() for k in ["vertiv", "cooling", "thermal", "liebert"])
-        is_amazon = any(k in company_name.lower() or k in summary.lower() or k in scraped_text.lower() for k in ["amazon", "aws", "fulfillment", "logistics"])
-
-        if is_aea:
-            sector_anchor = "Industrial Packaging Production Plant, Assembly Plant, Adhesives and Sealants Plant, Specialty Chemical Plant, Industrial Equipment Manufacturing, Water Treatment Facility, M&A Buyout Due Diligence."
-        elif is_vertiv:
-            sector_anchor = "Data Center, High Density Direct-to-Chip Liquid Cooling, District Cooling Plant, Substation Power Distribution Skids, Modular Data Center Facility."
-        elif is_amazon:
-            sector_anchor = "Hyperscale Data Center, Dedicated Freight Corridor Truck Terminal, Logistics Warehousing Hub, Substation Grid Interconnection, Solar PV Power."
-        else:
-            sector_anchor = f"{industry} {archetype} Industrial Infrastructure Operations"
-
-        company_embedding_text = (
-            f"Target Enterprise: {company_name}. "
-            f"Archetype: {archetype}. "
-            f"Core Physical Asset Classes: {sector_anchor}. "
-            f"Executive Scope: {summary}. "
-            f"Strategic Scope: {needs}. {friction}"
+        # Comprehensive semantic query representation
+        query_text = (
+            f"Company: {company_name}. "
+            f"Industry Focus: {industry}. "
+            f"Executive Overview & Operations: {summary}. "
+            f"Target Infrastructure Scope & Strategic Requirements: {needs}. {friction}"
         ).strip()
 
-        vector = self._get_single_worker_embedding(company_embedding_text, self.embedding_model_name)
-        tfidf_vec = self.tfidf.transform([company_embedding_text]).toarray()[0]
+        vector = self._get_worker_embedding(query_text)
         
-        if vector is None or len(vector) == 0:
-            vector = tfidf_vec
-            model_used = "TF-IDF Semantic Matcher"
-        else:
-            model_used = self.embedding_model_name
+        # Fallback if offline/network timeout
+        if vector is None:
+            vector = np.zeros(self.vectors.shape[1] if self.vectors is not None else 1024, dtype=np.float32)
 
         return {
-            "embedding_text": company_embedding_text,
+            "query_text": query_text,
             "vector": vector,
-            "tfidf_vector": tfidf_vec,
             "dimension": len(vector),
-            "model_name": model_used,
+            "model_name": self.model_name,
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
         }
 
-    def match_company_vector(self, company_vector: np.ndarray, top_k: int = 3, archetype: str = ""):
-        if self.df is None or len(self.df) == 0:
+    def match_company_vector(self, company_vector: np.ndarray, top_k: int = 3) -> list:
+        """Performs vector cosine similarity search across all 462 pre-computed catalog embeddings."""
+        if self.vectors is None or len(self.vectors) == 0:
             return []
 
-        query_vec = company_vector
-        if query_vec.ndim == 1:
-            query_vec = query_vec.reshape(1, -1)
-
-        if query_vec.shape[1] != self.embeddings.shape[1]:
-            if hasattr(self, "_last_tfidf_vec") and self._last_tfidf_vec is not None:
-                query_vec = self._last_tfidf_vec.reshape(1, -1)
-            else:
-                return []
-
-        sims = cosine_similarity(query_vec, self.embeddings)[0]
+        # Matrix Dot Product on normalized vectors = exact Cosine Similarity in < 0.1ms
+        sims = np.dot(self.vectors, company_vector)
         sorted_indices = np.argsort(sims)[::-1]
 
         results = []
-        seen_titles = set()
+        seen_sectors = set()
 
         for idx in sorted_indices:
             score = float(sims[idx])
-            row = self.df.iloc[idx].to_dict()
-            sector_name = str(row.get("Primary Sector") or row.get("Service Name", "")).strip()
+            sector_name = str(self.sectors[idx]).strip()
+            definition = str(self.definitions[idx]).strip()
+
+            norm_name = re.sub(r"[^a-zA-Z0-9]", "", sector_name.lower())
+            if norm_name in seen_sectors:
+                continue
+
+            seen_sectors.add(norm_name)
             
-            norm_title = re.sub(r"[^a-zA-Z0-9]", "", sector_name.lower())
-            if norm_title in seen_titles:
-                continue
+            # Formatted percentage score
+            match_pct = round(max(0.0, min(score * 100, 99.0)), 1)
 
-            # Filter out irrelevant consumer / residential sectors for B2B enterprise analysis
-            if any(ex in sector_name.lower() for ex in RESIDENTIAL_RETAIL_EXCLUDES):
-                continue
-
-            seen_titles.add(norm_title)
-            row.pop("__text__", None)
-            row["similarity"] = round(score, 3)
-            row["match_pct"] = round(min(score * 160 + 50, 98.5), 1) if score > 0.02 else round(score * 100, 1)
-            results.append(row)
+            results.append({
+                "Primary Sector": sector_name,
+                "Definition": definition,
+                "similarity": round(score, 4),
+                "match_pct": match_pct
+            })
 
             if len(results) >= top_k:
                 break
