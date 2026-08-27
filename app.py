@@ -110,7 +110,7 @@ st.markdown("""
 
 # Title Header
 st.title("Lead Research")
-st.caption("Inbound Client Inquiry Resolution, AI Semantic Matching & Strategic Proposal Platform")
+st.caption("Inbound Client Intelligence Resolution & AI Semantic Solution Matching Platform")
 
 def get_service_title(srv_dict):
     return srv_dict.get("Primary Sector") or srv_dict.get("Service Name") or srv_dict.get("Category") or "Enterprise Offering"
@@ -148,9 +148,9 @@ if run_btn and target_url:
         st.write("4. Executing deep LLM semantic comparison & similarity evaluation across catalog...")
         matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
 
-        st.write("5. Assembling strategic response architecture and tailored client proposal...")
+        st.write("5. Assembling strategic solution architectures...")
         analysis = ai.analyze_fit(company_details, matched_services)
-        status.update(label="Inquiry Analysis & Response Proposal Complete", state="complete", expanded=False)
+        status.update(label="Inquiry Analysis & Solution Matching Complete", state="complete", expanded=False)
 
     st.write("")
 
@@ -190,11 +190,10 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Clean, Organized Tabs + Vector Audit Inspector
-    tab_overview, tab_mapping, tab_outreach, tab_audit = st.tabs([
+    # Clean, Focused Tabs (Outreach and Proposals Removed)
+    tab_overview, tab_mapping, tab_audit = st.tabs([
         "Client Context & Inquiry Overview",
         "Requirement-to-Product Mapping",
-        "Tailored Client Response & Strategic Proposal",
         "Vector Embedding & Comparison Inspector"
     ])
 
@@ -249,18 +248,7 @@ if run_btn and target_url:
         else:
             st.info("No direct catalog mappings available.")
 
-    # Tab 3: Tailored Client Response & Strategic Proposal
-    with tab_outreach:
-        st.subheader("Tailored Client Response & Strategic Proposal")
-        st.caption("Authoritative, consultative response memo ready to send directly to the client:")
-
-        with st.container(border=True):
-            st.markdown(analysis.get("personalized_pitch", ""))
-
-        with st.expander("View Raw Proposal Text for Copying", expanded=False):
-            st.code(analysis.get("personalized_pitch", ""), language="markdown")
-
-    # Tab 4: Vector Embedding & Comparison Inspector (Transparency & Audit)
+    # Tab 3: Vector Embedding & Comparison Inspector (Transparency & Audit)
     with tab_audit:
         st.subheader("Vector Embedding & Comparison Audit Inspector")
         st.caption("Complete transparency into the vectorization pipeline, model parameters, and comparison metrics:")
@@ -309,12 +297,11 @@ if run_btn and target_url:
             "target_persona": company_details.get("buying_role_hypothesis")
         },
         "llm_semantic_comparison_results": matched_services,
-        "matched_offerings": mappings,
-        "client_response_proposal": analysis.get("personalized_pitch")
+        "matched_offerings": mappings
     }
     st.download_button(
-        label="Download Full Client Proposal & Vector Audit (JSON)",
+        label="Download Client Analysis & Solution Dossier (JSON)",
         data=json.dumps(full_result, indent=2),
-        file_name=f"{serp_data['domain']}_client_proposal.json",
+        file_name=f"{serp_data['domain']}_solution_dossier.json",
         mime="application/json"
     )

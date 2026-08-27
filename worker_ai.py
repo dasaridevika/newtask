@@ -338,94 +338,10 @@ class WorkerAI:
         top_offering_name = mappings[0]["exact_offering_name"] if mappings else "Project Intelligence Database"
         top_sector = matched_services[0].get("Primary Sector", "Target Sector") if matched_services else "Infrastructure"
 
-        # Clean, Continuous Narrative Proposal
-        if archetype == "Private Equity Sponsor & Asset Manager":
-            pitch = f"""**TO:** {decision_maker}, {company_name}  
-**FROM:** Senior Managing Director, Global Private Equity Strategy Group  
-**SUBJECT:** Response & Proposal: Capital Project Pipeline Datasets & M&A Due Diligence Intelligence in {top_sector}
-
----
-
-#### Executive Acknowledgment & Strategic Alignment
-Thank you for reaching out to our firm regarding your market intelligence and capital expenditure diligence requirements. We understand that as an established private equity leader managing institutional buyout funds, sustaining superior internal rates of return (IRR) requires verified, forward-looking project datasets across your core industrial and specialty manufacturing target sectors.
-
-#### Direct Resolution of Your Stated Requirements
-In addressing your inquiry regarding pre-acquisition underwriting and commercial diligence, our team has structured a dedicated solution architecture centered around **{top_offering_name}**. This platform delivers continuous forward-looking tracking of announced, permitted, and under-construction capital developments across {top_sector}, complete with verified project valuations, capacity specifications, and scheduled procurement milestones. Accessing ground-truth project data empowers your investment committee to stress-test financial underwriting models against actual construction schedules rather than relying on lagging retrospective market reports, while direct stakeholder contact mapping unlocks proprietary pre-auction deal flow and add-on acquisition targets.
-
-#### Delivery Scope & Integration Architecture
-Our datasets are delivered seamlessly via direct API data feeds, customized secure web portal access, and GIS-compatible spatial layers with real-time stage-gate updates and weekly executive pipeline briefs covering global and regional industrial growth corridors.
-
-#### Expected Strategic Value & Impact
-Implementing our intelligence feeds accelerates commercial due diligence velocity by 40%, eliminates information asymmetry during platform underwriting, and provides an 18-month advance window to intercept high-performing targets before formal investment bank auctions begin.
-
-#### Proposed Next Steps
-We are prepared to provide your investment team with immediate pilot access to a live sample dataset of upcoming projects in {top_sector} and arrange a 15-minute technical briefing with our sector directors to configure your custom coverage parameters."""
-        elif archetype == "Hyperscale Cloud & Logistics Developer":
-            pitch = f"""**TO:** {decision_maker}, {company_name}  
-**FROM:** Senior Managing Director, Global Infrastructure Intelligence  
-**SUBJECT:** Response & Proposal: Pre-Construction Site Selection & Utility Substation Queue Tracking in {top_sector}
-
----
-
-#### Executive Acknowledgment & Strategic Alignment
-Thank you for contacting our firm regarding your regional infrastructure scaling and utility power provisioning requirements. We recognize that for hyperscale cloud and logistics operators deploying multi-billion-dollar capital programs, the critical constraint on physical commissioning is lead-time friction in securing high-voltage substation interconnections (50MW–500MW+) and municipal land zoning approvals.
-
-#### Direct Resolution of Your Stated Requirements
-In response to your inquiry regarding pre-construction site selection and grid capacity tracking, we have configured **{top_offering_name}**. The platform provides pre-filing tracking of industrial land transactions, zoning applications, and environmental impact clearance dockets 18 to 24 months in advance of public announcement, combined with granular tracking of substation queue status, target Megawatt allocations, kV transmission voltage capacity, and utility contact dockets across {top_sector}.
-
-#### Delivery Scope & Integration Architecture
-Datasets are delivered via enterprise GIS layers (ArcGIS/QGIS), automated Snowflake and BigQuery data warehouse feeds, and real-time webhook alerts with continuous daily permitting docket ingestion and monthly substation queue reconciliations.
-
-#### Expected Strategic Value & Impact
-Accessing our pre-construction feeds shortens site selection lead times by 12 to 18 months, prevents costly multi-month deployment delays on gigawatt AI clusters, and de-risks multi-billion-dollar infrastructure expansion programs.
-
-#### Proposed Next Steps
-We are ready to activate a tailored demonstration dataset covering upcoming substation interconnects and industrial land pipelines across your priority growth corridors."""
-        elif archetype == "Mission-Critical Infrastructure OEM":
-            pitch = f"""**TO:** {decision_maker}, {company_name}  
-**FROM:** Senior Managing Director, Global Commercial Solutions  
-**SUBJECT:** Response & Proposal: Early-Stage Blueprint Specification & Pipeline Tracking in {top_sector}
-
----
-
-#### Executive Acknowledgment & Strategic Alignment
-Thank you for contacting our firm regarding your commercial pipeline tracking and engineering specification requirements. We recognize that for premier digital infrastructure OEMs, maximizing win rates on high-margin power and thermal equipment requires engaging project developers and MEP engineering consultancies during early conceptual design—well before public contractor tenders are released.
-
-#### Direct Resolution of Your Stated Requirements
-In response to your inquiry, we have structured a dedicated intelligence feed around **{top_offering_name}**. This feed delivers comprehensive lifecycle stage-gate visibility from initial land acquisition, zoning approval, and Front-End Engineering Design (FEED) through procurement tender release across {top_sector}, providing planned capacity specifications, cooling and power requirements, scheduled equipment procurement dates, and verified contact mapping linking asset owners, lead MEP consultancies, and general contractors.
-
-#### Delivery Scope & Integration Architecture
-Delivery is integrated directly into Salesforce and HubSpot CRM environments alongside automated pipeline CSV/JSON feeds and executive portal access with real-time project milestone tracking.
-
-#### Expected Strategic Value & Impact
-Engaging engineering consultancies during blueprint drafting grants an 18-month advance window to lock in proprietary equipment specifications, protecting commercial gross margins and substantially elevating tender win rates.
-
-#### Proposed Next Steps
-We are prepared to provide your commercial architecture team with a live sample dataset of upcoming FEED-stage projects in {top_sector} to review during a brief working session next week."""
-        else:
-            pitch = f"""**TO:** {decision_maker}, {company_name}  
-**FROM:** Senior Managing Director, Global Commercial Solutions  
-**SUBJECT:** Response & Proposal: Capital Project Pipeline Intelligence in {top_sector}
-
----
-
-#### Executive Acknowledgment & Strategic Alignment
-Thank you for reaching out to our firm regarding your capital project intelligence requirements. We understand that maximizing commercial efficiency requires forward-looking visibility into major project developments before public procurement tenders.
-
-#### Direct Resolution of Your Stated Requirements
-In response to your inquiry, our **{top_offering_name}** delivers verified monitoring of capital developments from initial permitting through procurement tender release in {top_sector}, providing project valuations, capacity ratings, equipment schedules, and direct contact mapping of project owners and general contractors.
-
-#### Expected Strategic Value & Impact
-Grants a 12-to-18-month first-mover advantage to pre-position your solutions and capture high-margin contract awards.
-
-#### Proposed Next Steps
-We are ready to provide a live sample dataset across your priority target sectors and schedule a technical briefing to configure your custom delivery parameters."""
-
         return {
             "fit_score": matched_services[0].get("match_pct", 98.0) if matched_services else 98.0,
             "target_alignment": decision_maker,
-            "exact_product_mappings": mappings,
-            "personalized_pitch": pitch
+            "exact_product_mappings": mappings
         }
 
 ai = WorkerAI()
