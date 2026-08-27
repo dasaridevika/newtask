@@ -141,7 +141,7 @@ if run_btn and target_url:
         st.write("2. Synthesizing client operational scope, inquiry context, and strategic bottlenecks...")
         company_details = ai.extract_company_details(serp_data["content"], domain=serp_data["domain"], client_inquiry=client_inquiry)
 
-        st.write("3. Querying 1024-dimensional catalog embeddings matrix for candidate sectors...")
+        st.write("3. Generating 1024-dimensional dense vector & performing vector cosine search across all 462 catalog sectors...")
         company_embed_info = catalog.embed_company(company_details, serp_data["content"])
         candidate_sectors = catalog.match_company_vector(company_embed_info["vector"], top_k=15)
 
@@ -190,11 +190,12 @@ if run_btn and target_url:
 
     st.write("")
 
-    # Clean, Organized Tabs
-    tab_overview, tab_mapping, tab_outreach = st.tabs([
+    # Clean, Organized Tabs + Vector Audit Inspector
+    tab_overview, tab_mapping, tab_outreach, tab_audit = st.tabs([
         "Client Context & Inquiry Overview",
         "Requirement-to-Product Mapping",
-        "Tailored Client Response & Strategic Proposal"
+        "Tailored Client Response & Strategic Proposal",
+        "Vector Embedding & Comparison Inspector"
     ])
 
     # Tab 1: Client Context & Inquiry Overview
@@ -259,11 +260,45 @@ if run_btn and target_url:
         with st.expander("View Raw Proposal Text for Copying", expanded=False):
             st.code(analysis.get("personalized_pitch", ""), language="markdown")
 
+    # Tab 4: Vector Embedding & Comparison Inspector (Transparency & Audit)
+    with tab_audit:
+        st.subheader("Vector Embedding & Comparison Audit Inspector")
+        st.caption("Complete transparency into the vectorization pipeline, model parameters, and comparison metrics:")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.metric(label="Embedding Model", value="BGE-Large-EN v1.5")
+            st.caption("Cloudflare Workers AI (`@cf/baai/bge-large-en-v1.5`)")
+        with c2:
+            st.metric(label="Vector Dimensions", value="1024-Dim")
+            st.caption("High-dimensional normalized dense vectors")
+        with c3:
+            st.metric(label="Total Catalog Sectors Compared", value=f"{len(catalog.sectors)} Sectors")
+            st.caption("Simultaneous dot product cosine comparison against 462 precomputed vectors")
+
+        st.divider()
+        st.markdown("#### 1. Payload Sent to Cloudflare Workers AI for Embedding")
+        st.code(company_embed_info["query_text"], language="text")
+
+        st.markdown("#### 2. Generated 1024-Dimensional Dense Vector Coordinates (Sample)")
+        st.code(f"Vector Preview (First 16 dimensions of 1024):\n{company_embed_info['vector'][:16]} ...", language="text")
+
+        st.markdown("#### 3. Top Vector Cosine Similarity Candidates (Before LLM Semantic Evaluation)")
+        cand_df = pd.DataFrame(candidate_sectors)[["Primary Sector", "similarity", "match_pct", "Definition"]]
+        st.dataframe(cand_df, use_container_width=True)
+
     # Download Button
     st.divider()
     full_result = {
         "url": target_url,
         "client_inquiry": client_inquiry,
+        "vector_embedding_audit": {
+            "model_name": catalog.model_name,
+            "dimensions": company_embed_info["dimension"],
+            "total_catalog_vectors_compared": len(catalog.sectors),
+            "embedded_text_payload": company_embed_info["query_text"],
+            "vector_sample": [float(x) for x in company_embed_info["vector"][:32]]
+        },
         "client_profile": {
             "name": company_details.get("company_name"),
             "archetype": company_details.get("archetype"),
@@ -278,7 +313,7 @@ if run_btn and target_url:
         "client_response_proposal": analysis.get("personalized_pitch")
     }
     st.download_button(
-        label="Download Full Client Proposal (JSON)",
+        label="Download Full Client Proposal & Vector Audit (JSON)",
         data=json.dumps(full_result, indent=2),
         file_name=f"{serp_data['domain']}_client_proposal.json",
         mime="application/json"
