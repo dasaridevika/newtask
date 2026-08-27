@@ -229,9 +229,13 @@ if run_btn and target_url:
     top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
     top_sim = f"{matched_services[0]['match_pct']}%" if matched_services else "98%"
     
-    conf_assessment = company_details.get("confidence_assessment", {})
-    conf_label = conf_assessment.get("level", "high").upper()
-    conf_score = conf_assessment.get("score", 94)
+    if evidence_store and evidence_store.confidence_score:
+        conf_score = int(evidence_store.confidence_score * 100)
+        conf_label = evidence_store.confidence_label.upper()
+    else:
+        conf_assessment = company_details.get("confidence_assessment", {})
+        conf_label = conf_assessment.get("level", "high").upper()
+        conf_score = int(conf_assessment.get("score", 92))
 
     m1, m2, m3, m4 = st.columns(4)
     with m1:
@@ -363,12 +367,39 @@ if run_btn and target_url:
             else:
                 st.write("All primary operational attributes verified across crawled sources.")
 
-        # Section F: Business Signals Harvested
+        # Section F: Deterministic Signals Harvested
         if evidence_store and evidence_store.signals:
             with st.container(border=True):
-                st.markdown("#### Deterministic Signals Harvested")
-                signal_html = "".join([f'<span class="badge-tag">{s.signal}</span>' for s in evidence_store.signals[:12]])
-                st.markdown(signal_html, unsafe_allow_html=True)
+                st.markdown("#### ⚡ Deterministic Business Signals Harvested from Crawled Evidence")
+                st.caption("Factual numerical metrics and growth events extracted automatically during deep crawling:")
+                
+                unique_signals = {}
+                for s in evidence_store.signals:
+                    if s.signal not in unique_signals:
+                        unique_signals[s.signal] = s
+
+                col_sig1, col_sig2 = st.columns(2)
+                sigs = list(unique_signals.values())
+                half = (len(sigs) + 1) // 2
+                
+                with col_sig1:
+                    for s in sigs[:half]:
+                        cat_icon = "📈" if s.category == "growth_and_capex" else "📏"
+                        st.markdown(f"""
+                        <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+                            <div style="font-weight:600; color:#38bdf8; font-size:0.9rem;">{cat_icon} {s.signal}</div>
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:3px;">Source: <a href="{s.source_url}" target="_blank" style="color:#60a5fa;">{s.source_url}</a></div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                with col_sig2:
+                    for s in sigs[half:half*2]:
+                        cat_icon = "📈" if s.category == "growth_and_capex" else "📏"
+                        st.markdown(f"""
+                        <div style="background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px 14px; margin-bottom:8px;">
+                            <div style="font-weight:600; color:#38bdf8; font-size:0.9rem;">{cat_icon} {s.signal}</div>
+                            <div style="font-size:0.75rem; color:#94a3b8; margin-top:3px;">Source: <a href="{s.source_url}" target="_blank" style="color:#60a5fa;">{s.source_url}</a></div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
     # Tab 2: Projects & Strategic Roadmap (Past, Present & Future)
     with tab_projects:

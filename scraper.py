@@ -246,45 +246,35 @@ def fetch_page_content(url: str, timeout: int = 7) -> tuple:
 def extract_universal_signals(text: str, url: str) -> List[BusinessSignal]:
     """Universal signal extraction for ANY type of enterprise."""
     signals = []
-    lower = text.lower()
+    seen = set()
 
-    # 1. Core Offerings & Operational Capabilities
-    offering_matches = re.findall(r"\b(manufactures|develops|produces|delivers|provides|engineers|distributes|operates|offers|manages|powers)\s+([a-zA-Z0-9\s\-]{4,40}?)(?:\.|\,|and|\;)", text, re.I)
-    if offering_matches:
-        for verb, obj in offering_matches[:3]:
-            obj_clean = obj.strip()
-            if len(obj_clean) > 4 and not any(k in obj_clean.lower() for k in ["a", "the", "this", "our", "all", "we"]):
-                signals.append(BusinessSignal(
-                    category="core_offerings",
-                    signal=f"{verb.capitalize()} {obj_clean}",
-                    source_url=url,
-                    confidence="high",
-                    snippet=f"Detected primary capability: {verb} {obj_clean}"
-                ))
+    # 1. Commercial Growth & Capital Investments with context
+    growth_matches = re.findall(r"\b((?:expanding|acquisition of|acquired|invested|partnership with|joint venture with|investment of \$?[0-9]+|commissioned|global expansion)\s+[A-Za-z0-9\$\.\,\s]{3,35})(?:\.|\,|\;|\n)", text, re.I)
+    for m in growth_matches[:4]:
+        clean_m = re.sub(r"\s+", " ", m).strip()
+        if len(clean_m) > 10 and clean_m.lower() not in seen:
+            seen.add(clean_m.lower())
+            signals.append(BusinessSignal(
+                category="growth_and_capex",
+                signal=f"Growth / Expansion: {clean_m}",
+                source_url=url,
+                confidence="high",
+                snippet=clean_m
+            ))
 
-    # 2. Commercial Growth & Expansion
-    growth_matches = re.findall(r"\b(new facility|expanding capacity|acquisition|merger|partnership|joint venture|investment of \$?[0-9]+|commissioned|global expansion|contract award)\b", lower)
-    if growth_matches:
-        unique_growth = list(set(growth_matches))
-        signals.append(BusinessSignal(
-            category="growth_and_capex",
-            signal=f"Commercial Expansion: {', '.join(unique_growth[:3])}",
-            source_url=url,
-            confidence="high",
-            snippet=f"Detected commercial expansion signals: {', '.join(unique_growth)}"
-        ))
-
-    # 3. Market Scale & Operational Metric Signals
-    scale_matches = re.findall(r"\b([0-9]+(?:\.[0-9]+)?\s*(?:billion|million|mw|gw|tons|sq\s*ft|employees|countries|facilities|users|customers))\b", lower)
-    if scale_matches:
-        unique_scale = list(set(scale_matches))
-        signals.append(BusinessSignal(
-            category="operational_scale",
-            signal=f"Operational Scale: {', '.join(unique_scale[:3])}",
-            source_url=url,
-            confidence="medium",
-            snippet=f"Detected quantitative metrics: {', '.join(unique_scale)}"
-        ))
+    # 2. Market Scale & Quantitative Metric Signals
+    scale_matches = re.findall(r"\b(\$?[0-9]+(?:\.[0-9]+)?\s*(?:billion|million|bn|mn|mw|gw|tons|sq\s*ft|employees|countries|facilities|portfolio companies))\b", text, re.I)
+    for s in scale_matches[:4]:
+        clean_s = s.strip()
+        if clean_s.lower() not in seen:
+            seen.add(clean_s.lower())
+            signals.append(BusinessSignal(
+                category="operational_scale",
+                signal=f"Operational Scale: {clean_s}",
+                source_url=url,
+                confidence="high",
+                snippet=clean_s
+            ))
 
     return signals
 
