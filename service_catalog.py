@@ -32,6 +32,8 @@ class ServiceCatalog:
         self.texts = None          # array of text strings
         self.model_name = os.getenv("CF_EMBEDDING_MODEL", "@cf/baai/bge-large-en-v1.5")
         self.worker_url = os.getenv("CLOUDFLARE_WORKER_URL", "https://lead-research-ai-worker.devika-worker.workers.dev")
+        self.tfidf_vectorizer = None
+        self.tfidf_matrix = None
 
         target_npz = npz_path or EMBEDDINGS_NPZ_PATH
         if Path(target_npz).exists():
@@ -46,6 +48,16 @@ class ServiceCatalog:
         self.texts = data["texts"]
         if "model_name" in data:
             self.model_name = str(data["model_name"])
+
+        # Dynamic TF-IDF model across all 462 catalog sectors
+        corpus = [f"{s} {d}" for s, d in zip(self.sectors, self.definitions)]
+        self.tfidf_vectorizer = TfidfVectorizer(
+            ngram_range=(1, 2),
+            sublinear_tf=True,
+            stop_words="english",
+            max_features=5000
+        )
+        self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(corpus)
         return len(self.sectors)
 
     def _get_worker_embedding(self, text: str) -> np.ndarray:
@@ -100,64 +112,52 @@ class ServiceCatalog:
             "vector_preview": [round(float(x), 4) for x in vector[:8]]
         }
 
-    def _calculate_universal_lexical_boost(self, sector_name: str, definition: str, company_text: str) -> float:
-        """
-        Universal, domain-agnostic lexical relevance calculator.
-        Dynamically extracts tokens, compound terms, and acronyms from any of the 462 catalog sectors
-        and checks for term presence and frequency across the target company's extracted text.
-        """
-        company_lower = company_text.lower()
-        sec_name_clean = re.sub(r"\(.*?\)", "", sector_name).lower().strip()
-        
-        boost = 0.0
-
-        # 1. Exact Full Sector Name Match (e.g. "Data Center", "Solar Photovoltaic", "Grain Elevator", "Hospital")
-        if len(sec_name_clean) > 3 and sec_name_clean in company_lower:
-            boost += 0.35
-
-        # 2. Key Acronyms or Parenthetical Specifics (e.g. "(PV)", "(HDPE)", "(EDC)", "(BESS)", "(LNG)")
-        acronyms = re.findall(r"\(([A-Za-z0-9\-]+)\)", sector_name)
-        for acr in acronyms:
-            if len(acr) >= 2 and re.search(r"\b" + re.escape(acr.lower()) + r"\b", company_lower):
-                boost += 0.20
-
-        # 3. Dynamic Keyword Token Matching from Sector Name & Definition
-        tokens = [
-            t for t in re.findall(r"\b[a-zA-Z]{4,}\b", sec_name_clean)
-            if t not in ["plant", "facility", "station", "system", "production", "manufacturing", "building", "complex", "center", "infrastructure", "other"]
-        ]
-
-        if tokens:
-            matches = sum(1 for t in tokens if re.search(r"\b" + re.escape(t) + r"\b", company_lower))
-            match_ratio = matches / len(tokens)
-            boost += match_ratio * 0.30
-
-        return min(0.50, boost)
-
     def match_company_vector(self, company_vector: np.ndarray, company_text: str = "", top_k: int = 15) -> list:
         """
-        Universal Multi-Factor Hybrid Ranking:
-        Combines 1024-dim dense vector cosine similarity with dynamic, universal token matching
-        across all 462 sectors without hardcoded industry boundaries.
+        Pure Mathematical Multi-Factor Hybrid Ranking:
+        Combines 1024-dim dense vector cosine similarity with dynamic TF-IDF and morphological token matching
+        across all 462 catalog sectors without hardcoded keyword blacklists.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
 
-        # 1. Dense Vector Cosine Similarities across all 462 sectors (Matrix Dot Product in < 0.1ms)
+        # 1. Dense Vector Cosine Similarity (Dense Semantic Field in < 0.1ms)
         dense_sims = np.dot(self.vectors, company_vector)
 
-        # 2. Universal Hybrid Scoring per Sector
+        # 2. Dynamic Sub-linear TF-IDF Similarity
+        company_lower = company_text.lower()
+        if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_text) > 20:
+            company_tfidf = self.tfidf_vectorizer.transform([company_text])
+            tfidf_sims = (self.tfidf_matrix * company_tfidf.T).toarray().flatten()
+        else:
+            tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
+
         hybrid_scores = []
         for idx in range(len(self.sectors)):
             raw_vec_score = float(dense_sims[idx])
+            raw_tfidf_score = float(tfidf_sims[idx])
             sec_name = str(self.sectors[idx]).strip()
             definition = str(self.definitions[idx]).strip()
 
-            # Dynamic universal token boost
-            lex_boost = self._calculate_universal_lexical_boost(sec_name, definition, company_text)
+            # Dynamic phrase & morphological matching (e.g. data center / data centers / datacenter)
+            clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
+            sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", clean_sec)]
+            
+            exact_phrase_bonus = 0.0
+            if len(clean_sec) > 3:
+                # Exact or plural phrase match
+                if clean_sec in company_lower or (clean_sec + "s") in company_lower or clean_sec.replace(" ", "") in company_lower:
+                    exact_phrase_bonus = 0.20
+                elif sec_tokens and sum(1 for t in sec_tokens if t in company_lower) == len(sec_tokens):
+                    exact_phrase_bonus = 0.15
 
-            # Combined hybrid score (Dense Vector Cosine + Universal Lexical Boost)
-            hybrid_score = max(0.0, raw_vec_score + lex_boost)
+            # Dynamic acronym matching (e.g. PV, BESS, LNG, EV, AI, EDC, HDPE)
+            acronyms = re.findall(r"\(([A-Za-z0-9\-]+)\)", sec_name)
+            acronym_bonus = 0.15 if any(len(a) >= 2 and re.search(r"\b" + re.escape(a.lower()) + r"\b", company_lower) for a in acronyms) else 0.0
+
+            # Mathematical Hybrid Score: Vector Cosine + Dynamic TF-IDF + Exact Morphological Match
+            lexical_component = min(0.35, (raw_tfidf_score * 1.5) + exact_phrase_bonus + acronym_bonus)
+            hybrid_score = max(0.0, raw_vec_score + lexical_component)
             calibrated_pct = calibrate_cosine_score(hybrid_score)
 
             hybrid_scores.append({
@@ -165,7 +165,7 @@ class ServiceCatalog:
                 "Primary Sector": sec_name,
                 "Definition": definition,
                 "vector_cosine": round(raw_vec_score, 4),
-                "lexical_boost": round(lex_boost, 4),
+                "lexical_boost": round(lexical_component, 4),
                 "hybrid_score": round(hybrid_score, 4),
                 "similarity": round(hybrid_score, 4),
                 "match_pct": calibrated_pct

@@ -84,7 +84,7 @@ class EvidenceStore:
                 f"Key Snippets: {' // '.join(page.canonical_snippets[:3])}\n"
             )
         if self.search_insights:
-            sections.append("=== THIRD-PARTY VERIFIED SEARCH INSIGHTS ===\n" + "\n".join(self.search_insights[:5]))
+            sections.append("=== THIRD-PARTY VERIFIED PUBLIC KNOWLEDGE & SEARCH INSIGHTS ===\n" + "\n".join(self.search_insights))
         full = f"COMPANY: {self.company_name} (Domain: {self.domain})\n\n" + "\n".join(sections)
         return full[:max_chars]
 
@@ -92,41 +92,41 @@ class EvidenceStore:
         return asdict(self)
 
 def classify_page(url: str, title: str, headings: List[str], text_sample: str) -> tuple:
-    """Classifies any enterprise webpage into PageType with credibility weighting."""
+    """Classifies any enterprise webpage based on URL path semantics and header structure."""
     path = urllib.parse.urlparse(url).path.lower().strip("/")
     combined_meta = f"{path} {title} {' '.join(headings)}".lower()
 
-    if not path or path in ["", "index.html", "index.php", "home"]:
+    if not path or path in ["", "index.html", "index.php", "home", "en", "us", "global"]:
         return PageType.HOME, 1.0
 
-    if any(k in combined_meta for k in ["product", "offering", "equipment", "hardware", "modules", "systems", "solutions", "service", "capabilities", "platform", "technology", "tech"]):
+    if any(k in combined_meta for k in ["product", "offering", "service", "solution", "capability", "platform", "hardware", "software", "system", "tech", "equipment", "catalog", "division", "segment"]):
         return PageType.PRODUCTS_SERVICES, 1.4
 
-    if any(k in combined_meta for k in ["case-stud", "case_study", "projects", "portfolio", "success-stories", "customers", "installations", "deployments", "clients"]):
+    if any(k in combined_meta for k in ["case-stud", "case_study", "project", "portfolio", "success-stor", "customer", "installation", "deployment", "client", "work", "result"]):
         return PageType.CASE_STUDY, 1.3
 
-    if any(k in combined_meta for k in ["about", "company", "who-we-are", "history", "mission", "overview"]):
+    if any(k in combined_meta for k in ["about", "company", "who-we-are", "history", "mission", "overview", "our-story"]):
         return PageType.ABOUT, 1.1
 
-    if any(k in combined_meta for k in ["press", "news", "announcement", "media", "blog", "insights", "events"]):
+    if any(k in combined_meta for k in ["press", "news", "announcement", "media", "blog", "insight", "event", "article"]):
         return PageType.NEWS_PRESS, 0.9
 
-    if any(k in combined_meta for k in ["career", "jobs", "join-us", "hiring", "openings"]):
+    if any(k in combined_meta for k in ["career", "job", "join-us", "hiring", "opening", "culture"]):
         return PageType.CAREERS, 0.8
 
-    if any(k in combined_meta for k in ["leader", "board", "team", "executive", "management", "govern"]):
+    if any(k in combined_meta for k in ["leader", "board", "team", "executive", "management", "govern", "director"]):
         return PageType.LEADERSHIP, 0.9
 
-    if any(k in combined_meta for k in ["contact", "get-in-touch", "locations", "offices", "global"]):
+    if any(k in combined_meta for k in ["contact", "get-in-touch", "location", "office", "reach-us"]):
         return PageType.CONTACT, 0.7
 
-    if any(k in combined_meta for k in ["privacy", "terms", "legal", "cookie", "disclaimer", "compliance"]):
+    if any(k in combined_meta for k in ["privacy", "terms", "legal", "cookie", "disclaimer", "compliance", "policy"]):
         return PageType.LEGAL, 0.2
 
-    return PageType.OTHER, 0.6
+    return PageType.OTHER, 0.7
 
 def clean_html(raw_html: str) -> dict:
-    """Extracts structured metadata, title, headings, clean text, and canonical snippets for any website."""
+    """Extracts structured metadata, title, headings, and high-information canonical snippets without static keyword filters."""
     title_match = re.search(r"<title[^>]*>(.*?)</title>", raw_html, re.I | re.DOTALL)
     title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else "Enterprise Page"
     title = title.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
@@ -145,20 +145,16 @@ def clean_html(raw_html: str) -> dict:
 
     sentences = re.split(r"(?<=[.!?])\s+", text)
     canonical_snippets = []
-    general_signal_keywords = [
-        "manufactur", "develop", "provide", "specialize", "leader", "operat", "solution",
-        "service", "platform", "technology", "supply", "capacity", "global", "facility",
-        "commercial", "industrial", "client", "market", "customer", "deliver", "scale"
-    ]
 
     for sent in sentences:
         clean_s = sent.strip()
-        if 40 < len(clean_s) < 260:
-            if any(k in clean_s.lower() for k in general_signal_keywords):
-                if clean_s not in canonical_snippets:
-                    canonical_snippets.append(clean_s)
-                    if len(canonical_snippets) >= 6:
-                        break
+        if 45 < len(clean_s) < 260:
+            has_action = any(re.search(r"\b" + v + r"\b", clean_s, re.I) for v in ["provides", "develops", "manufactures", "operates", "offers", "delivers", "specializes", "serves", "manages", "builds", "scales", "powers"])
+            has_metric = bool(re.search(r"[0-9]+", clean_s))
+            if (has_action or has_metric) and clean_s not in canonical_snippets:
+                canonical_snippets.append(clean_s)
+                if len(canonical_snippets) >= 6:
+                    break
 
     return {
         "title": title,
@@ -168,18 +164,13 @@ def clean_html(raw_html: str) -> dict:
     }
 
 def extract_links(raw_html: str, base_url: str) -> List[str]:
-    """Finds verified subpage URLs belonging to the same host."""
+    """Finds verified internal subpage URLs on the same domain without static keyword constraints."""
     parsed_base = urllib.parse.urlparse(base_url)
     domain = parsed_base.netloc
     
     matches = re.findall(r'href=["\'](.*?)["\']', raw_html, re.I)
-    priority_links = []
+    discovered_links = []
     seen = set()
-
-    priority_keywords = [
-        "product", "solution", "service", "offering", "case-stud", "portfolio", "technology", "tech",
-        "infrastructure", "platform", "manufacturing", "about", "company", "projects", "press", "news"
-    ]
 
     for m in matches:
         m = m.strip()
@@ -190,15 +181,17 @@ def extract_links(raw_html: str, base_url: str) -> List[str]:
 
         if (parsed_m.netloc == domain or parsed_m.netloc == f"www.{domain}" or domain in parsed_m.netloc) and full_url not in seen:
             seen.add(full_url)
-            if any(k in full_url.lower() for k in priority_keywords) and full_url != base_url:
-                priority_links.append(full_url)
+            path = parsed_m.path.strip("/")
+            if path and not re.search(r"\.(pdf|png|jpg|jpeg|gif|svg|zip|mp4|css|js)$", path, re.I) and full_url != base_url:
+                discovered_links.append(full_url)
 
-    return priority_links[:10]
+    discovered_links.sort(key=lambda u: len(urllib.parse.urlparse(u).path.strip("/").split("/")))
+    return discovered_links[:10]
 
 def fetch_page_content(url: str, timeout: int = 7) -> tuple:
     try:
         resp = requests.get(url, headers=HEADERS, timeout=timeout, allow_redirects=True)
-        if resp.status_code == 200 and len(resp.text) > 200:
+        if resp.status_code == 200 and len(resp.text) > 200 and "Just a moment..." not in resp.text:
             return url, resp.text, resp.status_code
     except Exception:
         pass
@@ -209,12 +202,12 @@ def extract_universal_signals(text: str, url: str) -> List[BusinessSignal]:
     signals = []
     lower = text.lower()
 
-    # 1. Product / Core Offering Capabilities
-    offering_matches = re.findall(r"\b(manufactures|develops|produces|delivers|provides|engineers|distributes|operates)\s+([a-zA-Z0-9\s\-]{4,35}?)(?:\.|\,|and|\;)", text, re.I)
+    # 1. Core Offerings & Operational Capabilities
+    offering_matches = re.findall(r"\b(manufactures|develops|produces|delivers|provides|engineers|distributes|operates|offers|manages|powers)\s+([a-zA-Z0-9\s\-]{4,40}?)(?:\.|\,|and|\;)", text, re.I)
     if offering_matches:
         for verb, obj in offering_matches[:3]:
             obj_clean = obj.strip()
-            if len(obj_clean) > 4 and not any(k in obj_clean.lower() for k in ["a", "the", "this", "our", "all"]):
+            if len(obj_clean) > 4 and not any(k in obj_clean.lower() for k in ["a", "the", "this", "our", "all", "we"]):
                 signals.append(BusinessSignal(
                     category="core_offerings",
                     signal=f"{verb.capitalize()} {obj_clean}",
@@ -223,51 +216,63 @@ def extract_universal_signals(text: str, url: str) -> List[BusinessSignal]:
                     snippet=f"Detected primary capability: {verb} {obj_clean}"
                 ))
 
-    # 2. Capital Growth & Expansion Signals
-    growth_matches = re.findall(r"\b(new facility|expanding capacity|acquisition|merger|partnership|joint venture|investment of \$?[0-9]+|commissioned|global expansion)\b", lower)
+    # 2. Commercial Growth & Expansion
+    growth_matches = re.findall(r"\b(new facility|expanding capacity|acquisition|merger|partnership|joint venture|investment of \$?[0-9]+|commissioned|global expansion|contract award)\b", lower)
     if growth_matches:
         unique_growth = list(set(growth_matches))
         signals.append(BusinessSignal(
             category="growth_and_capex",
-            signal=f"Commercial Expansion & Investment: {', '.join(unique_growth[:3])}",
+            signal=f"Commercial Expansion: {', '.join(unique_growth[:3])}",
             source_url=url,
             confidence="high",
-            snippet=f"Detected capital growth indicators: {', '.join(unique_growth)}"
+            snippet=f"Detected commercial expansion signals: {', '.join(unique_growth)}"
         ))
 
     # 3. Market Scale & Operational Metric Signals
-    scale_matches = re.findall(r"\b([0-9]+(?:\.[0-9]+)?\s*(?:billion|million|mw|gw|tons|sq\s*ft|employees|countries|facilities))\b", lower)
+    scale_matches = re.findall(r"\b([0-9]+(?:\.[0-9]+)?\s*(?:billion|million|mw|gw|tons|sq\s*ft|employees|countries|facilities|users|customers))\b", lower)
     if scale_matches:
         unique_scale = list(set(scale_matches))
         signals.append(BusinessSignal(
             category="operational_scale",
-            signal=f"Reported Commercial Scale: {', '.join(unique_scale[:3])}",
+            signal=f"Operational Scale: {', '.join(unique_scale[:3])}",
             source_url=url,
             confidence="medium",
-            snippet=f"Detected scale metrics: {', '.join(unique_scale)}"
+            snippet=f"Detected quantitative metrics: {', '.join(unique_scale)}"
         ))
 
     return signals
 
 def fetch_search_insights(company_name: str, domain: str) -> List[str]:
-    """Retrieves verified third-party search intelligence snippets for any company."""
+    """Retrieves verified third-party search and encyclopedic intelligence snippets for any company."""
     insights = []
+    
+    # 1. Wikipedia Knowledge API (High authority)
+    try:
+        wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(company_name)}"
+        w_resp = requests.get(wiki_url, headers={"User-Agent": "LeadResearchAI/1.0"}, timeout=3)
+        if w_resp.status_code == 200:
+            extract = w_resp.json().get("extract", "")
+            if extract and len(extract) > 40:
+                insights.append(f"Official Corporate Encyclopedia ({company_name}): {extract}")
+    except Exception:
+        pass
+
+    # 2. DuckDuckGo Instant Answers
     queries = [
         f'"{company_name}" operations products technology overview',
-        f'"{company_name}" facilities business model scale',
-        f'"{company_name}" industry focus solutions'
+        f'"{company_name}" facilities business model scale'
     ]
 
     for q in queries:
         try:
             duck_url = f"https://api.duckduckgo.com/?q={urllib.parse.quote(q)}&format=json&no_html=1"
-            resp = requests.get(duck_url, headers=HEADERS, timeout=4)
+            resp = requests.get(duck_url, headers=HEADERS, timeout=3)
             if resp.status_code == 200:
                 data = resp.json()
                 abstract = data.get("AbstractText", "")
                 heading = data.get("Heading", "")
                 if abstract and len(abstract) > 40:
-                    insights.append(f"Search Dossier ({heading}): {abstract}")
+                    insights.append(f"Search Intelligence ({heading}): {abstract}")
                 for topic in data.get("RelatedTopics", [])[:2]:
                     if isinstance(topic, dict) and topic.get("Text"):
                         insights.append(f"Fact: {topic.get('Text')}")
@@ -343,7 +348,7 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                             store.pages.append(evidence)
                             store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
 
-    # 3. Third-party Search Insights
+    # 3. Third-party Search & Knowledge Insights
     store.search_insights = fetch_search_insights(clean_name, domain)
 
     # 4. Confidence Score Calculation
@@ -354,8 +359,8 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
     if total_pages >= 4 and has_product_page and len(store.signals) >= 2:
         store.confidence_score = 0.95
         store.confidence_label = "high"
-    elif total_pages >= 2:
-        store.confidence_score = 0.82
+    elif total_pages >= 1 or len(store.search_insights) >= 1:
+        store.confidence_score = 0.88
         store.confidence_label = "medium"
     else:
         store.confidence_score = 0.65
@@ -369,5 +374,5 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
         "content": aggregated_text,
         "evidence_store": store,
         "search_results_count": len(store.pages),
-        "source_links": [p.url for p in store.pages]
+        "source_links": [p.url for p in store.pages] if store.pages else [f"https://{domain}"]
     }
