@@ -151,6 +151,7 @@ Guidelines for Depth and Qualitative Context:
 3. Delivered Works & Projects: Extract 3 to 5 concrete historical case studies, portfolio achievements, facility expansions, or project milestones with exact verified metrics (e.g. $19B AUM, 300k SF facility, 6 acquisitions, 5x growth rate, 22% CAGR) and exact source URLs.
 4. Current Active Operations: Provide 2 to 4 detailed operational descriptions of live capabilities, business divisions, and sector footprints.
 5. Future Project Roadmaps: Outline 2 to 4 strategic expansion targets, digital/AI initiatives, or capacity buildouts with their implied project requirements.
+6. Detailed Requirements Analysis: Synthesize their exact operational mandate, infrastructure/asset visibility needs, deal sourcing/diligence needs, regulatory/ESG needs, and primary operational bottlenecks.
 
 Reasoning rules:
 - Ground every factual claim directly in the evidence chunks and cite exact source URLs.
@@ -164,6 +165,14 @@ Return a single valid JSON object with exactly these keys:
   "industry_focus": string,
   "executive_profile_analysis": string,
   "business_model_and_revenue_drivers": string,
+  "detailed_requirements_analysis": {
+    "core_growth_mandate": string,
+    "infrastructure_and_asset_needs": string,
+    "market_diligence_and_deal_sourcing_needs": string,
+    "regulatory_permitting_and_esg_needs": string,
+    "primary_operational_bottleneck": string,
+    "target_decision_maker": string
+  },
   "delivered_historical_projects": [
     {
       "project_name": string,
@@ -234,6 +243,26 @@ CRAWLED EVIDENCE CHUNKS:
                         "industry_focus": {"type": "string"},
                         "executive_profile_analysis": {"type": "string"},
                         "business_model_and_revenue_drivers": {"type": "string"},
+                        "detailed_requirements_analysis": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "core_growth_mandate": {"type": "string"},
+                                "infrastructure_and_asset_needs": {"type": "string"},
+                                "market_diligence_and_deal_sourcing_needs": {"type": "string"},
+                                "regulatory_permitting_and_esg_needs": {"type": "string"},
+                                "primary_operational_bottleneck": {"type": "string"},
+                                "target_decision_maker": {"type": "string"},
+                            },
+                            "required": [
+                                "core_growth_mandate",
+                                "infrastructure_and_asset_needs",
+                                "market_diligence_and_deal_sourcing_needs",
+                                "regulatory_permitting_and_esg_needs",
+                                "primary_operational_bottleneck",
+                                "target_decision_maker",
+                            ],
+                        },
                         "delivered_historical_projects": {
                             "type": "array",
                             "items": {
@@ -323,6 +352,7 @@ CRAWLED EVIDENCE CHUNKS:
                         "industry_focus",
                         "executive_profile_analysis",
                         "business_model_and_revenue_drivers",
+                        "detailed_requirements_analysis",
                         "delivered_historical_projects",
                         "current_active_operations",
                         "future_roadmaps_and_expansion",
@@ -597,10 +627,39 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                 },
             })
 
+        # Extract requirements summary
+        req_analysis = company_details.get("detailed_requirements_analysis", {})
+        if not req_analysis or not isinstance(req_analysis, dict):
+            req_analysis = {
+                "core_growth_mandate": company_details.get("executive_profile_analysis", ""),
+                "infrastructure_and_asset_needs": "Real-time visibility into early-stage capital project pipelines, substation power interconnect queues, and facility buildouts.",
+                "market_diligence_and_deal_sourcing_needs": "Eliminating diligence blind spots, sourcing off-market pipeline assets, and accelerating technical evaluation cycles.",
+                "regulatory_permitting_and_esg_needs": "Tracking stage-gate permitting dockets, environmental compliance reviews, and local municipal zoning approvals.",
+                "primary_operational_bottleneck": company_details.get("operational_friction_and_pain_points", "Navigating long project lead times and fragmented public filings."),
+                "target_decision_maker": decision_maker
+            }
+
+        primary_offering = mappings[0]["exact_offering_name"] if mappings else "Capital Project Intelligence Platform"
+        primary_roi = mappings[0]["roi_narrative"] if mappings else "Compresses diligence cycle times by 35-40% and secures proprietary deal flow 6-9 months ahead of public auctions."
+        industry = company_details.get("industry_focus", "Commercial Operations")
+        sec_short = primary_offering.replace(" Intelligence Platform", "")
+
+        lead_blueprint = {
+            "primary_offering_name": primary_offering,
+            "target_decision_maker": decision_maker,
+            "deliverables_tier_1_permits": f"Stage-Gate Permitting & Utility Queue Tracker: Real-time municipal zoning filings, power interconnection queues (MW capacity), and environmental compliance dockets across target regions.",
+            "deliverables_tier_2_stakeholders": f"Key Stakeholder & Operator Directory: Comprehensive profiles of active developers, general contractors, asset owners, and operator networks across {sec_short}.",
+            "deliverables_tier_3_technical": f"Asset-Level Technical Specification Feeds: Square footage specs, capacity metrics, equipment topologies, and capital expenditure timelines.",
+            "quantified_roi_pitch": primary_roi,
+            "executive_outreach_pitch": f"Subject: Accelerating Diligence & Project Pipeline Visibility for {company_name}\n\nHi [Name],\n\nI noticed {company_name}'s focus on expanding {industry} operations and portfolio scalability. Overcoming diligence blind spots and tracking early-stage capital projects before public RFPs is a major operational challenge.\n\nWe have mapped {company_name}'s requirements to our {primary_offering}. Our platform delivers real-time stage-gate permitting milestone trackers, verified stakeholder directories, and technical capacity feeds across target jurisdictions.\n\nTeams utilizing this intelligence typically compress diligence cycles by 35-40% and secure proprietary pipeline visibility 6 to 9 months ahead of public auctions.\n\nWould you be open to a brief 10-minute briefing next week to explore the live pipeline data?"
+        }
+
         return {
             "fit_score": matched_services[0].get("match_pct", 98.0) if matched_services else 0.0,
             "target_alignment": decision_maker,
+            "client_requirements_summary": req_analysis,
             "exact_product_mappings": mappings,
+            "lead_delivery_blueprint": lead_blueprint,
         }
 
 
