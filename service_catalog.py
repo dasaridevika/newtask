@@ -16,22 +16,24 @@ DOMAIN_STOPWORDS = {
     "plant", "facility", "facilities", "system", "systems", "production", "manufacturing", 
     "building", "buildings", "complex", "center", "centers", "infrastructure", "other", 
     "services", "service", "support", "management", "supporting", "integrated", "development",
-    "long", "term", "site", "sites", "program", "programs", "business", "businesses", 
-    "individual", "professional", "commercial", "industrial", "private", "growth", "scale",
-    "home", "family", "built", "through", "with", "from", "that", "into", "these", "their",
-    "about", "after", "again", "against", "because", "been", "before", "being", "below",
-    "between", "both", "during", "each", "further", "having", "here", "more", "most",
-    "once", "only", "same", "some", "such", "than", "then", "there", "they", "this", "those",
-    "very", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "wherever",
-    "data", "market", "markets", "care", "health", "specific", "track", "record", "project", "operations",
-    "technology", "technologies", "industry", "industries", "world", "assets", "under", "strategic", "capital",
-    "companies", "company", "products", "materials", "general", "waste", "drive", "drives", "driving",
-    "deliver", "delivers", "delivering", "expand", "expansion", "help", "helps", "leading", "firm", "firms",
-    "team", "teams", "partner", "partners", "investment", "investments", "investor", "investors",
-    "solutions", "solution", "opportunity", "opportunities", "global", "local", "regional", "national",
-    "movie", "patrons", "vehicles", "film", "films", "structure", "flexible", "category", "focus", "across",
-    "value", "added", "various", "multiple", "broad", "wide", "distribution", "distributor", "distributors",
-    "network", "networks", "line", "lines", "treatment", "medical", "supply", "supplies", "equipment"
+    "developments", "developer", "developers", "long", "term", "site", "sites", "program", "programs", 
+    "business", "businesses", "individual", "professional", "commercial", "industrial", "private", 
+    "growth", "scale", "home", "family", "built", "through", "with", "from", "that", "into", "these", 
+    "their", "about", "after", "again", "against", "because", "been", "before", "being", "below",
+    "between", "both", "during", "each", "further", "having", "here", "more", "most", "once", "only", 
+    "same", "some", "such", "than", "then", "there", "they", "this", "those", "very", "what", "when", 
+    "where", "which", "while", "who", "whom", "why", "will", "wherever", "data", "market", "markets", 
+    "care", "health", "specific", "track", "record", "project", "projects", "pipeline", "pipelines",
+    "operations", "technology", "technologies", "industry", "industries", "world", "assets", "asset", 
+    "under", "strategic", "capital", "companies", "company", "products", "materials", "general", "waste", 
+    "drive", "drives", "driving", "deliver", "delivers", "delivering", "expand", "expansion", "help", 
+    "helps", "leading", "firm", "firms", "team", "teams", "partner", "partners", "investment", 
+    "investments", "investor", "investors", "solutions", "solution", "opportunity", "opportunities", 
+    "global", "local", "regional", "national", "movie", "patrons", "vehicles", "film", "films", 
+    "structure", "flexible", "category", "focus", "across", "value", "added", "various", "multiple", 
+    "broad", "wide", "distribution", "distributor", "distributors", "network", "networks", "line", 
+    "lines", "treatment", "medical", "supply", "supplies", "equipment", "energy", "power", "storage",
+    "generation", "utility", "utilities"
 }
 
 def determine_evidence_level(
@@ -51,11 +53,16 @@ def determine_evidence_level(
     industry_lower = str(company_details.get("industry_focus", "")).lower() if company_details else ""
     archetype_lower = str(company_details.get("archetype", "")).lower() if company_details else ""
 
-    # 1. CHECK INBOUND INQUIRY (LEVEL 1)
-    inquiry_lower = client_inquiry.lower()
-    if inquiry_lower and len(inquiry_lower) > 3:
-        if clean_sec in inquiry_lower or (sec_tokens and all(re.search(r"\b" + re.escape(t) + r"\b", inquiry_lower) for t in sec_tokens)):
-            return "LEVEL 1 (Explicit Stated Requirement)", 1.0
+    # 1. CHECK INBOUND CLIENT INQUIRY (LEVEL 1)
+    if client_inquiry:
+        inq_lower = client_inquiry.lower()
+        inq_norm = re.sub(r"[^a-zA-Z0-9]", "", inq_lower)
+        if clean_sec in inq_lower and len(clean_sec) >= 4:
+            return "LEVEL 1 (Explicit Stated Requirement)", 0.95
+        if clean_sec_norm in inq_norm and len(clean_sec_norm) >= 5:
+            return "LEVEL 1 (Explicit Stated Requirement)", 0.95
+        if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", inq_lower) for st in sec_tokens if len(st) >= 4):
+            return "LEVEL 1 (Explicit Stated Requirement)", 0.95
 
     if not company_details:
         return "LEVEL 4 (Speculative / Semantic Only)", 0.40
