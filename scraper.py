@@ -381,12 +381,16 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
         clean_search_name = company_name
 
     try:
-        wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(clean_search_name)}"
-        w_resp = requests.get(wiki_url, headers={"User-Agent": "LeadResearchAI/1.0"}, timeout=3)
+        wiki_url = f"https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&titles={urllib.parse.quote(clean_search_name)}&format=json"
+        w_resp = requests.get(wiki_url, headers={"User-Agent": "LeadResearchAI/1.0"}, timeout=5)
         if w_resp.status_code == 200:
-            extract = w_resp.json().get("extract", "")
-            if extract and len(extract) > 40:
-                insights.append(f"Official Corporate Encyclopedia ({company_name}): {extract}")
+            pages = w_resp.json().get("query", {}).get("pages", {})
+            for _, pdata in pages.items():
+                extract = pdata.get("extract", "")
+                if extract and len(extract) > 40:
+                    lines = [line.strip() for line in extract.split("\n") if len(line.strip()) > 35 and not line.strip().startswith("=")]
+                    for l in lines[:15]:
+                        insights.append(f"Official Corporate Encyclopedia ({company_name}): {l}")
     except Exception:
         pass
 
