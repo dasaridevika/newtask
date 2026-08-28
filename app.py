@@ -29,21 +29,36 @@ st.markdown("""
         background: #1e293b;
         border: 1px solid #334155;
         border-radius: 8px;
-        padding: 16px;
+        padding: 16px 18px;
         color: #f8fafc;
-        margin-bottom: 12px;
+        min-height: 120px;
+        height: 120px;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        box-sizing: border-box;
+        overflow: hidden;
     }
     .metric-label {
-        font-size: 0.8rem;
+        font-size: 0.72rem;
         color: #94a3b8;
         text-transform: uppercase;
-        font-weight: 600;
-        margin-bottom: 4px;
+        letter-spacing: 0.06em;
+        font-weight: 700;
+        margin-bottom: 6px;
     }
     .metric-val {
-        font-size: 1.4rem;
+        font-size: 1.12rem;
         font-weight: 700;
         color: #38bdf8;
+        line-height: 1.35;
+        word-break: break-word;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
     }
     .metric-val-green { color: #10b981; }
     .metric-val-amber { color: #f59e0b; }
