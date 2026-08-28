@@ -5,7 +5,7 @@ import requests
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from typing import List, Dict, Optional, Set, Tuple
+from typing import List, Dict, Optional, Set, Tuple, Any
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -40,32 +40,48 @@ def determine_evidence_level(
     sec_name: str, 
     definition: str, 
     company_details: Optional[dict], 
-    client_inquiry: str = ""
-) -> Tuple[str, float]:
+    client_inquiry: str = "",
+    evidence_ledger: Optional[List[Any]] = None
+) -> Tuple[str, float, List[str]]:
     """
-    Classifies a candidate offering into Ground-Truth Evidence Levels dynamically.
-    Returns (level_label, confidence_multiplier).
+    Classifies a candidate offering into Ground-Truth Evidence Levels dynamically
+    and collects matching evidence_ids from the evidence ledger.
+    Returns (level_label, confidence_multiplier, verified_evidence_ids).
     """
     clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
     clean_sec_norm = clean_sec.replace(" ", "").replace("-", "")
     sec_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec)) - DOMAIN_STOPWORDS
 
-    industry_lower = str(company_details.get("industry_focus", "")).lower() if company_details else ""
-    archetype_lower = str(company_details.get("archetype", "")).lower() if company_details else ""
+    verified_evidence_ids = []
+
+    # Find supporting evidence IDs from the ledger
+    if evidence_ledger:
+        for ev in evidence_ledger:
+            ev_dict = ev if isinstance(ev, dict) else (ev.to_dict() if hasattr(ev, "to_dict") else {})
+            ev_id = ev_dict.get("evidence_id", "")
+            norm_quote = ev_dict.get("normalized_text", "")
+            
+            # Check for direct or token overlap in quoted evidence text
+            if clean_sec in norm_quote and len(clean_sec) >= 4:
+                if ev_id and ev_id not in verified_evidence_ids:
+                    verified_evidence_ids.append(ev_id)
+            elif sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", norm_quote) for st in sec_tokens if len(st) >= 4):
+                if ev_id and ev_id not in verified_evidence_ids:
+                    verified_evidence_ids.append(ev_id)
 
     # 1. CHECK INBOUND CLIENT INQUIRY (LEVEL 1)
     if client_inquiry:
         inq_lower = client_inquiry.lower()
         inq_norm = re.sub(r"[^a-zA-Z0-9]", "", inq_lower)
         if clean_sec in inq_lower and len(clean_sec) >= 4:
-            return "LEVEL 1 (Explicit Stated Requirement)", 0.95
+            return "LEVEL 1 (Explicit Stated Requirement)", 0.95, verified_evidence_ids or ["inquiry_direct_stated"]
         if clean_sec_norm in inq_norm and len(clean_sec_norm) >= 5:
-            return "LEVEL 1 (Explicit Stated Requirement)", 0.95
+            return "LEVEL 1 (Explicit Stated Requirement)", 0.95, verified_evidence_ids or ["inquiry_direct_stated"]
         if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", inq_lower) for st in sec_tokens if len(st) >= 4):
-            return "LEVEL 1 (Explicit Stated Requirement)", 0.95
+            return "LEVEL 1 (Explicit Stated Requirement)", 0.95, verified_evidence_ids or ["inquiry_direct_stated"]
 
     if not company_details:
-        return "LEVEL 4 (Speculative / Semantic Only)", 0.40
+        return "LEVEL 4 (Speculative / Semantic Only)", 0.40, []
 
     # 2. CHECK EXPLICIT PORTFOLIO TARGET SECTORS (LEVEL 1 / 2)
     target_secs = company_details.get("portfolio_target_sectors", [])
@@ -75,26 +91,26 @@ def determine_evidence_level(
         
         # Exact match of sector phrase
         if clean_sec == ts_clean or clean_sec_norm == ts_norm:
-            return "LEVEL 1 (Explicit Stated Focus)", 0.95
+            return "LEVEL 1 (Explicit Stated Focus)", 0.95, verified_evidence_ids or ["profile_stated_focus"]
 
         # Check compound/normalized overlap (e.g. healthcare vs health care, telecom vs telecommunication)
         if sec_tokens:
             for st in sec_tokens:
                 if len(st) >= 4 and (re.search(r"\b" + re.escape(st) + r"\b", ts_clean) or (len(st) >= 5 and st in ts_norm)):
-                    return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+                    return "LEVEL 2 (Verified Portfolio Exposure)", 0.90, verified_evidence_ids or ["profile_target_sector"]
             
-        # Check if target sector tokens appear in candidate sector
         ts_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", ts_clean)) - DOMAIN_STOPWORDS
         if ts_tokens:
             for tt in ts_tokens:
                 if len(tt) >= 4 and (re.search(r"\b" + re.escape(tt) + r"\b", clean_sec) or (len(tt) >= 5 and tt in clean_sec_norm)):
-                    return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+                    return "LEVEL 2 (Verified Portfolio Exposure)", 0.90, verified_evidence_ids or ["profile_target_sector"]
 
     # 3. CHECK EXPLICIT CORE INDUSTRY FOCUS (LEVEL 1)
+    industry_lower = str(company_details.get("industry_focus", "")).lower()
     if clean_sec == industry_lower:
-        return "LEVEL 1 (Explicit Core Sector)", 0.95
+        return "LEVEL 1 (Explicit Core Sector)", 0.95, verified_evidence_ids or ["industry_core_focus"]
     if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", industry_lower) for st in sec_tokens if len(st) >= 5):
-        return "LEVEL 1 (Explicit Core Sector)", 0.95
+        return "LEVEL 1 (Explicit Core Sector)", 0.95, verified_evidence_ids or ["industry_core_focus"]
 
     # 4. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
     past_text = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])]).lower()
@@ -102,18 +118,22 @@ def determine_evidence_level(
     portfolio_text = f"{past_text} {active_text}"
 
     if clean_sec in portfolio_text and len(clean_sec) >= 5:
-        return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.88, verified_evidence_ids or ["portfolio_case_study"]
     if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", portfolio_text) for st in sec_tokens if len(st) >= 5):
-        return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.88, verified_evidence_ids or ["portfolio_case_study"]
 
     # 5. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
     future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
     if clean_sec in future_text:
-        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
+        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70, verified_evidence_ids or ["future_roadmap"]
     if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", future_text) for t in sec_tokens):
-        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
+        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70, verified_evidence_ids or ["future_roadmap"]
 
-    return "LEVEL 4 (Speculative / Semantic Only)", 0.40
+    # If evidence ledger found matches but wasn't in explicit fields
+    if verified_evidence_ids:
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.85, verified_evidence_ids
+
+    return "LEVEL 4 (Speculative / Semantic Only)", 0.40, []
 
 class ServiceCatalog:
     def __init__(self, npz_path=None):
@@ -121,6 +141,7 @@ class ServiceCatalog:
         self.sectors = None        # array of 462 sector strings
         self.definitions = None    # array of 462 definition strings
         self.texts = None          # array of text strings
+        self.candidate_ids = None  # array of "cat_001", "cat_002", etc.
         self.model_name = os.getenv("CF_EMBEDDING_MODEL", "@cf/baai/bge-large-en-v1.5")
         self.worker_url = os.getenv("CLOUDFLARE_WORKER_URL", "https://lead-research-ai-worker.devika-worker.workers.dev")
         self.tfidf_vectorizer = None
@@ -135,9 +156,11 @@ class ServiceCatalog:
         """Loads pre-computed 1024-dimensional normalized vector matrix in < 1ms."""
         data = np.load(npz_file, allow_pickle=True)
         self.vectors = data["vectors"].astype(np.float32)
-        self.sectors = data["sectors"]
-        self.definitions = data["definitions"]
+        self.sectors = [str(s).strip() for s in data["sectors"]]
+        self.definitions = [str(d).strip() for d in data["definitions"]]
         self.texts = data["texts"]
+        self.candidate_ids = [f"cat_{i+1:03d}" for i in range(len(self.sectors))]
+
         if "model_name" in data:
             self.model_name = str(data["model_name"])
 
@@ -155,8 +178,11 @@ class ServiceCatalog:
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(cleaned_corpus)
         return len(self.sectors)
 
-    def _get_worker_embedding(self, text: str) -> np.ndarray:
+    def _get_worker_embedding(self, text: str) -> Optional[np.ndarray]:
         """Generates a 1024-dim dense vector using Cloudflare Workers AI with caching and retries."""
+        if not text or not text.strip():
+            return None
+
         cache_key = text.strip().lower()
         if cache_key in self._embedding_cache:
             return self._embedding_cache[cache_key]
@@ -243,16 +269,12 @@ class ServiceCatalog:
 
     def _extract_matching_keywords(self, sector_name: str, definition: str, company_text: str) -> List[str]:
         """Identifies specific domain keywords found in both the catalog sector and the evidence."""
+        if not company_text:
+            return []
         company_lower = company_text.lower()
         combined_sector = f"{sector_name} {definition}".lower()
-        
-        tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", combined_sector))
-        informative_tokens = tokens - DOMAIN_STOPWORDS
-        
-        matches = []
-        for t in informative_tokens:
-            if re.search(r"\b" + re.escape(t) + r"\b", company_lower):
-                matches.append(t)
+        tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", combined_sector)) - DOMAIN_STOPWORDS
+        matches = [t for t in tokens if re.search(r"\b" + re.escape(t) + r"\b", company_lower)]
         return sorted(matches[:6])
 
     def match_company_vector(
@@ -261,20 +283,21 @@ class ServiceCatalog:
         company_text: str = "",
         company_details: Optional[dict] = None,
         client_inquiry: str = "",
+        evidence_ledger: Optional[List[Any]] = None,
         top_k: int = 15
-    ) -> list:
+    ) -> List[Dict[str, Any]]:
         """
-        Evidence-Grounded Multi-Factor Matching:
-        Combines 1024-dim dense vector cosine similarity with Multiplicative Lexical Gating,
-        Ground-Truth Evidence Level classification (Levels 1 to 5), and transparent rejection of unsupported sectors.
+        Evidence-First Deterministic Matching:
+        Combines 1024-dim dense vector cosine similarity with multi-factor scoring
+        and cross-links directly with verifiable evidence IDs.
         """
         if self.vectors is None or len(self.vectors) == 0:
             return []
 
-        # 1. Dense Vector Cosine Similarity (Dense Semantic Field)
+        # 1. Dense Vector Cosine Similarity
         dense_sims = np.dot(self.vectors, company_vector)
 
-        # 2. Dynamic Sub-linear TF-IDF Similarity
+        # 2. Dynamic TF-IDF Lexical Similarity
         company_lower = (company_text + " " + client_inquiry).lower()
         if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_lower) > 20:
             clean_company_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", company_lower) if t not in DOMAIN_STOPWORDS]
@@ -283,45 +306,60 @@ class ServiceCatalog:
         else:
             tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
 
-        hybrid_scores = []
+        candidates: List[Dict[str, Any]] = []
+
         for idx in range(len(self.sectors)):
+            cand_id = self.candidate_ids[idx]
+            sec_name = self.sectors[idx]
+            definition = self.definitions[idx]
             raw_vec_score = float(dense_sims[idx])
             raw_tfidf_score = float(tfidf_sims[idx])
-            sec_name = str(self.sectors[idx]).strip()
-            definition = str(self.definitions[idx]).strip()
             clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
 
-            # Classify into Evidence Level (1 to 5)
-            evidence_level, confidence_multiplier = determine_evidence_level(sec_name, definition, company_details, client_inquiry)
+            # Classify into Evidence Level and extract verified evidence IDs
+            evidence_level, confidence_multiplier, verified_evidence_ids = determine_evidence_level(
+                sec_name, definition, company_details, client_inquiry, evidence_ledger
+            )
 
-            # Skip Level 5 (Unsupported / Out-of-Scope) sectors completely
-            if confidence_multiplier == 0.0:
-                continue
-
-            # Multiplicative Lexical Factor
+            # Lexical factor
             lexical_factor = min(0.25, (raw_tfidf_score * 1.2))
             if clean_sec in company_lower or (clean_sec + "s") in company_lower:
                 lexical_factor = min(0.25, lexical_factor + 0.10)
 
-            # Evidence-Grounded Multi-Factor Business Fit Score
-            # Multiplicative scaling ensures lexical tokens amplify, but cannot manufacture, vector relevance
+            # Intent score (if inquiry is present)
+            intent_score = 0.0
+            if client_inquiry:
+                inq_lower = client_inquiry.lower()
+                if clean_sec in inq_lower or any(st in inq_lower for st in clean_sec.split()):
+                    intent_score = 0.95
+
+            # Multi-factor business fit score
             base_score = raw_vec_score * (1.0 + lexical_factor)
             business_fit_score = base_score * (0.50 + 0.50 * confidence_multiplier)
+            final_score = 0.60 * business_fit_score + 0.20 * raw_vec_score + 0.20 * (1.0 if len(verified_evidence_ids) > 0 else 0.40)
 
             matched_keywords = self._extract_matching_keywords(sec_name, definition, company_text)
 
-            hybrid_scores.append({
-                "index": idx,
-                "Primary Sector": sec_name,
-                "Definition": definition,
-                "vector_cosine": round(raw_vec_score, 4),
-                "lexical_boost": round(lexical_factor, 4),
-                "business_fit_score": round(business_fit_score, 4),
-                "similarity": round(raw_vec_score, 4),
+            candidate_record = {
+                "candidate_id": cand_id,
+                "primary_sector": sec_name,
+                "canonical_name": sec_name,
+                "definition": definition,
                 "evidence_level": evidence_level,
+                "verified_evidence_ids": verified_evidence_ids,
+                "verified_evidence_count": len(verified_evidence_ids),
+                "vector_cosine": round(raw_vec_score, 4),
+                "lexical_score": round(lexical_factor, 4),
+                "lexical_boost": round(lexical_factor, 4),
+                "intent_score": round(intent_score, 4),
+                "definition_score": round(raw_vec_score, 4),
+                "business_fit_score": round(business_fit_score, 4),
+                "final_score": round(final_score, 4),
+                "similarity": round(raw_vec_score, 4),
                 "confidence": "HIGH" if confidence_multiplier >= 0.85 else ("MEDIUM" if confidence_multiplier >= 0.70 else "SPECULATIVE"),
                 "matched_keywords": matched_keywords
-            })
+            }
+            candidates.append(candidate_record)
 
         def _evidence_tier(item):
             lvl = item.get("evidence_level", "")
@@ -333,18 +371,17 @@ class ServiceCatalog:
                 return 3
             return 4
 
-        # Sort primarily by evidence tier (Level 1 -> 2 -> 3 -> 4) and secondarily by business fit score descending
-        hybrid_scores.sort(key=lambda x: (_evidence_tier(x), -x["business_fit_score"]))
+        # Sort primarily by evidence tier (Level 1 -> 2 -> 3 -> 4) and secondarily by final_score descending
+        candidates.sort(key=lambda x: (_evidence_tier(x), -x["final_score"]))
 
-        # Deduplicate and return top_k
+        # Deduplicate by canonical name
         results = []
         seen = set()
-        for item in hybrid_scores:
-            norm_name = re.sub(r"[^a-zA-Z0-9]", "", item["Primary Sector"].lower())
+        for item in candidates:
+            norm_name = re.sub(r"[^a-zA-Z0-9]", "", item["primary_sector"].lower())
             if norm_name in seen:
                 continue
             seen.add(norm_name)
-
             results.append(item)
             if len(results) >= top_k:
                 break

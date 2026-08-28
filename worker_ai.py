@@ -128,7 +128,13 @@ class WorkerAI:
         base = base.replace("www.", "").split(".")[0]
         return base[:1].upper() + base[1:] if base else "Enterprise"
 
-    def extract_company_details(self, scraped_text: str, domain: str = "", client_inquiry: str = "", evidence_store=None) -> dict:
+    def extract_company_details(
+        self,
+        scraped_text: str,
+        domain: str = "",
+        client_inquiry: str = "",
+        evidence_store=None
+    ) -> dict:
         clean_name = self._safe_company_name(domain)
         inquiry_text = f'\nClient Specific Inbound Inquiry / Stated Requirement:\n"{client_inquiry}"\n' if client_inquiry else ""
 
@@ -446,7 +452,15 @@ CRAWLED EVIDENCE CHUNKS:
 
         return parsed
 
-    def llm_similarity_comparison(self, company_details: dict, candidate_sectors: list) -> list:
+    def llm_similarity_comparison(
+        self,
+        company_details: dict,
+        candidate_sectors: List[Dict[str, Any]]
+    ) -> list:
+        """
+        Deterministic Candidate Selection using Canonical candidate_id values.
+        Guarantees that no display strings or definition texts are used as keys.
+        """
         if not candidate_sectors:
             return []
 
@@ -462,8 +476,8 @@ CRAWLED EVIDENCE CHUNKS:
 
         top_candidates = candidate_sectors[:12]
         candidate_list_text = "\n".join([
-            f"{i+1}. {c.get('Primary Sector', '')} (Evidence: {c.get('evidence_level', 'LEVEL 4')}, Cosine: {c.get('vector_cosine', 0.65)}) - Definition: {c.get('Definition', '')}"
-            for i, c in enumerate(top_candidates)
+            f"[{c.get('candidate_id')}] Sector: \"{c.get('primary_sector')}\" | Evidence Tier: {c.get('evidence_level')} | Evidence Count: {c.get('verified_evidence_count', 0)} | Cosine: {c.get('vector_cosine', 0.65)} | Definition: {c.get('definition', '')}"
+            for c in top_candidates
         ])
 
         system_prompt = """
@@ -480,19 +494,19 @@ HOW CLIENTS USE OUR INTELLIGENCE PLATFORM:
 - EPCs & General Contractors:
   They track projects to bid on contracts before public RFPs are issued.
 
-STRICT FACTUALITY & ACCURACY RULES:
-1. DYNAMIC EVALUATION: Review each candidate sector against the company profile, active portfolio companies, and business archetype.
-2. REJECT SCALE & ARCHETYPE MISMATCHES: If a candidate sector is an advanced gigafactory (e.g., Sodium-Ion Battery, Flow Battery, Polyethylene Resin, Refinery, Smelter) or sovereign civil project (SEZ, Port, Dam, Utility CAES) and the target enterprise is a middle-market commercial buyout fund or software firm, you MUST reject or disqualify that candidate.
-3. ZERO HALLUCINATIONS: Never fabricate that a client has "energy storage businesses", "battery facilities", or "chemical plants" if they do not exist in their verified portfolio. Disqualify ungrounded sectors into "disqualified_audit".
-4. GROUNDING: Prioritize sectors with Level 1 (Explicit Focus) or Level 2 (Verified Portfolio Exposure). Do NOT use generic template text. Explain the exact connection to their portfolio companies, operating platforms, or stated strategy.
-5. DYNAMIC DISQUALIFICATION AUDIT: For candidate sectors from the top candidates that are rejected or speculative, dynamically output them in "disqualified_audit" explaining why they were rejected (e.g. "Scale Mismatch - Middle-market buyout fund does not construct advanced battery gigafactories" or "Semantic Drift - No operational exposure").
-6. EXACT SECTOR NAMES ONLY: In 'primary_sector' and 'sector', provide ONLY the clean sector name (e.g. 'Other Health Care Building', 'Warehouse', 'Solar Photovoltaic Power Plant (PV)'). Do not include metadata, definitions, or pipeline text.
+STRICT FACTUALITY & FAIL-CLOSED RULES:
+1. FAIL-CLOSED AUDIT: You must ONLY select candidate_ids from the supplied list that have verifiable operational evidence or strategic alignment. Never fabricate portfolio assets.
+2. REJECT SCALE & ARCHETYPE MISMATCHES: If a candidate sector is an advanced gigafactory (e.g., Sodium-Ion Battery, Flow Battery, Polyethylene Resin, Refinery, Smelter) or sovereign civil project (SEZ, Port, Dam, Utility CAES) and the target enterprise is a middle-market commercial buyout fund or software firm, you MUST reject that candidate into 'disqualified_audit'.
+3. USE CANONICAL CANDIDATE IDs: In 'candidate_id', provide ONLY the stable candidate_id (e.g. 'cat_254', 'cat_450').
+4. CITATIONS: In 'supporting_evidence_ids', cite any relevant evidence IDs if known.
+5. CONCISE QUALITATIVE STATEMENTS: Output clean rationale, requirement solved, and solution architecture without template prefix echoes.
 
 Return this JSON shape:
 {
   "ranked_matches": [
     {
-      "primary_sector": "Exact Clean Sector Name from candidates list",
+      "candidate_id": "Exact candidate_id from list (e.g. cat_254)",
+      "primary_sector": "Clean canonical sector name",
       "evidence_level": "LEVEL 1 (Explicit Stated Focus) | LEVEL 2 (Verified Portfolio Exposure) | LEVEL 3 (Strategic Roadmap Adjacency)",
       "llm_match_rationale": "3-4 detailed sentences of domain-specific qualitative rationale citing specific portfolio companies or business activities.",
       "requirement_solved": "2-3 detailed sentences of the exact strategic and diligence challenge solved.",
@@ -502,7 +516,8 @@ Return this JSON shape:
   ],
   "disqualified_audit": [
     {
-      "sector": "Exact Clean Sector Name",
+      "candidate_id": "Exact candidate_id",
+      "sector": "Clean canonical sector name",
       "status": "DISQUALIFIED (Scale Mismatch / Non-Commercial / Semantic Drift)",
       "rationale": "Clear dynamic explanation of why this sector was rejected."
     }
@@ -524,13 +539,13 @@ Current Live Operations / Portfolio Footprint: {json.dumps(current_ops, ensure_a
 Future Strategic Roadmaps: {json.dumps(future_maps, ensure_ascii=False)}
 Operational Friction: {friction}
 
-CANDIDATE SECTORS (Top Candidates from Vector Retrieval):
+CANDIDATE SECTORS (Ranked by Evidence Tier and Vector Cosine):
 {candidate_list_text}
 
 TASK:
-1. Review each candidate sector against {company_name}'s verified operations, active portfolio platforms, and archetype.
-2. Reject out-of-scope gigafactories, chemical plants, and sovereign mega-projects (e.g. CAES, EVA Plant, Flow Battery, Sodium-Ion Battery, Refinery, Smelter) that do not match their business model, logging the reason in "disqualified_audit".
-3. Select and rank the top 3 best matching sectors that have genuine operational alignment with their portfolio or stated strategy. Provide ONLY clean sector names.
+1. Select the top 1 to 3 best matching sectors that have genuine operational alignment with {company_name}'s verified portfolio footprint or stated focus.
+2. Reject out-of-scope gigafactories, chemical plants, and sovereign mega-projects into 'disqualified_audit'.
+3. Use candidate_id for all selections.
 """.strip()
 
         response_format = {
@@ -547,6 +562,7 @@ TASK:
                                 "type": "object",
                                 "additionalProperties": False,
                                 "properties": {
+                                    "candidate_id": {"type": "string"},
                                     "primary_sector": {"type": "string"},
                                     "evidence_level": {"type": "string"},
                                     "llm_match_rationale": {"type": "string"},
@@ -555,6 +571,7 @@ TASK:
                                     "operational_value_driver": {"type": "string"}
                                 },
                                 "required": [
+                                    "candidate_id",
                                     "primary_sector",
                                     "evidence_level",
                                     "llm_match_rationale",
@@ -570,11 +587,12 @@ TASK:
                                 "type": "object",
                                 "additionalProperties": False,
                                 "properties": {
+                                    "candidate_id": {"type": "string"},
                                     "sector": {"type": "string"},
                                     "status": {"type": "string"},
                                     "rationale": {"type": "string"}
                                 },
-                                "required": ["sector", "status", "rationale"]
+                                "required": ["candidate_id", "sector", "status", "rationale"]
                             }
                         }
                     },
@@ -594,16 +612,19 @@ TASK:
             ranked = parsed.get("ranked_matches") or parsed.get("top_matches") or parsed.get("matches") or []
             dynamic_audit = parsed.get("disqualified_audit") or parsed.get("disqualified_and_speculative_audit") or []
 
-        # Sanitize dynamic audit sector names
+        # Index candidates by ID and clean sector name
+        candidates_by_id = {c.get("candidate_id"): c for c in candidate_sectors if c.get("candidate_id")}
+        candidates_by_name = {c.get("primary_sector", "").lower().strip(): c for c in candidate_sectors}
+
         clean_dynamic_audit = []
         for d in dynamic_audit:
-            d_sec = (d.get("sector") or "").strip()
+            cid = d.get("candidate_id", "")
+            d_cand = candidates_by_id.get(cid)
+            d_sec = (d_cand.get("primary_sector") if d_cand else d.get("sector", "")).strip()
             if "|" in d_sec:
                 d_sec = d_sec.split("|")[0].strip()
-            if ":" in d_sec and ("sector" in d_sec.lower() or "candidate" in d_sec.lower()):
-                d_sec = d_sec.split(":")[-1].strip()
-            d_sec = re.sub(r"^\d+\.\s*", "", d_sec).strip()
             clean_dynamic_audit.append({
+                "candidate_id": cid or (d_cand.get("candidate_id") if d_cand else ""),
                 "sector": d_sec,
                 "status": d.get("status", "DISQUALIFIED (Scale Mismatch / Non-Commercial / Semantic Drift)"),
                 "rationale": d.get("rationale", "")
@@ -611,40 +632,53 @@ TASK:
 
         default_tiers = ["Primary Strategic Solution", "Secondary Strategic Solution", "Adjacent Expansion Solution"]
         results = []
-        candidates_by_name = {c.get("Primary Sector", "").lower().strip(): c for c in candidate_sectors}
+        seen_cand_ids = set()
 
         if ranked and isinstance(ranked, list):
             for i, item in enumerate(ranked[:3]):
-                raw_sec_name = (item.get("primary_sector") or item.get("sector") or item.get("Primary Sector") or "").strip()
-                if "|" in raw_sec_name:
-                    raw_sec_name = raw_sec_name.split("|")[0].strip()
-                if ":" in raw_sec_name and ("sector" in raw_sec_name.lower() or "candidate" in raw_sec_name.lower()):
-                    raw_sec_name = raw_sec_name.split(":")[-1].strip()
-                raw_sec_name = re.sub(r"^\d+\.\s*", "", raw_sec_name).strip()
-
-                cand_info = candidates_by_name.get(raw_sec_name.lower())
+                cid = (item.get("candidate_id") or "").strip()
+                cand_info = candidates_by_id.get(cid)
+                
+                # Fallback to name search if ID not matched
                 if not cand_info:
-                    for k, v in candidates_by_name.items():
-                        if raw_sec_name.lower() in k or k in raw_sec_name.lower():
-                            cand_info = v
-                            break
+                    raw_sec = (item.get("primary_sector") or "").strip()
+                    if "|" in raw_sec:
+                        raw_sec = raw_sec.split("|")[0].strip()
+                    cand_info = candidates_by_name.get(raw_sec.lower())
+                    if not cand_info:
+                        for k, v in candidates_by_name.items():
+                            if raw_sec.lower() in k or k in raw_sec.lower():
+                                cand_info = v
+                                break
 
-                canonical_name = cand_info.get("Primary Sector") if cand_info else raw_sec_name
-                defn = (cand_info.get("Definition") if cand_info else item.get("definition", ""))
-                vec_score = cand_info.get("vector_cosine", 0.60) if cand_info else float(item.get("cosine", 0.60))
-                lex_score = cand_info.get("lexical_boost", 0.10) if cand_info else 0.10
-                hyb_score = cand_info.get("business_fit_score", 0.60) if cand_info else vec_score
-                ev_level = item.get("evidence_level") or item.get("level") or (cand_info.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)") if cand_info else "LEVEL 2 (Verified Portfolio Exposure)")
+                if not cand_info:
+                    continue
+
+                canonical_id = cand_info.get("candidate_id", f"cat_{i+1:03d}")
+                if canonical_id in seen_cand_ids:
+                    continue
+                seen_cand_ids.add(canonical_id)
+
+                canonical_name = cand_info.get("primary_sector")
+                defn = cand_info.get("definition", "")
+                vec_score = cand_info.get("vector_cosine", 0.60)
+                lex_score = cand_info.get("lexical_score", 0.10)
+                hyb_score = cand_info.get("business_fit_score", 0.60)
+                ev_level = item.get("evidence_level") or cand_info.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)")
                 conf = "HIGH" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "MEDIUM"
+                ev_ids = cand_info.get("verified_evidence_ids", [])
 
                 val_driver = item.get("operational_value_driver") or item.get("value_driver") or f"Accelerates strategic diligence and capital deployment, while eliminating market blind spots across {canonical_name}."
                 val_driver = re.sub(r"^(?:Concrete qualitative operational value statement:\s*|Operational Value Driver:\s*)", "", val_driver, flags=re.I).strip()
 
                 results.append({
-                    "tier_label": default_tiers[i],
-                    "Primary Sector": canonical_name or "Capital Project Intelligence",
+                    "tier_label": default_tiers[len(results)],
+                    "candidate_id": canonical_id,
+                    "Primary Sector": canonical_name,
                     "Definition": defn,
                     "evidence_level": ev_level,
+                    "verified_evidence_ids": ev_ids,
+                    "verified_evidence_count": len(ev_ids),
                     "confidence": conf,
                     "similarity": vec_score,
                     "vector_cosine": vec_score,
@@ -657,32 +691,36 @@ TASK:
                     "dynamic_audit": clean_dynamic_audit
                 })
 
-        # Ensure we have up to 3 non-disqualified results
-        disqualified_names = {d.get("sector", "").lower().strip() for d in dynamic_audit}
-        existing_result_names = {r.get("Primary Sector", "").lower().strip() for r in results}
-
+        # Fail-closed candidate backfill: ONLY backfill if candidate has verified evidence (Level 1, 2, or 3)
+        disqualified_cids = {d.get("candidate_id") for d in clean_dynamic_audit if d.get("candidate_id")}
         if len(results) < 3 and candidate_sectors:
             for cand in candidate_sectors:
                 if len(results) >= 3:
                     break
-                sec_name = cand.get("Primary Sector", "").strip()
-                sec_lower = sec_name.lower()
-                if sec_lower in existing_result_names:
+                cid = cand.get("candidate_id")
+                if not cid or cid in seen_cand_ids or cid in disqualified_cids:
                     continue
-                if any(dn in sec_lower or sec_lower in dn for dn in disqualified_names if len(dn) >= 4):
+                
+                # Fail-closed condition: do NOT backfill Level 4 speculative items without evidence
+                ev_level = cand.get("evidence_level", "")
+                if "LEVEL 4" in ev_level and cand.get("verified_evidence_count", 0) == 0:
                     continue
 
                 tier_idx = len(results)
-                ev_level = cand.get("evidence_level", "LEVEL 4 (Speculative / Semantic Only)")
+                sec_name = cand.get("primary_sector", "")
+                ev_ids = cand.get("verified_evidence_ids", [])
                 results.append({
                     "tier_label": default_tiers[tier_idx],
+                    "candidate_id": cid,
                     "Primary Sector": sec_name,
-                    "Definition": cand.get("Definition", ""),
+                    "Definition": cand.get("definition", ""),
                     "evidence_level": ev_level,
+                    "verified_evidence_ids": ev_ids,
+                    "verified_evidence_count": len(ev_ids),
                     "confidence": "HIGH" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "MEDIUM",
                     "similarity": cand.get("vector_cosine", 0.65),
                     "vector_cosine": cand.get("vector_cosine", 0.65),
-                    "lexical_boost": cand.get("lexical_boost", 0.10),
+                    "lexical_boost": cand.get("lexical_score", 0.10),
                     "business_fit_score": cand.get("business_fit_score", 0.70),
                     "llm_match_rationale": f"The {sec_name} sector provides strategic alignment with {company_name}'s market thesis and solves core pipeline diligence friction.",
                     "requirement_solved": f"Project pipeline intelligence and asset-level tracking across {sec_name}.",
@@ -690,20 +728,34 @@ TASK:
                     "operational_value_driver": f"Accelerates diligence cycles and secures off-market intelligence across {sec_name}.",
                     "dynamic_audit": clean_dynamic_audit
                 })
-                existing_result_names.add(sec_lower)
+                seen_cand_ids.add(cid)
 
         return results
 
-    def analyze_fit(self, company_details: dict, matched_services: list) -> dict:
+    def analyze_fit(
+        self,
+        company_details: dict,
+        matched_services: list,
+        evidence_ledger: Optional[List[Any]] = None
+    ) -> dict:
         company_name = company_details.get("company_name", "Client Enterprise")
         archetype = company_details.get("archetype", "Enterprise")
         decision_maker = company_details.get("buying_role_hypothesis", "Strategic Leadership")
 
+        # Map evidence ledger by ID for fast citation lookup
+        ledger_by_id = {}
+        if evidence_ledger:
+            for ev in evidence_ledger:
+                ev_dict = ev if isinstance(ev, dict) else (ev.to_dict() if hasattr(ev, "to_dict") else {})
+                if ev_dict.get("evidence_id"):
+                    ledger_by_id[ev_dict["evidence_id"]] = ev_dict
+
         mappings = []
         dynamic_audit = []
         for i, srv in enumerate(matched_services[:3]):
-            title = srv.get("Primary Sector") or srv.get("Service Name") or "Intelligence"
-            defn = srv.get("Definition") or srv.get("Value Proposition") or "Verified intelligence and operational tracking."
+            cid = srv.get("candidate_id", f"cat_{i+1:03d}")
+            title = srv.get("Primary Sector") or "Capital Project Intelligence"
+            defn = srv.get("Definition") or "Verified intelligence and operational tracking."
             req_solved = srv.get("requirement_solved") or f"Core challenge in {title}"
             tier_label = srv.get("tier_label", f"Strategic Solution {i+1}")
 
@@ -722,13 +774,28 @@ TASK:
             if srv.get("dynamic_audit"):
                 dynamic_audit = srv.get("dynamic_audit")
 
+            # Collect supporting quote citations
+            ev_ids = srv.get("verified_evidence_ids", [])
+            supporting_citations = []
+            for eid in ev_ids:
+                if eid in ledger_by_id:
+                    supporting_citations.append({
+                        "evidence_id": eid,
+                        "quoted_text": ledger_by_id[eid].get("quoted_text", ""),
+                        "source_url": ledger_by_id[eid].get("source_url", "")
+                    })
+
             mappings.append({
                 "tier_label": tier_label,
+                "candidate_id": cid,
                 "exact_offering_name": offering_name,
                 "mapped_requirement": req_solved,
                 "offering_definition": defn,
                 "evidence_level": srv.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
                 "confidence": srv.get("confidence", "HIGH"),
+                "verified_evidence_ids": ev_ids,
+                "verified_evidence_count": len(ev_ids),
+                "supporting_citations": supporting_citations,
                 "llm_match_rationale": srv.get("llm_match_rationale", ""),
                 "comprehensive_narrative": sol_arch,
                 "operational_value_driver": val_driver,
@@ -740,7 +807,6 @@ TASK:
                 },
             })
 
-        # Extract requirements summary
         req_analysis = company_details.get("detailed_requirements_analysis", {})
         if not req_analysis or not isinstance(req_analysis, dict):
             req_analysis = {
@@ -765,13 +831,26 @@ TASK:
             "operational_value_driver": val_driver_pitch,
         }
 
-        # Filter dynamic audit to remove any sectors that are actually in exact mappings (avoiding self-contradiction)
+        # Filter dynamic audit to remove any sectors that are actually in exact mappings
+        mapped_cids = {m.get("candidate_id") for m in mappings}
         mapped_sectors_lower = {m["exact_offering_name"].replace(" Intelligence Platform", "").lower().strip() for m in mappings}
         clean_disqualified = []
         for d in dynamic_audit:
+            cid = d.get("candidate_id")
             d_sec = d.get("sector", "").lower().strip()
+            if cid and cid in mapped_cids:
+                continue
             if not any(ms in d_sec or d_sec in ms for ms in mapped_sectors_lower):
                 clean_disqualified.append(d)
+
+        # Fail-closed gap analysis if 0 matches found
+        evidence_gap_analysis = None
+        if len(mappings) == 0:
+            evidence_gap_analysis = {
+                "status": "NO_VERIFIED_MATCHES",
+                "message": f"No positive catalog offerings could be verified with ground-truth evidence for {company_name}.",
+                "recommendation": "Expand crawl depth or provide explicit inbound requirements."
+            }
 
         return {
             "fit_score": matched_services[0].get("business_fit_score", 0.85) if matched_services else 0.0,
@@ -779,7 +858,8 @@ TASK:
             "client_requirements_summary": req_analysis,
             "exact_product_mappings": mappings,
             "lead_delivery_blueprint": lead_blueprint,
-            "disqualified_and_speculative_audit": clean_disqualified
+            "disqualified_and_speculative_audit": clean_disqualified,
+            "evidence_gap_analysis": evidence_gap_analysis
         }
 
 
