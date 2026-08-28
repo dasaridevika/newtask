@@ -148,11 +148,11 @@ Analyze the target enterprise in depth strictly from the supplied crawled eviden
 Guidelines for Depth and Qualitative Context:
 1. Executive Profile: Provide 5 to 7 detailed, high-density sentences analyzing what the enterprise does, its operational anatomy, founding history, market scale, and operating philosophy. Avoid generic fluff; name specific products, services, and strategies.
 2. Business Model: Provide 4 to 6 detailed sentences explaining how the company creates value, monetizes its capabilities, interacts with customer segments, and structures commercial/investment delivery.
-3. Delivered Works & Projects: Extract 3 to 5 concrete historical case studies, portfolio achievements, facility expansions, or project milestones with exact verified metrics (e.g. $19B AUM, 300k SF facility, 6 acquisitions, 5x growth rate, 22% CAGR) and exact source URLs.
+3. Delivered Works & Portfolio Platforms: Extract 3 to 5 concrete portfolio companies, historical investments, or case studies. In 'summary', describe what the business actually produces or operates, its industry vertical, and its physical facility footprint (e.g. 'Colony Hardware - direct-to-jobsite distributor of industrial and safety supplies operating regional warehouse distribution centers', 'Aramsco - environmental remediation and safety supplies distributor operating nationwide warehouse hub network', 'Elevate Healthcare - tech-enabled healthcare platform operating outpatient clinics and specialized care networks').
 4. Current Active Operations: Provide 2 to 4 detailed operational descriptions of live capabilities, business divisions, and sector footprints.
 5. Future Project Roadmaps: Outline 2 to 4 strategic expansion targets, digital/AI initiatives, or capacity buildouts with their implied project requirements.
 6. Detailed Requirements Analysis: Synthesize their exact operational mandate, infrastructure/asset visibility needs, deal sourcing/diligence needs, regulatory/ESG needs, and primary operational bottlenecks.
-7. Operating Platforms & Sector Footprint: For financial sponsors, private equity funds, or holding companies, extract their concrete underlying industry verticals, operating companies, and physical facility footprints into 'portfolio_target_sectors' (e.g. ['Outpatient Healthcare Services & Specialized Clinics', 'Industrial Supply & Warehouse Distribution', 'Managed IT & Telecom Infrastructure', 'Commercial Services']).
+7. Operating Platforms & Sector Footprint: In 'portfolio_target_sectors', extract the specific physical facility sectors and industry verticals of their portfolio (e.g. ['Outpatient Healthcare Clinics & Medical Buildings', 'Industrial Supply & Warehouse Distribution', 'Managed IT, Telecommunications & Communication Infrastructure', 'Commercial Facility Services']). Never put generic filler like 'Middle Market Companies'.
 
 Reasoning rules:
 - Ground every factual claim directly in the evidence chunks and cite exact source URLs.
@@ -632,26 +632,40 @@ TASK:
                     "dynamic_audit": dynamic_audit
                 })
 
-        # Fallback if LLM ranked is empty
-        if not results and candidate_sectors:
-            for i, cand in enumerate(candidate_sectors[:3]):
-                sec_name = cand.get("Primary Sector", "Enterprise Sector")
+        # Ensure we have up to 3 non-disqualified results
+        disqualified_names = {d.get("sector", "").lower().strip() for d in dynamic_audit}
+        existing_result_names = {r.get("Primary Sector", "").lower().strip() for r in results}
+
+        if len(results) < 3 and candidate_sectors:
+            for cand in candidate_sectors:
+                if len(results) >= 3:
+                    break
+                sec_name = cand.get("Primary Sector", "").strip()
+                sec_lower = sec_name.lower()
+                if sec_lower in existing_result_names:
+                    continue
+                if any(dn in sec_lower or sec_lower in dn for dn in disqualified_names if len(dn) >= 4):
+                    continue
+
+                tier_idx = len(results)
+                ev_level = cand.get("evidence_level", "LEVEL 4 (Speculative / Semantic Only)")
                 results.append({
-                    "tier_label": default_tiers[i],
+                    "tier_label": default_tiers[tier_idx],
                     "Primary Sector": sec_name,
                     "Definition": cand.get("Definition", ""),
-                    "evidence_level": cand.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
-                    "confidence": cand.get("confidence", "HIGH"),
+                    "evidence_level": ev_level,
+                    "confidence": "HIGH" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "MEDIUM",
                     "similarity": cand.get("vector_cosine", 0.65),
                     "vector_cosine": cand.get("vector_cosine", 0.65),
-                    "lexical_boost": cand.get("lexical_boost", 0.20),
-                    "business_fit_score": cand.get("business_fit_score", 0.75),
-                    "llm_match_rationale": f"The {sec_name} sector aligns with {company_name}'s stated investment operations and solves critical project diligence bottlenecks.",
-                    "requirement_solved": f"Project pipeline intelligence tracking across {sec_name}.",
-                    "solution_architecture": f"Bespoke intelligence platform monitoring planning, permitting, and engineering milestones for {sec_name} assets.",
-                    "operational_value_driver": "Compresses project discovery cycles and strengthens commercial conversion through verified intelligence.",
+                    "lexical_boost": cand.get("lexical_boost", 0.10),
+                    "business_fit_score": cand.get("business_fit_score", 0.70),
+                    "llm_match_rationale": f"The {sec_name} sector provides strategic alignment with {company_name}'s market thesis and solves core pipeline diligence friction.",
+                    "requirement_solved": f"Project pipeline intelligence and asset-level tracking across {sec_name}.",
+                    "solution_architecture": f"Bespoke intelligence platform monitoring early-stage planning, stage-gate permitting, and stakeholder directories for {sec_name} developments.",
+                    "operational_value_driver": f"Accelerates diligence cycles and secures off-market intelligence across {sec_name}.",
                     "dynamic_audit": dynamic_audit
                 })
+                existing_result_names.add(sec_lower)
 
         return results
 

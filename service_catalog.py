@@ -25,7 +25,13 @@ DOMAIN_STOPWORDS = {
     "very", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "wherever",
     "data", "market", "markets", "care", "health", "specific", "track", "record", "project", "operations",
     "technology", "technologies", "industry", "industries", "world", "assets", "under", "strategic", "capital",
-    "companies", "company", "products", "materials", "general", "waste"
+    "companies", "company", "products", "materials", "general", "waste", "drive", "drives", "driving",
+    "deliver", "delivers", "delivering", "expand", "expansion", "help", "helps", "leading", "firm", "firms",
+    "team", "teams", "partner", "partners", "investment", "investments", "investor", "investors",
+    "solutions", "solution", "opportunity", "opportunities", "global", "local", "regional", "national",
+    "movie", "patrons", "vehicles", "film", "films", "structure", "flexible", "category", "focus", "across",
+    "value", "added", "various", "multiple", "broad", "wide", "distribution", "distributor", "distributors",
+    "network", "networks", "line", "lines", "treatment", "medical", "supply", "supplies", "equipment"
 }
 
 def determine_evidence_level(
@@ -64,22 +70,23 @@ def determine_evidence_level(
         if clean_sec == ts_clean or clean_sec_norm == ts_norm:
             return "LEVEL 1 (Explicit Stated Focus)", 0.95
 
-        # Check if distinctive target sector (>= 6 chars and not in stopwords) is contained in normalized sector name
-        if len(ts_norm) >= 6 and ts_norm not in DOMAIN_STOPWORDS and (ts_norm in clean_sec_norm or clean_sec_norm in ts_norm):
-            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+        # Check compound/normalized overlap (e.g. healthcare vs health care, telecom vs telecommunication)
+        if sec_tokens:
+            for st in sec_tokens:
+                if len(st) >= 4 and (re.search(r"\b" + re.escape(st) + r"\b", ts_clean) or (len(st) >= 5 and st in ts_norm)):
+                    return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
             
-        # Non-stopword tokens matching
+        # Check if target sector tokens appear in candidate sector
         ts_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", ts_clean)) - DOMAIN_STOPWORDS
         if ts_tokens:
-            if len(ts_tokens) >= 2 and all(t in clean_sec for t in ts_tokens):
-                return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
-            elif len(ts_tokens) == 1 and all(t in clean_sec for t in ts_tokens) and len(list(ts_tokens)[0]) >= 6:
-                return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
+            for tt in ts_tokens:
+                if len(tt) >= 4 and (re.search(r"\b" + re.escape(tt) + r"\b", clean_sec) or (len(tt) >= 5 and tt in clean_sec_norm)):
+                    return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
 
     # 3. CHECK EXPLICIT CORE INDUSTRY FOCUS (LEVEL 1)
     if clean_sec == industry_lower:
         return "LEVEL 1 (Explicit Core Sector)", 0.95
-    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", industry_lower) for t in sec_tokens):
+    if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", industry_lower) for st in sec_tokens if len(st) >= 5):
         return "LEVEL 1 (Explicit Core Sector)", 0.95
 
     # 4. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
@@ -89,10 +96,8 @@ def determine_evidence_level(
 
     if clean_sec in portfolio_text and len(clean_sec) >= 5:
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
-    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", portfolio_text) for t in sec_tokens):
+    if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", portfolio_text) for st in sec_tokens if len(st) >= 5):
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
-    elif sec_tokens and len(sec_tokens) == 1 and len(list(sec_tokens)[0]) >= 6 and re.search(r"\b" + re.escape(list(sec_tokens)[0]) + r"\b", portfolio_text):
-        return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
 
     # 5. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
     future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
@@ -311,8 +316,18 @@ class ServiceCatalog:
                 "matched_keywords": matched_keywords
             })
 
-        # Sort by business fit score descending
-        hybrid_scores.sort(key=lambda x: x["business_fit_score"], reverse=True)
+        def _evidence_tier(item):
+            lvl = item.get("evidence_level", "")
+            if "LEVEL 1" in lvl:
+                return 1
+            if "LEVEL 2" in lvl:
+                return 2
+            if "LEVEL 3" in lvl:
+                return 3
+            return 4
+
+        # Sort primarily by evidence tier (Level 1 -> 2 -> 3 -> 4) and secondarily by business fit score descending
+        hybrid_scores.sort(key=lambda x: (_evidence_tier(x), -x["business_fit_score"]))
 
         # Deduplicate and return top_k
         results = []

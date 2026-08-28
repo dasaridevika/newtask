@@ -224,6 +224,9 @@ def extract_links(raw_html: str, base_url: str) -> List[str]:
             continue
         full_url = urllib.parse.urljoin(base_url, m).split("#")[0].split("?")[0].rstrip("/")
         parsed_m = urllib.parse.urlparse(full_url)
+        if parsed_m.netloc == domain and full_url != base_url.rstrip("/") and full_url not in seen:
+            seen.add(full_url)
+            discovered_links.append(full_url)
 
     def link_priority(u: str) -> int:
         u_lower = u.lower()
