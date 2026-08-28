@@ -35,27 +35,33 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace !important;
     }
 
+    /* Complete suppression of default Streamlit header and floating toolbars */
+    header[data-testid="stHeader"],
+    .stAppHeader,
+    [data-testid="stToolbar"],
+    .stDeployButton,
+    #MainMenu,
+    footer {
+        display: none !important;
+        visibility: hidden !important;
+        height: 0px !important;
+    }
+
     /* Base Container Adjustments */
     .block-container {
         padding-top: 1.5rem !important;
         padding-bottom: 3rem !important;
-        max-width: 1280px !important;
-    }
-
-    /* Hide Streamlit Default Header clutter */
-    header[data-testid="stHeader"] {
-        background: transparent !important;
-        height: 0px !important;
+        max-width: 1240px !important;
     }
 
     /* Hero Header */
     .hero-container {
         background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 50%, #eff6ff 100%);
-        border: 1.5px solid #dbeafe;
-        border-radius: 18px;
-        padding: 32px 36px;
+        border: 1px solid #dbeafe;
+        border-radius: 16px;
+        padding: 30px 34px;
         margin-bottom: 24px;
-        box-shadow: 0 4px 20px -4px rgba(37, 99, 235, 0.07);
+        box-shadow: 0 2px 10px rgba(37, 99, 235, 0.05);
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -94,18 +100,18 @@ st.markdown("""
 
     /* Container & Form Borders */
     [data-testid="stVerticalBlockBorderWrapper"] > div {
-        border: 1.5px solid #e2e8f0 !important;
+        border: 1px solid #e2e8f0 !important;
         border-radius: 14px !important;
         background: #ffffff !important;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
         padding: 1.25rem !important;
     }
     [data-testid="stForm"] {
-        border: 1.5px solid #cbd5e1 !important;
+        border: 1px solid #e2e8f0 !important;
         border-radius: 16px !important;
         background: #ffffff !important;
         padding: 24px 28px !important;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04) !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04) !important;
     }
     [data-testid="stForm"] h3 {
         font-size: 1.15rem !important;
@@ -113,18 +119,30 @@ st.markdown("""
         color: #0f172a !important;
         margin-bottom: 1rem !important;
     }
+    .stTextInput input, .stNumberInput input {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        color: #0f172a !important;
+        font-size: 0.92rem !important;
+        padding: 8px 12px !important;
+    }
+    .stTextInput input:focus, .stNumberInput input:focus {
+        border-color: #2563eb !important;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+    }
 
     /* Metric Cards */
     .metric-card {
         background: #ffffff;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 16px 18px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 16px 20px;
         color: #0f172a;
-        min-height: 120px;
+        min-height: 110px;
         display: flex;
         flex-direction: column;
-        justify-content: flex-start;
+        justify-content: center;
         box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         box-sizing: border-box;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -132,53 +150,53 @@ st.markdown("""
     .metric-card:hover {
         border-color: #2563eb;
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.10);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.08);
     }
     .metric-label {
-        font-size: 0.68rem;
+        font-size: 0.70rem;
         color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
-        margin-bottom: 8px;
+        margin-bottom: 6px;
     }
     .metric-val {
-        font-size: 1.05rem;
-        font-weight: 700;
+        font-size: 1.10rem;
+        font-weight: 800;
         color: #0f172a;
-        line-height: 1.35;
+        line-height: 1.3;
         word-break: break-word;
     }
-    .metric-val-primary { color: #1d4ed8; }
+    .metric-val-primary { color: #2563eb; }
     .metric-val-green { color: #059669; }
     .metric-val-amber { color: #d97706; }
 
     /* Tab Custom Styling */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: #f1f5f9;
-        padding: 6px;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
-        margin-bottom: 1.5rem;
+        gap: 8px !important;
+        background-color: #f1f5f9 !important;
+        padding: 6px !important;
+        border-radius: 12px !important;
+        border: 1px solid #e2e8f0 !important;
+        margin-bottom: 1.5rem !important;
     }
     .stTabs [data-baseweb="tab"] {
-        border-radius: 8px;
-        padding: 9px 18px;
-        font-weight: 600;
-        font-size: 0.88rem;
-        color: #64748b;
-        border: none;
-        background: transparent;
-        transition: all 0.15s ease;
+        border-radius: 8px !important;
+        padding: 9px 18px !important;
+        font-weight: 600 !important;
+        font-size: 0.88rem !important;
+        color: #64748b !important;
+        border: none !important;
+        background: transparent !important;
+        transition: all 0.15s ease !important;
     }
     .stTabs [data-baseweb="tab"]:hover {
-        color: #0f172a;
-        background: rgba(255, 255, 255, 0.5);
+        color: #0f172a !important;
+        background: rgba(255, 255, 255, 0.5) !important;
     }
     .stTabs [aria-selected="true"] {
         background: #ffffff !important;
-        color: #1d4ed8 !important;
+        color: #2563eb !important;
         border: 1px solid #cbd5e1 !important;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05) !important;
         font-weight: 700 !important;
@@ -187,11 +205,12 @@ st.markdown("""
     /* Recommendation & Offering Cards */
     .offering-card {
         background: #ffffff;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 20px 24px;
-        margin-bottom: 16px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #2563eb;
+        border-radius: 0 12px 12px 0;
+        padding: 18px 22px;
+        margin-bottom: 14px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
         transition: all 0.2s ease;
     }
     .offering-card:hover {
@@ -202,8 +221,8 @@ st.markdown("""
     /* Deliverable Cards in Light Mode */
     .deliverable-card {
         background: #f8fafc;
-        border: 1.5px solid #e2e8f0;
-        border-left: 5px solid #2563eb;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #2563eb;
         border-radius: 0 12px 12px 0;
         padding: 16px 20px;
         margin-bottom: 14px;
@@ -271,7 +290,7 @@ st.markdown("""
         font-weight: 500;
     }
     .score-value {
-        color: #1d4ed8;
+        color: #2563eb;
         font-weight: 700;
         font-family: 'JetBrains Mono', monospace;
     }
@@ -279,7 +298,7 @@ st.markdown("""
     /* Citation Box */
     .citation-box {
         background: #f0fdf4;
-        border: 1.5px solid #bbf7d0;
+        border: 1px solid #bbf7d0;
         border-left: 4px solid #10b981;
         border-radius: 0 10px 10px 0;
         padding: 12px 16px;
@@ -300,7 +319,7 @@ st.markdown("""
         fill: #ffffff !important;
     }
     .stButton > button[kind="primary"] {
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+        background: #2563eb !important;
         border: none !important;
         border-radius: 10px !important;
         padding: 12px 24px !important;
@@ -309,7 +328,7 @@ st.markdown("""
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
     .stButton > button[kind="primary"]:hover {
-        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
+        background: #1d4ed8 !important;
         box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35) !important;
         transform: translateY(-1px) !important;
     }
@@ -321,7 +340,7 @@ st.markdown("""
     }
     .stButton > button[kind="secondary"] {
         background: #ffffff !important;
-        border: 1.5px solid #cbd5e1 !important;
+        border: 1px solid #cbd5e1 !important;
         border-radius: 10px !important;
         color: #0f172a !important;
         font-weight: 600 !important;
@@ -333,7 +352,7 @@ st.markdown("""
     .stButton > button[kind="secondary"]:hover {
         background: #f8fafc !important;
         border-color: #94a3b8 !important;
-        color: #1d4ed8 !important;
+        color: #2563eb !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -347,22 +366,13 @@ st.markdown("""
         <p class="hero-subtitle">Dynamic Contextual Discovery &bull; Multi-Stage Hybrid Vector Search &bull; Evidence-Grounded Definition Entailment</p>
     </div>
     <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-        <svg width="210" height="130" viewBox="0 0 210 130" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <ellipse cx="105" cy="108" rx="72" ry="20" fill="#dbeafe" opacity="0.6"/>
-            <ellipse cx="105" cy="102" rx="52" ry="14" fill="#bfdbfe" opacity="0.8"/>
-            <rect x="72" y="58" width="18" height="42" rx="3" fill="#3b82f6"/>
-            <rect x="95" y="40" width="22" height="60" rx="3" fill="#1d4ed8"/>
-            <rect x="122" y="62" width="16" height="38" rx="3" fill="#60a5fa"/>
-            <circle cx="108" cy="65" r="32" stroke="#1e40af" stroke-width="4.5" fill="#ffffff" fill-opacity="0.35"/>
-            <line x1="130" y1="88" x2="162" y2="120" stroke="#1e3a8a" stroke-width="7" stroke-linecap="round"/>
-            <rect x="16" y="24" width="44" height="28" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
-            <circle cx="28" cy="38" r="4" fill="#3b82f6"/>
-            <rect x="150" y="16" width="48" height="32" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
-            <circle cx="162" cy="32" r="4" fill="#60a5fa"/>
-            <rect x="154" y="64" width="42" height="32" rx="5" fill="#ffffff" stroke="#cbd5e1" stroke-width="1.5"/>
-            <rect x="160" y="80" width="3" height="10" fill="#2563eb"/>
-            <rect x="167" y="74" width="3" height="16" fill="#3b82f6"/>
-            <rect x="174" y="69" width="3" height="21" fill="#60a5fa"/>
+        <svg width="180" height="110" viewBox="0 0 180 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="20" y="30" width="40" height="50" rx="6" fill="#3b82f6" fill-opacity="0.15" stroke="#2563eb" stroke-width="1.5"/>
+            <rect x="70" y="15" width="45" height="65" rx="6" fill="#2563eb" fill-opacity="0.2" stroke="#1d4ed8" stroke-width="1.5"/>
+            <rect x="125" y="40" width="38" height="40" rx="6" fill="#60a5fa" fill-opacity="0.15" stroke="#3b82f6" stroke-width="1.5"/>
+            <circle cx="92" cy="48" r="28" stroke="#1e40af" stroke-width="3.5" fill="#ffffff" fill-opacity="0.8"/>
+            <path d="M78 48h28M92 34v28" stroke="#2563eb" stroke-width="2" stroke-linecap="round"/>
+            <line x1="112" y1="68" x2="140" y2="96" stroke="#1e3a8a" stroke-width="6" stroke-linecap="round"/>
         </svg>
     </div>
 </div>
@@ -517,16 +527,24 @@ if run_btn:
             st.markdown("### Strategic Requirements & Operational Context")
             col_req1, col_req2 = st.columns(2)
             with col_req1:
-                with st.container(border=True):
-                    st.markdown("#### Growth & Infrastructure Mandate")
-                    st.write(req_summary.get("core_growth_mandate", "Scale operational pipeline visibility and capital efficiency."))
-                    st.caption(f"**Asset Needs:** {req_summary.get('infrastructure_and_asset_needs', 'Power delivery and specialized facility assets.')}")
+                st.markdown(f"""
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #059669; border-radius:0 12px 12px 0; padding:18px 20px; min-height:160px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="font-weight:700; font-size:1.02rem; color:#0f172a; margin-bottom:8px;">Growth & Infrastructure Mandate</div>
+                    <div style="font-size:0.88rem; color:#334155; line-height:1.5; margin-bottom:8px;">{req_summary.get('core_growth_mandate', 'Scale operational pipeline visibility and capital efficiency.')}</div>
+                    <div style="font-size:0.80rem; color:#64748b;"><strong>Asset Needs:</strong> {req_summary.get('infrastructure_and_asset_needs', 'Power delivery and specialized facility assets.')}</div>
+                </div>
+                """, unsafe_allow_html=True)
             
             with col_req2:
-                with st.container(border=True):
-                    st.markdown("#### Operational Bottlenecks & Mitigation")
-                    st.write(f"**Bottleneck:** {req_summary.get('primary_operational_bottleneck', 'Interconnection queue delays and equipment lead times.')}")
-                    st.write(f"**Mitigation:** {req_summary.get('risk_mitigation_strategy', 'Engage developers and EPCs 6-9 months ahead of RFP issuance.')}")
+                st.markdown(f"""
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #d97706; border-radius:0 12px 12px 0; padding:18px 20px; min-height:160px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+                    <div style="font-weight:700; font-size:1.02rem; color:#0f172a; margin-bottom:8px;">Operational Bottlenecks & Mitigation</div>
+                    <div style="font-size:0.88rem; color:#334155; line-height:1.5; margin-bottom:8px;"><strong>Bottleneck:</strong> {req_summary.get('primary_operational_bottleneck', 'Interconnection queue delays and equipment lead times.')}</div>
+                    <div style="font-size:0.88rem; color:#334155; line-height:1.5;"><strong>Mitigation:</strong> {req_summary.get('risk_mitigation_strategy', 'Engage developers and EPCs 6-9 months ahead of RFP issuance.')}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+            st.write("")
 
             # 3. Recommended Strategic Offerings (Polished Cards)
             if exact_matches:
@@ -537,9 +555,15 @@ if run_btn:
                     c_id = m_item.get('candidate_id', '')
                     o_name = m_item.get('exact_offering_name', '')
                     v_driver = m_item.get('operational_value_driver', '')
-                    with st.container(border=True):
-                        st.markdown(f"<span class='level-badge-blue'>{t_label}</span> &nbsp; <code>{c_id}</code> &nbsp; <strong style='font-size:1.05rem;'>{o_name}</strong>", unsafe_allow_html=True)
-                        st.write(f"*{v_driver}*")
+                    st.markdown(f"""
+                    <div class="offering-card">
+                        <div style="margin-bottom: 6px;">
+                            <span class="level-badge-blue">{t_label}</span> &nbsp; <code style="color:#2563eb; background:#eff6ff; padding:2px 8px; border-radius:4px; border:1px solid #dbeafe;">{c_id}</code>
+                        </div>
+                        <div style="font-size: 1.08rem; font-weight: 700; color: #0f172a; margin-bottom: 6px;">{o_name}</div>
+                        <div style="font-size: 0.88rem; color: #475569; line-height: 1.5;">{v_driver}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
         # Tab 2: Matched Offerings & Evidence Dossier
         with tab_offer:
