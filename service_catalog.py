@@ -87,34 +87,29 @@ class ServiceCatalog:
 
         if not self.worker_url:
             return None
-            
-        for attempt in range(3):
-            try:
-                resp = requests.post(
-                    self.worker_url.rstrip("/") + "/ai/embed",
-                    json={"model": self.model_name, "text": [text[:3000]]},
-                    headers={"Content-Type": "application/json"},
-                    timeout=30
-                )
-                if resp.status_code == 200:
-                    data = resp.json().get("data", [])
-                    if data and isinstance(data[0], list):
-                        vec = np.array(data[0], dtype=np.float32)
-                        norm = np.linalg.norm(vec)
-                        normalized = vec / (norm if norm > 0 else 1e-10)
-                        self._embedding_cache[cache_key] = normalized
-                        return normalized
-                    elif data and isinstance(data[0], dict) and "values" in data[0]:
-                        vec = np.array(data[0]["values"], dtype=np.float32)
-                        norm = np.linalg.norm(vec)
-                        normalized = vec / (norm if norm > 0 else 1e-10)
-                        self._embedding_cache[cache_key] = normalized
-                        return normalized
-                elif resp.status_code in (429, 500, 502, 503, 504):
-                    time.sleep(1.0 * (attempt + 1))
-                    continue
-            except Exception:
-                time.sleep(1.0 * (attempt + 1))
+        try:
+            resp = requests.post(
+                self.worker_url.rstrip("/") + "/ai/embed",
+                json={"model": self.model_name, "text": [text[:3000]]},
+                headers={"Content-Type": "application/json"},
+                timeout=6
+            )
+            if resp.status_code == 200:
+                data = resp.json().get("data", [])
+                if data and isinstance(data[0], list):
+                    vec = np.array(data[0], dtype=np.float32)
+                    norm = np.linalg.norm(vec)
+                    normalized = vec / (norm if norm > 0 else 1e-10)
+                    self._embedding_cache[cache_key] = normalized
+                    return normalized
+                elif data and isinstance(data[0], dict) and "values" in data[0]:
+                    vec = np.array(data[0]["values"], dtype=np.float32)
+                    norm = np.linalg.norm(vec)
+                    normalized = vec / (norm if norm > 0 else 1e-10)
+                    self._embedding_cache[cache_key] = normalized
+                    return normalized
+        except Exception:
+            pass
         return None
 
     def embed_company(self, company_details: dict, scraped_text: str = "", client_inquiry: str = "") -> dict:
