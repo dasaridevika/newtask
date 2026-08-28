@@ -291,6 +291,9 @@ class WorkerAI:
                 "buying_role_hypothesis": decision_maker
             }
 
+        from service_catalog import catalog
+        raw_secs = parsed.get("portfolio_target_sectors", [])
+        parsed["portfolio_target_sectors"] = catalog.validate_and_filter_sectors(raw_secs)
         parsed["status"] = "verified" if len(parsed.get("observed_facts", [])) >= 1 or len(parsed.get("portfolio_target_sectors", [])) >= 1 else "partially_verified"
         return parsed
 

@@ -86,6 +86,41 @@ class ServiceCatalog:
                 return float(idf[vocab[t]])
         return 4.5
 
+    def map_to_canonical_sector(self, sector_query: str) -> Optional[str]:
+        """Maps any free-form string strictly to the closest canonical catalog sector name, or None."""
+        if not sector_query or not self.sectors:
+            return None
+        q = str(sector_query).strip().lower()
+        # Direct exact or substring match in canonical sectors
+        for s in self.sectors:
+            s_low = s.lower()
+            if s_low == q:
+                return s
+        for s in self.sectors:
+            s_low = s.lower()
+            if q in s_low or s_low in q:
+                return s
+        # Vector / TF-IDF semantic match fallback
+        if self.tfidf_vectorizer and self.tfidf_matrix is not None:
+            try:
+                vec = self.tfidf_vectorizer.transform([sector_query])
+                sims = (self.tfidf_matrix * vec.T).toarray().ravel()
+                best_idx = int(np.argmax(sims))
+                if sims[best_idx] >= 0.25:
+                    return self.sectors[best_idx]
+            except Exception:
+                pass
+        return None
+
+    def validate_and_filter_sectors(self, sector_list: List[str]) -> List[str]:
+        """Ensures all sector strings in a list strictly belong to the canonical catalog sectors."""
+        valid_sectors = []
+        for s in sector_list:
+            canonical = self.map_to_canonical_sector(str(s))
+            if canonical and canonical not in valid_sectors:
+                valid_sectors.append(canonical)
+        return valid_sectors
+
     def _get_worker_embedding(self, text: str) -> Optional[np.ndarray]:
         """Generates a 1024-dim dense vector using Cloudflare Workers AI with caching and retries."""
         if not text or not text.strip():
