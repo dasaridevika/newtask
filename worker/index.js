@@ -148,25 +148,38 @@ export default {
       // 5. LLM Chat & Semantic Reasoning Endpoint (/ai/chat, /v1/chat, or root POST)
       const model = body.model || env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct";
       
+      const defaultEnterpriseSystemPrompt = `You are a Senior Principal Enterprise Solutions Architect, Data Quality Auditor, and Industrial Intelligence Matching Engine.
+Your core mandate is to analyze target enterprises and deliver 100% factually accurate, evidence-backed strategic offerings.
+Strict Reasoning Guidelines:
+1. Ground every conclusion exclusively in verified operational evidence, portfolio assets, and explicit business mandates.
+2. Reject out-of-scope scale mismatches (e.g. heavy chemical gigafactories or sovereign infrastructure for commercial buyout funds).
+3. Deliver strict, valid JSON responses formatted precisely to the requested schema with zero extraneous prose or hallucinated claims.`;
+
       let messages = body.messages;
       if (!messages || !Array.isArray(messages)) {
         messages = [
-          { role: "system", content: body.system || "You are an expert enterprise solutions architect and market intelligence analyst." },
-          { role: "user", content: body.prompt || body.content || "Analyze the target company." }
+          { role: "system", content: body.system || defaultEnterpriseSystemPrompt },
+          { role: "user", content: body.prompt || body.content || "Analyze the target company profile and extract grounded strategic insights." }
         ];
       }
 
-      // Execute AI Inference with safety parameters
-      const temperature = typeof body.temperature === "number" ? Math.max(0.0, Math.min(1.0, body.temperature)) : 0.15;
+      // Execute AI Inference with precision parameters
+      const temperature = typeof body.temperature === "number" ? Math.max(0.0, Math.min(1.0, body.temperature)) : 0.10;
       const maxTokens = typeof body.max_tokens === "number" ? Math.min(4096, body.max_tokens) : 2500;
 
-      const aiResponse = await env.AI.run(model, {
+      const aiOptions = {
         messages: messages,
         temperature: temperature,
         max_tokens: maxTokens
-      });
+      };
 
-      const responseText = aiResponse.response || aiResponse.text || (typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse));
+      if (body.response_format) {
+        aiOptions.response_format = body.response_format;
+      }
+
+      const aiResponse = await env.AI.run(model, aiOptions);
+
+      let responseText = aiResponse.response || aiResponse.text || (typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse));
 
       const responseHeaders = {
         ...corsHeaders,
