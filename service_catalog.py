@@ -136,6 +136,42 @@ DOMAIN_DICTIONARY: Dict[str, Dict[str, Any]] = {
         "scale_class": "utility",
         "facility_types": ["Utility Battery Installation", "BESS Substation Facility"]
     },
+    "lead acid (lab) battery production plant": {
+        "positive_context": ["lead-acid battery", "lead acid battery", "battery cell manufacturing", "lab battery plant", "lead acid manufacturing", "automotive battery plant"],
+        "negative_context": ["engineering lab", "research lab", "testing lab", "computer lab", "innovation lab", "lab environment", "lab solutions"],
+        "scale_class": "industrial",
+        "facility_types": ["Battery Manufacturing Plant", "Lead Acid Cell Facility"]
+    },
+    "ethylene vinyl acetate (eva) plant": {
+        "positive_context": ["eva copolymer", "ethylene vinyl acetate", "eva sheet", "eva film", "eva encapsulant", "eva resin synthesis"],
+        "negative_context": ["evaluate", "evaluation"],
+        "scale_class": "industrial",
+        "facility_types": ["EVA Polymer Plant", "Chemical Synthesis Facility"]
+    },
+    "polyethylene terephthalate (pet) plant": {
+        "positive_context": ["pet resin", "polyethylene terephthalate", "pet bottle recycling", "pet polymer", "pet packaging plant"],
+        "negative_context": ["pet animal", "pet store"],
+        "scale_class": "industrial",
+        "facility_types": ["PET Polymerization Plant", "Resin Manufacturing Facility"]
+    },
+    "polyhydroxyalkanoates (pha) plant": {
+        "positive_context": ["pha biopolymer", "polyhydroxyalkanoates", "pha resin", "pha bioplastic plant", "bacterial fermentation pha"],
+        "negative_context": [],
+        "scale_class": "industrial",
+        "facility_types": ["PHA Biopolymer Facility", "Bioplastics Plant"]
+    },
+    "thermal energy storage (tes)": {
+        "positive_context": ["thermal energy storage", "chilled water storage", "molten salt storage", "tes tank", "ice thermal storage"],
+        "negative_context": [],
+        "scale_class": "utility",
+        "facility_types": ["Thermal Storage Tank", "Molten Salt Facility"]
+    },
+    "flywheel energy storage (fes)": {
+        "positive_context": ["flywheel energy storage", "flywheel storage", "kinetic energy storage", "flywheel rotor"],
+        "negative_context": [],
+        "scale_class": "utility",
+        "facility_types": ["Flywheel Installation", "Kinetic Storage Facility"]
+    },
     "data center": {
         "positive_context": [
             "data center", "datacenter", "data centre", "colocation", "hyperscale", "server farm", 
@@ -147,6 +183,18 @@ DOMAIN_DICTIONARY: Dict[str, Dict[str, Any]] = {
         "scale_class": "commercial",
         "facility_types": ["Hyperscale Data Center", "Colocation Facility", "Edge Compute Node"]
     }
+}
+
+# Ambiguous short acronyms that must NEVER match standalone generic words
+AMBIGUOUS_SHORT_ACRONYMS: Dict[str, List[str]] = {
+    "lab": ["lead acid", "lead-acid", "lead acid battery", "lab battery", "battery production", "battery cell"],
+    "pet": ["pet resin", "polyethylene terephthalate", "pet bottle", "pet polymer", "pet packaging"],
+    "eva": ["eva copolymer", "ethylene vinyl acetate", "eva sheet", "eva film", "eva encapsulant"],
+    "pha": ["pha biopolymer", "polyhydroxyalkanoates", "pha resin", "pha bioplastic"],
+    "csp": ["concentrated solar", "solar thermal", "csp plant", "heliostat"],
+    "fes": ["flywheel energy", "flywheel storage", "kinetic energy storage"],
+    "tes": ["thermal energy storage", "chilled water storage", "molten salt storage", "tes tank"],
+    "caes": ["compressed air energy", "compressed air storage", "caes facility"]
 }
 
 # Rich Synonym Mapping for Acronyms and Industry Terms
@@ -168,6 +216,9 @@ SECTOR_SYNONYM_MAP: Dict[str, List[str]] = {
     ],
     "battery energy storage system (bess)": [
         "bess", "battery storage", "grid battery", "energy storage system", "battery energy storage", "utility battery"
+    ],
+    "lead acid (lab) battery production plant": [
+        "lead acid battery", "lead-acid battery", "battery production", "lab battery"
     ],
     "onshore wind power plant": [
         "onshore wind", "wind farm", "wind turbine", "wind power", "wind energy", "wind project"
@@ -200,7 +251,9 @@ def get_candidate_aliases(sec_name: str) -> List[str]:
     acronyms = re.findall(r"\((.*?)\)", sec_lower)
     for acr in acronyms:
         acr_clean = acr.strip().lower()
-        if len(acr_clean) >= 2:
+        if acr_clean in AMBIGUOUS_SHORT_ACRONYMS:
+            aliases.update(AMBIGUOUS_SHORT_ACRONYMS[acr_clean])
+        elif len(acr_clean) >= 4:
             aliases.add(acr_clean)
             
     # Add mapped synonyms
