@@ -206,9 +206,9 @@ if run_btn and target_url:
 
     # 3-Pillar Executive Presentation Tabs
     tab_reqs, tab_offer, tab_deliver = st.tabs([
-        "📋 1. Client Requirements Analysis",
-        "🎯 2. What We Can Offer Them (Top Matches)",
-        "📦 3. What to Deliver the Lead (Deliverables Blueprint)"
+        "🏢 1. Client Strategic Profile",
+        "🎯 2. Matched Offerings (Top Solutions)",
+        "📦 3. Deliverables Blueprint"
     ])
 
     req_summary = analysis.get("client_requirements_summary", {})
@@ -216,36 +216,42 @@ if run_btn and target_url:
     mappings = analysis.get("exact_product_mappings", [])
     disqualified_audit = analysis.get("disqualified_and_speculative_audit") or analysis.get("disqualified_audit", [])
 
-    # Tab 1: Detailed Client Requirements Analysis
+    # Tab 1: Client Strategic Profile & Verified Operations
     with tab_reqs:
-        st.subheader("📋 Granular Client Requirements Analysis")
-        st.caption("Evidence-grounded synthesis separating verified corporate operations from strategic inferences:")
+        st.subheader("🏢 Client Profile & Verified Operations")
+        st.caption("Evidence-grounded operational overview and verified portfolio platforms:")
 
         with st.container(border=True):
-            st.markdown("#### 🎯 Core Growth Mandate & Operating Thesis")
-            st.write(req_summary.get("core_growth_mandate", company_details.get("executive_profile_analysis", "")))
+            st.markdown("#### 🎯 Core Mandate & Business Overview")
+            st.write(company_details.get("executive_profile_analysis") or req_summary.get("core_growth_mandate", ""))
             
             persona = req_summary.get("target_decision_maker") or company_details.get("buying_role_hypothesis", "Strategic Leadership")
-            st.caption(f"**Industry Focus:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Decision-Maker:** `{persona}`")
+            st.caption(f"**Industry Focus:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Role:** `{persona}`")
 
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
             with st.container(border=True):
-                st.markdown("#### ⚡ Infrastructure & Capital Asset Visibility Needs")
-                st.write(req_summary.get("infrastructure_and_asset_needs", "Real-time visibility into early-stage capital project pipelines, substation power interconnect queues, and facility buildouts."))
+                st.markdown("#### 💼 Business Model & Strategy")
+                st.write(company_details.get("business_model_and_revenue_drivers", "Strategic investment, operational expansion, and platform acquisitions."))
+
+            target_sectors = company_details.get("portfolio_target_sectors", [])
+            if target_sectors:
+                with st.container(border=True):
+                    st.markdown("#### 🏷️ Active Target Platforms & Verticals")
+                    for ts in target_sectors:
+                        st.markdown(f"- **{ts}**")
+
+        with col_p2:
+            delivered_projects = company_details.get("delivered_historical_projects", [])
+            if delivered_projects:
+                with st.container(border=True):
+                    st.markdown("#### 🏭 Verified Operating Companies & Portfolio Assets")
+                    for p in delivered_projects[:5]:
+                        st.markdown(f"- **{p.get('project_name')}**: {p.get('summary', '')}")
 
             with st.container(border=True):
-                st.markdown("#### 📜 Regulatory, Permitting & ESG Compliance Needs")
-                st.write(req_summary.get("regulatory_permitting_and_esg_needs", "Tracking stage-gate permitting dockets, environmental compliance reviews, and local municipal zoning approvals."))
-
-        with col_r2:
-            with st.container(border=True):
-                st.markdown("#### 🔍 Market Diligence & Deal Sourcing Requirements")
-                st.write(req_summary.get("market_diligence_and_deal_sourcing_needs", "Eliminating diligence blind spots, sourcing off-market pipeline assets, and accelerating technical evaluation cycles."))
-
-            with st.container(border=True):
-                st.markdown("#### ⚠️ Primary Operational Bottlenecks & Diligence Friction")
-                st.write(req_summary.get("primary_operational_bottleneck", "Navigating long project lead times and fragmented public regulatory filings."))
+                st.markdown("#### ⚠️ Core Diligence Friction")
+                st.write(company_details.get("operational_friction_and_pain_points") or req_summary.get("primary_operational_bottleneck", "Tracking fragmented capital project pipelines, stage-gate permitting, and off-market assets."))
 
     # Tab 2: What We Can Offer Them (Matched Offerings & Top K Leaderboard)
     with tab_offer:
