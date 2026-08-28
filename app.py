@@ -20,88 +20,183 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom High-Contrast CSS Styling
+# Custom Enterprise Design System & CSS Styling
 st.markdown("""
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    html, body, [class*="css"], .stMarkdown, p, span, label {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+        color: #f1f5f9;
+    }
+    code, pre {
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+
+    /* Hero Header */
+    .hero-container {
+        background: linear-gradient(180deg, rgba(14, 21, 38, 0.9) 0%, rgba(8, 12, 20, 0.4) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.07);
+        border-radius: 16px;
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        backdrop-filter: blur(8px);
+    }
+    .hero-badge {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(56, 189, 248, 0.12);
+        color: #38bdf8;
+        border: 1px solid rgba(56, 189, 248, 0.28);
+        border-radius: 9999px;
+        padding: 4px 12px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        margin-bottom: 12px;
+    }
+    .hero-title {
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        color: #ffffff;
+        margin: 0 0 6px 0;
+        line-height: 1.2;
+    }
+    .hero-subtitle {
+        font-size: 0.92rem;
+        color: #94a3b8;
+        margin: 0;
+        line-height: 1.5;
+        font-weight: 500;
+    }
+
     /* Metric Cards */
     .metric-card {
-        background: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 14px 16px;
+        background: linear-gradient(135deg, rgba(22, 32, 50, 0.75) 0%, rgba(13, 20, 36, 0.85) 100%);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 16px 18px;
         color: #f8fafc;
-        min-height: 130px;
+        min-height: 125px;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
+        backdrop-filter: blur(12px);
         box-sizing: border-box;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .metric-card:hover {
+        border-color: rgba(56, 189, 248, 0.35);
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px -4px rgba(56, 189, 248, 0.15);
     }
     .metric-label {
-        font-size: 0.72rem;
+        font-size: 0.70rem;
         color: #94a3b8;
         text-transform: uppercase;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
         font-weight: 700;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
     }
     .metric-val {
-        font-size: 1.02rem;
+        font-size: 1.05rem;
         font-weight: 700;
         color: #38bdf8;
-        line-height: 1.3;
+        line-height: 1.35;
         word-break: break-word;
     }
     .metric-val-green { color: #10b981; }
     .metric-val-amber { color: #f59e0b; }
-    .metric-val-cyan { color: #06b6d4; }
+    .metric-val-cyan { color: #38bdf8; }
 
-    /* Level Badges */
-    .level-badge-green {
-        background: #064e3b;
-        color: #34d399;
-        padding: 4px 10px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 0.8rem;
-        display: inline-block;
-        margin-bottom: 8px;
+    /* Tab Custom Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: rgba(15, 23, 42, 0.6);
+        padding: 6px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.06);
     }
-    .level-badge-blue {
-        background: #1e3a8a;
-        color: #60a5fa;
-        padding: 4px 10px;
-        border-radius: 4px;
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 8px 18px;
         font-weight: 600;
-        font-size: 0.8rem;
-        display: inline-block;
-        margin-bottom: 8px;
+        font-size: 0.88rem;
+        color: #94a3b8;
+        border: none;
+        background: transparent;
+        transition: all 0.2s ease;
+    }
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%) !important;
+        color: #38bdf8 !important;
+        border: 1px solid rgba(56, 189, 248, 0.4) !important;
     }
 
     /* Deliverable Item Card */
     .deliverable-card {
-        background: #1e293b;
+        background: rgba(22, 32, 50, 0.6);
         border-left: 4px solid #38bdf8;
-        padding: 14px 18px;
-        border-radius: 0 8px 8px 0;
-        margin-bottom: 12px;
+        border-radius: 0 10px 10px 0;
+        padding: 16px 20px;
+        margin-bottom: 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.05);
+        border-right: 1px solid rgba(255, 255, 255, 0.05);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    /* Level Badges */
+    .level-badge-green {
+        background: rgba(16, 185, 129, 0.15);
+        color: #34d399;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.78rem;
+        display: inline-block;
+        margin-bottom: 8px;
+    }
+    .level-badge-blue {
+        background: rgba(56, 189, 248, 0.15);
+        color: #60a5fa;
+        border: 1px solid rgba(56, 189, 248, 0.3);
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.78rem;
+        display: inline-block;
+        margin-bottom: 8px;
     }
 
     /* Citation Box */
     .citation-box {
-        background: #0f172a;
+        background: rgba(15, 23, 42, 0.85);
         border-left: 3px solid #10b981;
-        padding: 8px 12px;
-        margin: 6px 0;
-        font-size: 0.85rem;
-        color: #cbd5e1;
+        border-radius: 0 8px 8px 0;
+        padding: 10px 14px;
+        margin: 8px 0;
+        font-size: 0.86rem;
+        color: #e2e8f0;
+        border-top: 1px solid rgba(255, 255, 255, 0.04);
+        border-right: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     }
 </style>
 """, unsafe_allow_html=True)
 
-# Header Section
-st.title("Enterprise Lead Intelligence & Offering Matcher")
-st.caption("Dynamic Contextual Discovery -> Cloudflare Workers AI -> Evidence-Grounded Definition Entailment")
+# Custom Hero Section
+st.markdown("""
+<div class="hero-container">
+    <div class="hero-badge">ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
+    <h1 class="hero-title">Enterprise Lead Intelligence & Offering Matcher</h1>
+    <p class="hero-subtitle">Dynamic Contextual Discovery &bull; Multi-Stage Hybrid Vector Search &bull; Evidence-Grounded Definition Entailment</p>
+</div>
+""", unsafe_allow_html=True)
 
 # Input Section in an atomic form
 with st.form("lead_matcher_form", clear_on_submit=False):
