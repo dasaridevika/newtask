@@ -33,7 +33,17 @@ DOMAIN_STOPWORDS = {
     "structure", "flexible", "category", "focus", "across", "value", "added", "various", "multiple", 
     "broad", "wide", "distribution", "distributor", "distributors", "network", "networks", "line", 
     "lines", "treatment", "medical", "supply", "supplies", "equipment", "energy", "power", "storage",
-    "generation", "utility", "utilities"
+    "generation", "utility", "utilities", "overhead", "fuels", "fuel", "spirit", "burdens", "complexity",
+    "launch", "stories", "success", "driven", "training", "academic", "university", "universities", "school"
+}
+
+# Ambiguous single terms requiring co-occurring physical domain anchor terms
+AMBIGUOUS_SECTORS = {
+    "overhead": {"power", "transmission", "grid", "cable", "cables", "pole", "poles", "aerial", "structure", "high-voltage", "line", "lines"},
+    "road": {"highway", "pavement", "asphalt", "civil", "transportation", "toll", "traffic", "construction"},
+    "university": {"higher education", "undergraduate", "postgraduate", "campus", "academic institution", "faculty", "degree"},
+    "aircraft": {"hangar", "aerospace", "aviation", "fuselage", "boeing", "airbus", "plane", "aircraft"},
+    "office": {"commercial real estate", "headquarters", "tenant", "cre", "workspaces", "office building"}
 }
 
 def determine_evidence_level(
@@ -45,7 +55,7 @@ def determine_evidence_level(
 ) -> Tuple[str, float, List[str]]:
     """
     Classifies a candidate offering into Ground-Truth Evidence Levels dynamically
-    and collects matching evidence_ids from the evidence ledger.
+    with strict multi-token phrase validation and polysemy disambiguation.
     Returns (level_label, confidence_multiplier, verified_evidence_ids).
     """
     clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
@@ -54,20 +64,39 @@ def determine_evidence_level(
 
     verified_evidence_ids = []
 
-    # Find supporting evidence IDs from the ledger
+    # Strict multi-token and phrase validation against evidence quotes
     if evidence_ledger:
         for ev in evidence_ledger:
             ev_dict = ev if isinstance(ev, dict) else (ev.to_dict() if hasattr(ev, "to_dict") else {})
             ev_id = ev_dict.get("evidence_id", "")
             norm_quote = ev_dict.get("normalized_text", "")
             
-            # Check for direct or token overlap in quoted evidence text
-            if clean_sec in norm_quote and len(clean_sec) >= 4:
+            # Guard against ambiguous words
+            if clean_sec in AMBIGUOUS_SECTORS:
+                required_anchors = AMBIGUOUS_SECTORS[clean_sec]
+                if clean_sec in norm_quote and any(re.search(r"\b" + re.escape(a) + r"\b", norm_quote) for a in required_anchors):
+                    if ev_id and ev_id not in verified_evidence_ids:
+                        verified_evidence_ids.append(ev_id)
+                continue
+
+            # Exact multi-word phrase match (e.g. "warehouse distribution", "solar photovoltaic", "health care building")
+            if len(clean_sec.split()) >= 2 and clean_sec in norm_quote:
                 if ev_id and ev_id not in verified_evidence_ids:
                     verified_evidence_ids.append(ev_id)
-            elif sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", norm_quote) for st in sec_tokens if len(st) >= 4):
-                if ev_id and ev_id not in verified_evidence_ids:
-                    verified_evidence_ids.append(ev_id)
+            # Distinctive multi-token match: requires AT LEAST 2 non-stopword tokens or a highly unique domain anchor
+            elif len(sec_tokens) >= 2:
+                matched_toks = [st for st in sec_tokens if re.search(r"\b" + re.escape(st) + r"\b", norm_quote)]
+                if len(matched_toks) >= 2:
+                    if ev_id and ev_id not in verified_evidence_ids:
+                        verified_evidence_ids.append(ev_id)
+            elif len(sec_tokens) == 1:
+                single_tok = list(sec_tokens)[0]
+                if len(single_tok) >= 6 and re.search(r"\b" + re.escape(single_tok) + r"\b", norm_quote):
+                    # Check definition context
+                    def_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", definition.lower())) - DOMAIN_STOPWORDS
+                    if any(re.search(r"\b" + re.escape(dt) + r"\b", norm_quote) for dt in def_tokens if len(dt) >= 5):
+                        if ev_id and ev_id not in verified_evidence_ids:
+                            verified_evidence_ids.append(ev_id)
 
     # 1. CHECK INBOUND CLIENT INQUIRY (LEVEL 1)
     if client_inquiry:
@@ -119,19 +148,21 @@ def determine_evidence_level(
 
     if clean_sec in portfolio_text and len(clean_sec) >= 5:
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.88, verified_evidence_ids or ["portfolio_case_study"]
-    if sec_tokens and any(re.search(r"\b" + re.escape(st) + r"\b", portfolio_text) for st in sec_tokens if len(st) >= 5):
+    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(st) + r"\b", portfolio_text) for st in sec_tokens):
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.88, verified_evidence_ids or ["portfolio_case_study"]
 
     # 5. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
     future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
-    if clean_sec in future_text:
+    if clean_sec in future_text and len(clean_sec) >= 5:
         return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70, verified_evidence_ids or ["future_roadmap"]
     if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", future_text) for t in sec_tokens):
         return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70, verified_evidence_ids or ["future_roadmap"]
 
-    # If evidence ledger found matches but wasn't in explicit fields
+    # If evidence ledger found high-confidence multi-token matches
     if verified_evidence_ids:
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.85, verified_evidence_ids
+
+    return "LEVEL 4 (Speculative / Semantic Only)", 0.40, []
 
     return "LEVEL 4 (Speculative / Semantic Only)", 0.40, []
 

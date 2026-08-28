@@ -500,6 +500,7 @@ STRICT FACTUALITY & FAIL-CLOSED RULES:
 3. USE CANONICAL CANDIDATE IDs: In 'candidate_id', provide ONLY the stable candidate_id (e.g. 'cat_254', 'cat_450').
 4. CITATIONS: In 'supporting_evidence_ids', cite any relevant evidence IDs if known.
 5. CONCISE QUALITATIVE STATEMENTS: Output clean rationale, requirement solved, and solution architecture without template prefix echoes.
+6. REJECT POLYSEMY & METAPHORICAL FALSE POSITIVES: Reject candidate sectors that matched words used metaphorically, financially, or colloquially in quotes (e.g. reject 'Overhead' when the text refers to 'business overhead expenses', reject 'University' for internal corporate employee training programs like 'CLS University', reject 'Sustainable Aviation Fuels' for phrases like 'fuels the entrepreneurial spirit'). Put these false matches in 'disqualified_audit' as 'Semantic Drift / Metaphorical Overlap'.
 
 Return this JSON shape:
 {
