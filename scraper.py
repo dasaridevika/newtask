@@ -185,17 +185,17 @@ class EvidenceStore:
         return d
 
 def classify_page(url: str, title: str, headings: List[str], text_sample: str) -> tuple:
-    """Classifies any enterprise webpage based on URL path semantics and header structure."""
+    """Classifies webpage structure based on URL path semantics and header structure."""
     path = urllib.parse.urlparse(url).path.lower().strip("/")
     combined_meta = f"{path} {title} {' '.join(headings)}".lower()
 
     if not path or path in ["", "index.html", "index.php", "home", "en", "us", "global"]:
         return PageType.HOME, 1.0
 
-    if any(k in combined_meta for k in ["product", "offering", "service", "solution", "capability", "platform", "hardware", "software", "system", "tech", "equipment", "catalog", "division", "segment"]):
+    if any(k in combined_meta for k in ["product", "offering", "service", "solution", "capability", "platform", "hardware", "software", "system", "technology", "catalog", "division", "segment"]):
         return PageType.PRODUCTS_SERVICES, 1.4
 
-    if any(k in combined_meta for k in ["case-stud", "case_study", "project", "portfolio", "success-stor", "customer", "installation", "deployment", "client", "work", "result"]):
+    if any(k in combined_meta for k in ["case-stud", "case_study", "project", "portfolio", "success-stor", "customer", "installation", "deployment", "client", "work"]):
         return PageType.CASE_STUDY, 1.3
 
     if any(k in combined_meta for k in ["about", "company", "who-we-are", "history", "mission", "overview", "our-story"]):
@@ -219,7 +219,7 @@ def classify_page(url: str, title: str, headings: List[str], text_sample: str) -
     return PageType.OTHER, 0.7
 
 def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
-    """Extracts headings, clean text, and factual snippets from crawl4ai markdown."""
+    """Extracts headings, clean text, and factual snippets from Crawl4AI markdown."""
     headings = []
     lines = markdown_text.splitlines()
     for line in lines:
@@ -239,14 +239,9 @@ def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
     for sent in sentences:
         clean_s = sent.strip()
         if 35 < len(clean_s) < 320:
-            has_action = any(re.search(r"\b" + v + r"\b", clean_s, re.I) for v in [
-                "provides", "develops", "manufactures", "operates", "offers", "delivers", 
-                "specializes", "serves", "manages", "builds", "scales", "powers", "invests", "acquired", "generates"
-            ])
-            has_metric = bool(re.search(r"[0-9]+", clean_s))
-            if (has_action or has_metric) and clean_s not in canonical_snippets:
+            if clean_s not in canonical_snippets:
                 canonical_snippets.append(clean_s)
-                if len(canonical_snippets) >= 10:
+                if len(canonical_snippets) >= 12:
                     break
 
     title = headings[0] if headings else urllib.parse.urlparse(url).netloc
@@ -282,14 +277,9 @@ def clean_html(raw_html: str) -> dict:
     for sent in sentences:
         clean_s = sent.strip()
         if 35 < len(clean_s) < 320:
-            has_action = any(re.search(r"\b" + v + r"\b", clean_s, re.I) for v in [
-                "provides", "develops", "manufactures", "operates", "offers", "delivers", 
-                "specializes", "serves", "manages", "builds", "scales", "powers", "invests", "acquired", "generates"
-            ])
-            has_metric = bool(re.search(r"[0-9]+", clean_s))
-            if (has_action or has_metric) and clean_s not in canonical_snippets:
+            if clean_s not in canonical_snippets:
                 canonical_snippets.append(clean_s)
-                if len(canonical_snippets) >= 10:
+                if len(canonical_snippets) >= 12:
                     break
 
     return {
@@ -300,7 +290,7 @@ def clean_html(raw_html: str) -> dict:
     }
 
 def extract_links(raw_html: str, base_url: str) -> List[str]:
-    """Finds verified internal subpage URLs on the same domain."""
+    """Finds verified internal subpage URLs on the same domain prioritized by path depth."""
     parsed_base = urllib.parse.urlparse(base_url)
     domain = parsed_base.netloc
     
@@ -318,18 +308,9 @@ def extract_links(raw_html: str, base_url: str) -> List[str]:
             seen.add(full_url)
             discovered_links.append(full_url)
 
-    def link_priority(u: str) -> int:
-        u_lower = u.lower()
-        if any(k in u_lower for k in ["portfolio", "enterprise", "elevate", "middle-market", "investment", "product", "service", "solution", "sector", "industry", "private-debt"]):
-            return 0
-        if any(k in u_lower for k in ["about", "strategy", "case-study", "history", "company"]):
-            return 1
-        if any(k in u_lower for k in ["news", "press", "esg", "culture"]):
-            return 2
-        return 3
-
-    discovered_links.sort(key=lambda u: (link_priority(u), len(urllib.parse.urlparse(u).path.strip("/").split("/"))))
-    return discovered_links[:12]
+    # Sort links by directory depth (shallower and primary sections first)
+    discovered_links.sort(key=lambda u: len(urllib.parse.urlparse(u).path.strip("/").split("/")))
+    return discovered_links[:15]
 
 def fetch_page_content(url: str, timeout: int = 7) -> tuple:
     try:
@@ -389,7 +370,7 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
                 extract = pdata.get("extract", "")
                 if extract and len(extract) > 40:
                     lines = [line.strip() for line in extract.split("\n") if len(line.strip()) > 35 and not line.strip().startswith("=")]
-                    for l in lines[:15]:
+                    for l in lines[:40]:
                         insights.append(f"Official Corporate Encyclopedia ({company_name}): {l}")
     except Exception:
         pass
@@ -420,7 +401,7 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
     return insights
 
 async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) -> bool:
-    """Deep asynchronous crawling using crawl4ai with evidence ledger population."""
+    """Deep asynchronous crawling using Crawl4AI with evidence ledger population."""
     if not CRAWL4AI_AVAILABLE:
         return False
     try:
@@ -467,18 +448,9 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                         if href not in internal_links:
                             internal_links.append(href)
 
-            def crawl_priority(u: str) -> int:
-                u_lower = u.lower()
-                if any(k in u_lower for k in ["enterprise", "elevate", "private-debt", "middle-market-private-equity", "portfolio", "product", "service", "solution", "strategy", "investment"]):
-                    return 0
-                if any(k in u_lower for k in ["about", "history", "case-study"]):
-                    return 1
-                if any(k in u_lower for k in ["esg", "news", "culture"]):
-                    return 2
-                return 3
-
-            internal_links.sort(key=lambda u: (crawl_priority(u), len(urllib.parse.urlparse(u).path.strip("/").split("/"))))
-            for sub_url in internal_links[:10]:
+            # Sort subpages by depth
+            internal_links.sort(key=lambda u: len(urllib.parse.urlparse(u).path.strip("/").split("/")))
+            for sub_url in internal_links[:12]:
                 try:
                     sub_res = await crawler.arun(url=sub_url)
                     if sub_res and sub_res.success and len(sub_res.markdown or "") > 100:
@@ -499,14 +471,13 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                         store.pages.append(evidence)
                         store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
 
-                        rel_type = "portfolio_company" if "portfolio" in sub_url.lower() or sub_type == PageType.CASE_STUDY else ("stated_focus" if sub_type == PageType.PRODUCTS_SERVICES else "current_operation")
                         for snip in sub_ext["canonical_snippets"]:
                             store.add_evidence(
                                 source_url=sub_url,
                                 source_title=sub_ext["title"],
                                 quoted_text=snip,
                                 entity=store.company_name,
-                                relationship=rel_type,
+                                relationship="current_operation",
                                 evidence_type="subpage_extract",
                                 is_first_party=True
                             )
@@ -514,7 +485,7 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                     pass
 
             return len(store.pages) > 0
-    except Exception as e:
+    except Exception:
         return False
 
 def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
