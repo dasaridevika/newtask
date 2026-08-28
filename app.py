@@ -307,18 +307,31 @@ st.markdown("""
         color: #1e293b;
     }
 
-    /* Primary Action Buttons */
-    .stButton > button[kind="primary"],
-    .stButton > button[kind="primary"] *,
-    .stButton > button[kind="primary"] p,
-    .stButton > button[kind="primary"] span,
-    .stButton > button[kind="primary"] div {
+    /* Primary & Submit Action Buttons */
+    button[data-testid="stBaseButton-primary"],
+    button[kind="primary"],
+    div[data-testid="stFormSubmitButton"] > button,
+    div[data-testid="stFormSubmitButton"] > button *,
+    div[data-testid="stFormSubmitButton"] > button p,
+    div[data-testid="stFormSubmitButton"] > button span,
+    div[data-testid="stFormSubmitButton"] > button div,
+    button[data-testid="stBaseButton-primary"] *,
+    button[data-testid="stBaseButton-primary"] p,
+    button[data-testid="stBaseButton-primary"] span,
+    button[data-testid="stBaseButton-primary"] div,
+    button[kind="primary"] *,
+    button[kind="primary"] p,
+    button[kind="primary"] span,
+    button[kind="primary"] div {
         color: #ffffff !important;
         font-weight: 700 !important;
         font-size: 0.98rem !important;
         fill: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
     }
-    .stButton > button[kind="primary"] {
+    div[data-testid="stFormSubmitButton"] > button,
+    button[data-testid="stBaseButton-primary"],
+    button[kind="primary"] {
         background: #2563eb !important;
         border: none !important;
         border-radius: 10px !important;
@@ -327,16 +340,22 @@ st.markdown("""
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    .stButton > button[kind="primary"]:hover {
+    div[data-testid="stFormSubmitButton"] > button:hover,
+    button[data-testid="stBaseButton-primary"]:hover,
+    button[kind="primary"]:hover {
         background: #1d4ed8 !important;
         box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35) !important;
         transform: translateY(-1px) !important;
     }
-    .stButton > button[kind="primary"]:hover *,
-    .stButton > button[kind="primary"]:hover p,
-    .stButton > button[kind="primary"]:hover span,
-    .stButton > button[kind="primary"]:hover div {
+    div[data-testid="stFormSubmitButton"] > button:hover *,
+    div[data-testid="stFormSubmitButton"] > button:hover p,
+    div[data-testid="stFormSubmitButton"] > button:hover span,
+    div[data-testid="stFormSubmitButton"] > button:hover div,
+    button[data-testid="stBaseButton-primary"]:hover *,
+    button[data-testid="stBaseButton-primary"]:hover p,
+    button[kind="primary"]:hover * {
         color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
     }
     .stButton > button[kind="secondary"] {
         background: #ffffff !important;
@@ -398,7 +417,7 @@ with st.form("lead_matcher_form", clear_on_submit=False):
     )
     
     st.write("")
-    run_btn = st.form_submit_button("🔍 Analyze & Match", type="primary", use_container_width=True)
+    run_btn = st.form_submit_button("Analyze & Match", type="primary", use_container_width=True)
 
 if run_btn:
     clean_target_url = target_url.strip()
