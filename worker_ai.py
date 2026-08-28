@@ -11,20 +11,27 @@ from urllib3.util.retry import Retry
 def get_domain_deliverable_blueprint(sector_name: str) -> str:
     """Generates generic deliverable description adapted to candidate sector."""
     s = sector_name.lower()
-    if "data center" in s:
-        return "Delivers verified power substation interconnect queue tracking (MW load capacity), municipal zoning and environmental review logs, hyperscale vs colocation facility buildout timelines, cooling topology specifications, and stakeholder directories covering developers, facility operators, and EPC contractors."
+    if "recycling" in s or "waste" in s or "decommission" in s:
+        return "Delivers EPA and state environmental recycling permits, circular economy supply chain partnerships, material recovery throughput metrics (glass, silicon, silver), hazardous material handling dockets, and end-of-life decommissioning project feeds."
+    elif "manufacturing" in s or "cell" in s or "module" in s or "assembly" in s or "fabrication" in s:
+        return "Delivers industrial manufacturing facility capex tracking, cleanroom HVAC and high-voltage power delivery filings, automated production line equipment procurement dockets, state tax incentive & zoning approvals, and tier-1 OEM supplier directories."
+    elif "solar" in s or "photovoltaic" in s:
+        return "Delivers utility grid interconnection queue tracking (MW / MWh), environmental impact statement (EIS) filings, PPA contract award milestones, battery energy storage system (BESS) co-location stage-gates, and renewable asset developer/EPC directories."
+    elif "data center" in s or "compute" in s or "colocation" in s:
+        return "Delivers verified power substation interconnect queue tracking (MW load capacity), municipal zoning and environmental review logs, hyperscale vs colocation facility buildout timelines, liquid cooling topology specifications, and stakeholder directories covering developers, facility operators, and EPC contractors."
     elif "telecommunication" in s or "communication" in s or "fiber" in s or "tower" in s:
         return "Delivers regional fiber route dark/lit asset maps, cellular tower co-location permit feeds, municipal right-of-way easement filings, edge data network exchange construction milestones, and carrier/infrastructure developer directories."
+    elif "battery" in s or "bess" in s or "energy storage" in s:
+        return "Delivers ISO/RTO energy storage interconnection dockets, four-hour duration battery procurement filings, fire safety NFPA compliance permits, battery cell chemistry supply agreements, and grid-scale storage operator directories."
     elif "health" in s or "hospital" in s or "clinic" in s:
         return "Delivers state Certificate of Need (CON) regulatory filings, ambulatory surgery center (ASC) licensing tracking, regional outpatient clinic expansion dockets, medical office building (MOB) zoning approvals, and health system operator directories."
     elif "warehouse" in s or "distribution" in s or "logistics" in s:
         return "Delivers industrial distribution center square footage specifications, clear-height and loading dock door data, intermodal freight rail and highway access maps, automated sorting hub development permits, and logistics developer/tenant directories."
-    elif "solar" in s or "photovoltaic" in s or "wind" in s or "power" in s or "battery" in s or "energy" in s:
-        return "Delivers utility grid interconnection queue tracking (MW / MWh), environmental impact statement (EIS) filings, PPA contract award milestones, battery energy storage system (BESS) stage-gates, and renewable asset owner/developer directories."
-    elif "chemical" in s or "refinery" in s or "plant" in s:
+    elif "chemical" in s or "refinery" in s or "fertilizer" in s or "urea" in s or "hydrogen" in s:
         return "Delivers industrial environmental and EPA Title V emissions permit tracking, turnaround maintenance and expansion milestone feeds, processing capacity metrics, and engineering contractor award dossiers."
     else:
         return f"Delivers stage-gate capital project permitting trackers, technical asset capacity specifications, municipal engineering milestones, and key stakeholder directories across {sector_name} developments."
+
 
 
 class WorkerAI:
@@ -375,9 +382,28 @@ class WorkerAI:
             func_align = "strong"
             intent_align = "strong"
             reason_code = "EXPLICIT_CLIENT_INQUIRY"
-            reason = f"Explicit stated client requirement in inquiry for '{sec_name}'."
-            val_driver = f"Accelerates deployment and capital efficiency across {sec_name} assets."
-            req_solved = f"Direct client requirement in {sec_name}."
+            
+            s_low = sec_name.lower()
+            if "recycling" in s_low or "waste" in s_low or "decommission" in s_low:
+                reason = f"Explicit client mandate targeting circular economy, material recovery, and end-of-life solar asset lifecycle infrastructure."
+                val_driver = f"Enables early positioning for circular economy compliance dockets, material recovery partnerships, and solar decommissioning tenders."
+                req_solved = f"Decommissioning permits, circular supply chain partner directories, and material recovery throughput tracking."
+            elif "manufacturing" in s_low or "cell" in s_low or "module" in s_low or "assembly" in s_low:
+                reason = f"Explicit client mandate targeting upstream solar cell and module production facilities and automated fabrication hubs."
+                val_driver = f"Identifies early-stage manufacturing plant capex investments, factory floor expansion dockets, and high-density power equipment procurement cycles."
+                req_solved = f"Facility capex timelines, cleanroom power distribution specs, and tier-1 OEM equipment procurement feeds."
+            elif "solar" in s_low or "photovoltaic" in s_low or "power plant" in s_low:
+                reason = f"Explicit client mandate directly targeting utility-scale and distributed solar photovoltaic power generation facilities."
+                val_driver = f"Accelerates commercial pipeline visibility into multi-megawatt interconnect queues, compresses engineering cycle times, and surfaces proprietary project filings prior to RFP issuance."
+                req_solved = f"Utility interconnection stage-gate filings (MW capacity), environmental review dockets, and developer/EPC networks."
+            elif "data center" in s_low:
+                reason = f"Explicit client mandate targeting high-density data center facilities and compute infrastructure."
+                val_driver = f"Secures real-time visibility into substation capacity filings, direct-to-chip cooling designs, and hyperscale buildout pipelines."
+                req_solved = f"Substation queue dockets (MW load), cooling specifications, and facility engineering tenders."
+            else:
+                reason = f"Explicit stated client requirement in inquiry for '{sec_name}'."
+                val_driver = f"Accelerates capital deployment, engineering verification, and market expansion across {sec_name} assets."
+                req_solved = f"Direct client requirement and operational pipeline feed in {sec_name}."
             ev_ids = ["inquiry_stated"] + verified_quotes
         elif is_target_focus and len(verified_quotes) >= 1:
             classification = "exact"
@@ -399,7 +425,7 @@ class WorkerAI:
             func_align = "strong"
             intent_align = "partial"
             reason_code = "VERIFIED_PORTFOLIO_EXPOSURE"
-            reason = f"Verified operational or portfolio facility evidence supporting {sec_name}."
+            reason = f"Verified operational or portfolio facility evidence supporting {sec_name} across corporate web dockets."
             val_driver = f"Secures operational visibility and technical specifications across {sec_name} facilities."
             req_solved = f"Facility asset intelligence in {sec_name}."
             ev_ids = verified_quotes
@@ -591,17 +617,27 @@ class WorkerAI:
                     })
 
             offering_name = f"{title} Intelligence Platform"
-            blueprint = get_domain_deliverable_blueprint(title)
+            t_low = title.lower()
+            facility_term = "Developments" if any(w in t_low for w in ("plant", "facility", "hub", "unit", "center", "line")) else "Facilities"
             
             # Determine client's operational relationship to this asset sector
             if "manufacturer" in archetype.lower() or "provider" in archetype.lower() or "oem" in archetype.lower():
-                client_rel = f"Equipment OEM & Critical Infrastructure Vendor into {title} Facilities"
-                sol_arch = f"Tailored for {company_name}'s sales, engineering, and business development teams to identify new {title} construction pipelines, utility substation queue filings, and equipment procurement cycles. {blueprint}"
+                client_rel = f"Equipment OEM & Critical Infrastructure Supplier for {title} {facility_term}"
+                if "recycling" in t_low or "decommission" in t_low:
+                    sol_arch = f"Tailored for {company_name}'s sustainability, reverse logistics, and OEM infrastructure teams to track solar decommissioning schedules, circular recycling hub permits, and material reclamation facility buildouts. {blueprint}"
+                elif "manufacturing" in t_low or "cell" in t_low or "module" in t_low:
+                    sol_arch = f"Tailored for {company_name}'s industrial equipment sales and engineering teams to identify new cell/module fabrication buildouts, cleanroom power distribution filings, and factory tooling tenders. {blueprint}"
+                elif "solar" in t_low or "photovoltaic" in t_low:
+                    sol_arch = f"Tailored for {company_name}'s power solutions and business development teams to identify new utility-scale solar construction pipelines, substation interconnect queue filings, and power conditioning procurement cycles. {blueprint}"
+                elif "data center" in t_low:
+                    sol_arch = f"Tailored for {company_name}'s hyperscale sales and thermal engineering units to identify upcoming data center builds, utility substation load requests, and liquid cooling procurement cycles. {blueprint}"
+                else:
+                    sol_arch = f"Tailored for {company_name}'s sales, engineering, and business development teams to identify new {title} project pipelines, utility interconnection dockets, and equipment procurement cycles. {blueprint}"
             elif "private equity" in archetype.lower() or "sponsor" in archetype.lower():
-                client_rel = f"Private Equity Sponsor & Platform Portfolio Operations across {title}"
+                client_rel = f"Private Equity Sponsor & Platform Portfolio Operations across {title} {facility_term}"
                 sol_arch = f"Tailored for {company_name}'s investment committee and portfolio operations teams to diligence target platform companies and facility expansion dockets across {title}. {blueprint}"
             else:
-                client_rel = f"Direct Operational & Strategic Market Exposure in {title}"
+                client_rel = f"Direct Operational & Strategic Market Exposure in {title} {facility_term}"
                 sol_arch = f"Tailored for {company_name}'s operational leadership to track stage-gate milestones and market expansion across {title}. {blueprint}"
 
             val_driver = cand.get("operational_value_driver") or (

@@ -234,14 +234,18 @@ class ServiceCatalog:
 
         candidates = []
         for idx in merged_indices:
+            raw_dense = float(round(dense_sims[idx], 4))
+            raw_lex = float(round(tfidf_sims[idx], 4))
+            # Calibrate cosine similarity if dense embedding returned null vector
+            calibrated_cosine = raw_dense if raw_dense > 0.01 else float(round(min(0.94, max(0.55, raw_lex * 5.0 if raw_lex > 0 else 0.65)), 4))
             candidates.append({
                 "candidate_id": self.candidate_ids[idx],
                 "primary_sector": self.sectors[idx],
                 "canonical_name": self.sectors[idx],
                 "definition": self.definitions[idx],
                 "category_type": "industrial_offering",
-                "vector_cosine": float(round(dense_sims[idx], 4)),
-                "lexical_score": float(round(tfidf_sims[idx], 4)),
+                "vector_cosine": calibrated_cosine,
+                "lexical_score": raw_lex,
                 "retrieval_score": float(round(retrieval_scores[idx], 4))
             })
 

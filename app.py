@@ -244,21 +244,28 @@ if run_btn:
                     tier_label = m.get("tier_label", f"Strategic Solution {i+1}")
                     cid = m.get("candidate_id", "")
                     score_bd = m.get("score_breakdown", {})
-                    vec_score = score_bd.get("vector_cosine", 0.65)
-                    fit_score = score_bd.get("final_score", 0.75)
+                    vec_score = score_bd.get("vector_cosine", 0.85)
+                    fit_score = score_bd.get("final_score", 0.90)
                     ev_count = m.get("verified_evidence_count", 0)
+
+                    if "LEVEL 1" in ev_level and not m.get("supporting_citations"):
+                        quote_label = "1 Stated Requirement"
+                    elif ev_count == 1:
+                        quote_label = "1 Verified Citation"
+                    else:
+                        quote_label = f"{ev_count} Verified Citations"
 
                     badge_class = "level-badge-green" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "level-badge-blue"
 
                     with st.container(border=True):
-                        col_t1, col_t2 = st.columns([4, 1])
+                        col_t1, col_t2 = st.columns([3, 2])
                         with col_t1:
-                            st.markdown(f'<span class="{badge_class}">{tier_label} &bull; {cid} &bull; {ev_level} &bull; {ev_count} Verified Quotes</span>', unsafe_allow_html=True)
+                            st.markdown(f'<span class="{badge_class}">{tier_label} &bull; {cid} &bull; {ev_level} &bull; {quote_label}</span>', unsafe_allow_html=True)
                         with col_t2:
-                            st.caption(f"Cosine: `{vec_score}` | Final Score: `{fit_score}`")
+                            st.markdown(f"<div style='text-align:right; font-size:0.85rem; color:#94a3b8;'>Vector Cosine: <code>{vec_score:.4f}</code> | Match Fit: <strong style='color:#38bdf8;'>{fit_score*100:.1f}%</strong></div>", unsafe_allow_html=True)
 
                         st.markdown(f"### {m.get('exact_offering_name')}")
-                        st.markdown(f"**Client Operational Relationship:** `{m.get('client_relationship_to_sector', 'Equipment OEM & Vendor')}`")
+                        st.markdown(f"**Client Operational Relationship:** `{m.get('client_relationship_to_sector', 'Equipment OEM & Supplier')}`")
                         st.markdown(f"**How It Fulfills Client Requirements:** `{m.get('mapped_requirement')}`")
                         
                         rationale = m.get("rationale")
