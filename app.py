@@ -111,27 +111,25 @@ st.markdown("""
 st.title("Enterprise Lead Intelligence & Offering Matcher")
 st.caption("Dynamic Contextual Discovery -> Cloudflare Workers AI -> Evidence-Grounded Definition Entailment")
 
-# Input Section
-col_url, col_btn = st.columns([5, 1], vertical_alignment="bottom")
-with col_url:
-    target_url = st.text_input(
-        "Target Client Domain / Website URL",
-        value="",
-        placeholder="e.g. https://example.com or enterprise-domain.com"
-    )
-with col_btn:
-    run_btn = st.button("Analyze & Match", type="primary", use_container_width=True)
+# Input Section in an atomic form
+with st.form("lead_matcher_form", clear_on_submit=False):
+    col_url, col_k = st.columns([4, 1])
+    with col_url:
+        target_url = st.text_input(
+            "Target Client Domain / Website URL",
+            value="",
+            placeholder="e.g. https://example.com or enterprise-domain.com"
+        )
+    with col_k:
+        top_k_val = st.number_input("Top K Candidates to Analyze", min_value=3, max_value=20, value=8, step=1)
 
-# Inbound Inquiry and Top K Selector
-col_inq, col_k = st.columns([4, 1])
-with col_inq:
     client_inquiry = st.text_input(
         "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
         value="",
         placeholder="e.g. 'Looking for commercial expansion intelligence, asset tracking, or market visibility in target regions.'"
     )
-with col_k:
-    top_k_val = st.number_input("Top K Candidates to Analyze", min_value=3, max_value=20, value=8, step=1)
+    
+    run_btn = st.form_submit_button("Analyze & Match", type="primary", use_container_width=True)
 
 if run_btn:
     clean_target_url = target_url.strip()
