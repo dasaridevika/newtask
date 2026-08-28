@@ -334,72 +334,31 @@ class WorkerAI:
 
         for ev in evidence_items:
             quote = ev.get("quoted_text", "")
-            q_lower = quote.lower()
-            rel = ev.get("relationship", "current_operation")
-
-            # Polysemy / Metaphor Context Analysis
-            # 1. "Overhead" metaphor check: "without overhead", "administrative overhead", "complexity and overhead"
-            if "overhead" in sec_lower and ("complexity" in q_lower or "administrative" in q_lower or "without" in q_lower or "cost" in q_lower or "burden" in q_lower):
-                is_metaphorical = True
-                rejection_reason = "Text refers to operational/administrative overhead, not aerial power transmission infrastructure."
+            q_lower = quote.lower().strip()
+            if len(q_lower) < 15:
                 continue
-
-            # 2. "University" metaphor check: internal corporate academy / training
-            if "university" in sec_lower and ("training" in q_lower or "academy" in q_lower or "cls university" in q_lower or "learning" in q_lower or "internal" in q_lower):
-                is_metaphorical = True
-                rejection_reason = "Text describes an internal corporate employee training program rather than an accredited higher-education academic institution."
-                continue
-
-            # 3. "Fuels" metaphor check: "fuels the spirit", "fuels growth"
-            if "fuel" in sec_lower and ("spirit" in q_lower or "growth" in q_lower or "ambition" in q_lower or "entrepreneurial" in q_lower):
-                is_metaphorical = True
-                rejection_reason = "Text uses 'fuels' as a figurative verb rather than physical sustainable aviation fuel refining."
-                continue
-
-            # 4. Short acronym check: e.g. LAB in "engineering lab environments"
-            has_acronym_leak = False
-            for acr in acronyms:
-                if acr in ("lab", "pet", "eva", "pha"):
-                    if re.search(r"\b" + re.escape(acr) + r"\b", q_lower):
-                        if not any(ph in q_lower for ph in ("battery", "cell", "polymer", "resin", "chemical", "manufacturing plant", "lead acid", "lead-acid")):
-                            has_acronym_leak = True
-                            rejection_reason = f"Token '{acr}' appears in text as a common English word (e.g. testing laboratory) rather than a physical {sec_name} facility."
-                            break
-            if has_acronym_leak:
-                continue
-
-            # Substantive Definition Entailment Verification:
-            # Generic structural head words that describe entity form, not specific domain
-            GENERIC_STRUCTURAL_WORDS = {
-                "plant", "plants", "facility", "facilities", "infrastructure", "system", "systems",
-                "production", "storage", "other", "services", "service", "building", "buildings",
-                "complex", "management", "support", "integrated", "center", "centers", "energy",
-                "power", "general", "advanced", "specialized"
-            }
 
             # 1. Exact canonical sector phrase match
             if clean_sec in q_lower or sec_lower in q_lower:
                 verified_quotes.append(ev.get("evidence_id", f"ev_{len(verified_quotes)+1:03d}"))
                 continue
 
-            # 2. Distinctive domain tokens matching (must match all domain concepts, not single words like 'cooling', 'liquid', or 'thermal')
-            all_candidate_words = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec)]
-            distinctive_tokens = [t for t in all_candidate_words if t not in GENERIC_STRUCTURAL_WORDS]
-            if distinctive_tokens:
-                matched_distinctive = [t for t in distinctive_tokens if re.search(r"\b" + re.escape(t) + r"\b", q_lower)]
-                is_entailed = False
-                
-                # If category originally had >= 2 words, require matching >= 2 distinctive concepts
-                if len(all_candidate_words) >= 2:
-                    if len(distinctive_tokens) >= 2:
-                        is_entailed = len(matched_distinctive) >= 2 and (len(matched_distinctive) / len(distinctive_tokens) >= 0.70)
-                    else:
-                        is_entailed = False
-                else:
-                    is_entailed = len(matched_distinctive) == 1
+            # 2. Dynamic Mathematical Specificity Entailment (from corpus IDF, zero hardcoded word lists)
+            from service_catalog import catalog
+            cand_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec)]
+            if not cand_tokens:
+                continue
 
-                if is_entailed:
-                    verified_quotes.append(ev.get("evidence_id", f"ev_{len(verified_quotes)+1:03d}"))
+            total_cand_weight = sum(catalog.get_term_specificity(t) for t in cand_tokens)
+            matched_weight = sum(
+                catalog.get_term_specificity(t)
+                for t in cand_tokens
+                if re.search(r"\b" + re.escape(t) + r"\b", q_lower)
+            )
+
+            entailment_ratio = matched_weight / (total_cand_weight if total_cand_weight > 0 else 1.0)
+            if entailment_ratio >= 0.65:
+                verified_quotes.append(ev.get("evidence_id", f"ev_{len(verified_quotes)+1:03d}"))
 
         # Formulate Dynamic Decision
         if is_inquiry_match:

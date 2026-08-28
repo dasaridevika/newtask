@@ -76,6 +76,16 @@ class ServiceCatalog:
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(corpus)
         return len(self.sectors)
 
+    def get_term_specificity(self, term: str) -> float:
+        """Returns dynamically calculated mathematical corpus IDF specificity (zero hardcoded keywords)."""
+        t = term.lower().strip()
+        if self.tfidf_vectorizer and hasattr(self.tfidf_vectorizer, "vocabulary_"):
+            vocab = self.tfidf_vectorizer.vocabulary_
+            idf = self.tfidf_vectorizer.idf_
+            if t in vocab:
+                return float(idf[vocab[t]])
+        return 4.5
+
     def _get_worker_embedding(self, text: str) -> Optional[np.ndarray]:
         """Generates a 1024-dim dense vector using Cloudflare Workers AI with caching and retries."""
         if not text or not text.strip():
