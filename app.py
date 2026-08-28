@@ -20,14 +20,14 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Enterprise Design System & CSS Styling
+# Custom Enterprise Design System & CSS Styling (Clean Light Mode)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
-    html, body, [class*="css"], .stMarkdown, p, span, label {
+    html, body, [class*="css"], .stMarkdown, p, span, label, div {
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
-        color: #f1f5f9;
+        color: #0f172a;
     }
     code, pre {
         font-family: 'JetBrains Mono', monospace !important;
@@ -35,20 +35,19 @@ st.markdown("""
 
     /* Hero Header */
     .hero-container {
-        background: linear-gradient(180deg, rgba(14, 21, 38, 0.9) 0%, rgba(8, 12, 20, 0.4) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.07);
+        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+        border: 1px solid #e2e8f0;
         border-radius: 16px;
         padding: 28px 32px;
         margin-bottom: 24px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        backdrop-filter: blur(8px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
     }
     .hero-badge {
         display: inline-flex;
         align-items: center;
-        background: rgba(56, 189, 248, 0.12);
-        color: #38bdf8;
-        border: 1px solid rgba(56, 189, 248, 0.28);
+        background: #e0f2fe;
+        color: #0369a1;
+        border: 1px solid #bae6fd;
         border-radius: 9999px;
         padding: 4px 12px;
         font-size: 0.72rem;
@@ -61,13 +60,13 @@ st.markdown("""
         font-size: 2rem;
         font-weight: 800;
         letter-spacing: -0.025em;
-        color: #ffffff;
+        color: #0f172a;
         margin: 0 0 6px 0;
         line-height: 1.2;
     }
     .hero-subtitle {
         font-size: 0.92rem;
-        color: #94a3b8;
+        color: #475569;
         margin: 0;
         line-height: 1.5;
         font-weight: 500;
@@ -75,28 +74,27 @@ st.markdown("""
 
     /* Metric Cards */
     .metric-card {
-        background: linear-gradient(135deg, rgba(22, 32, 50, 0.75) 0%, rgba(13, 20, 36, 0.85) 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
         border-radius: 12px;
         padding: 16px 18px;
-        color: #f8fafc;
+        color: #0f172a;
         min-height: 125px;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
-        box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
-        backdrop-filter: blur(12px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         box-sizing: border-box;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .metric-card:hover {
-        border-color: rgba(56, 189, 248, 0.35);
+        border-color: #0284c7;
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px -4px rgba(56, 189, 248, 0.15);
+        box-shadow: 0 6px 16px rgba(2, 132, 199, 0.12);
     }
     .metric-label {
         font-size: 0.70rem;
-        color: #94a3b8;
+        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         font-weight: 700;
@@ -105,55 +103,56 @@ st.markdown("""
     .metric-val {
         font-size: 1.05rem;
         font-weight: 700;
-        color: #38bdf8;
+        color: #0284c7;
         line-height: 1.35;
         word-break: break-word;
     }
-    .metric-val-green { color: #10b981; }
-    .metric-val-amber { color: #f59e0b; }
-    .metric-val-cyan { color: #38bdf8; }
+    .metric-val-green { color: #059669; }
+    .metric-val-amber { color: #d97706; }
+    .metric-val-cyan { color: #0284c7; }
 
     /* Tab Custom Styling */
     .stTabs [data-baseweb="tab-list"] {
         gap: 8px;
-        background-color: rgba(15, 23, 42, 0.6);
+        background-color: #f1f5f9;
         padding: 6px;
         border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.06);
+        border: 1px solid #e2e8f0;
     }
     .stTabs [data-baseweb="tab"] {
         border-radius: 8px;
         padding: 8px 18px;
         font-weight: 600;
         font-size: 0.88rem;
-        color: #94a3b8;
+        color: #64748b;
         border: none;
         background: transparent;
         transition: all 0.2s ease;
     }
     .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, rgba(2, 132, 199, 0.25) 0%, rgba(37, 99, 235, 0.2) 100%) !important;
-        color: #38bdf8 !important;
-        border: 1px solid rgba(56, 189, 248, 0.4) !important;
+        background: #ffffff !important;
+        color: #0284c7 !important;
+        border: 1px solid #cbd5e1 !important;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
     }
 
     /* Deliverable Item Card */
     .deliverable-card {
-        background: rgba(22, 32, 50, 0.6);
-        border-left: 4px solid #38bdf8;
+        background: #f8fafc;
+        border-left: 4px solid #0284c7;
         border-radius: 0 10px 10px 0;
         padding: 16px 20px;
         margin-bottom: 14px;
-        border-top: 1px solid rgba(255, 255, 255, 0.05);
-        border-right: 1px solid rgba(255, 255, 255, 0.05);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        border-top: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
     }
 
     /* Level Badges */
     .level-badge-green {
-        background: rgba(16, 185, 129, 0.15);
-        color: #34d399;
-        border: 1px solid rgba(16, 185, 129, 0.3);
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
         padding: 5px 12px;
         border-radius: 6px;
         font-weight: 600;
@@ -162,9 +161,9 @@ st.markdown("""
         margin-bottom: 8px;
     }
     .level-badge-blue {
-        background: rgba(56, 189, 248, 0.15);
-        color: #60a5fa;
-        border: 1px solid rgba(56, 189, 248, 0.3);
+        background: #e0f2fe;
+        color: #075985;
+        border: 1px solid #7dd3fc;
         padding: 5px 12px;
         border-radius: 6px;
         font-weight: 600;
@@ -175,16 +174,16 @@ st.markdown("""
 
     /* Citation Box */
     .citation-box {
-        background: rgba(15, 23, 42, 0.85);
+        background: #f0fdf4;
         border-left: 3px solid #10b981;
         border-radius: 0 8px 8px 0;
         padding: 10px 14px;
         margin: 8px 0;
         font-size: 0.86rem;
-        color: #e2e8f0;
-        border-top: 1px solid rgba(255, 255, 255, 0.04);
-        border-right: 1px solid rgba(255, 255, 255, 0.04);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        color: #1e293b;
+        border-top: 1px solid #dcfce7;
+        border-right: 1px solid #dcfce7;
+        border-bottom: 1px solid #dcfce7;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -398,7 +397,7 @@ if run_btn:
                         with col_t1:
                             st.markdown(f'<span class="{badge_class}">{tier_label} &bull; {cid} &bull; {ev_level} &bull; {quote_label}</span>', unsafe_allow_html=True)
                         with col_t2:
-                            st.markdown(f"<div style='text-align:right; font-size:0.85rem; color:#94a3b8;'>Vector Cosine: <code>{vec_score:.4f}</code> | Match Fit: <strong style='color:#38bdf8;'>{fit_score*100:.1f}%</strong></div>", unsafe_allow_html=True)
+                            st.markdown(f"<div style='text-align:right; font-size:0.85rem; color:#64748b;'>Vector Cosine: <code>{vec_score:.4f}</code> | Match Fit: <strong style='color:#0284c7;'>{fit_score*100:.1f}%</strong></div>", unsafe_allow_html=True)
 
                         st.markdown(f"### {m.get('exact_offering_name')}")
                         st.markdown(f"**Client Operational Relationship:** `{m.get('client_relationship_to_sector', 'Equipment OEM & Supplier')}`")
@@ -416,7 +415,7 @@ if run_btn:
                                 st.markdown(f"""
                                 <div class="citation-box">
                                     <strong>[{cit.get('evidence_id')}]</strong> "{cit.get('quoted_text')}"<br>
-                                    <span style="font-size:0.75rem; color:#94a3b8;">Source: <a href="{cit.get('source_url')}" target="_blank" style="color:#38bdf8;">{cit.get('source_url')}</a></span>
+                                    <span style="font-size:0.75rem; color:#64748b;">Source: <a href="{cit.get('source_url')}" target="_blank" style="color:#0284c7; text-decoration:underline;">{cit.get('source_url')}</a></span>
                                 </div>
                                 """, unsafe_allow_html=True)
 
