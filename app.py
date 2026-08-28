@@ -10,12 +10,11 @@ from worker_ai import ai
 
 st.set_page_config(
     page_title="Enterprise Lead Intelligence & Offering Matcher",
-    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Custom High-Contrast Glassmorphic Theme CSS
+# Custom High-Contrast Professional Theme CSS
 st.markdown("""
 <style>
     /* Global Styles */
@@ -105,8 +104,8 @@ def get_service_title(srv):
     return srv.get("Primary Sector") or srv.get("Service Name") or "Target Offering"
 
 # Header Section
-st.title("⚡ Enterprise Lead Intelligence & Offering Matcher")
-st.caption("Evidence-Grounded Requirements Analysis → 1024-Dim Multi-Vector Similarity Search → Multi-Tier Deliverables Blueprint")
+st.title("Enterprise Lead Intelligence & Offering Matcher")
+st.caption("Evidence-Grounded Requirements Analysis -> 1024-Dim Multi-Vector Similarity Search -> Multi-Tier Deliverables Blueprint")
 
 # Input Section
 col_url, col_btn = st.columns([5, 1], vertical_alignment="bottom")
@@ -204,58 +203,20 @@ if run_btn and target_url:
 
     st.write("")
 
-    # 3-Pillar Executive Presentation Tabs
-    tab_reqs, tab_offer, tab_deliver = st.tabs([
-        "🏢 1. Client Strategic Profile",
-        "🎯 2. Matched Offerings (Top Solutions)",
-        "📦 3. Deliverables Blueprint"
-    ])
-
     req_summary = analysis.get("client_requirements_summary", {})
     lead_blueprint = analysis.get("lead_delivery_blueprint", {})
     mappings = analysis.get("exact_product_mappings", [])
     disqualified_audit = analysis.get("disqualified_and_speculative_audit") or analysis.get("disqualified_audit", [])
 
-    # Tab 1: Client Strategic Profile & Verified Operations
-    with tab_reqs:
-        st.subheader("🏢 Client Profile & Verified Operations")
-        st.caption("Evidence-grounded operational overview and verified portfolio platforms:")
+    # Main Presentation Tabs
+    tab_offer, tab_deliver = st.tabs([
+        "1. Matched Offerings & Strategy",
+        "2. Deliverables Blueprint"
+    ])
 
-        with st.container(border=True):
-            st.markdown("#### 🎯 Core Mandate & Business Overview")
-            st.write(company_details.get("executive_profile_analysis") or req_summary.get("core_growth_mandate", ""))
-            
-            persona = req_summary.get("target_decision_maker") or company_details.get("buying_role_hypothesis", "Strategic Leadership")
-            st.caption(f"**Industry Focus:** {company_details.get('industry_focus', '')} | **Archetype:** {company_details.get('archetype', '')} | **Target Role:** `{persona}`")
-
-        col_p1, col_p2 = st.columns(2)
-        with col_p1:
-            with st.container(border=True):
-                st.markdown("#### 💼 Business Model & Strategy")
-                st.write(company_details.get("business_model_and_revenue_drivers", "Strategic investment, operational expansion, and platform acquisitions."))
-
-            target_sectors = company_details.get("portfolio_target_sectors", [])
-            if target_sectors:
-                with st.container(border=True):
-                    st.markdown("#### 🏷️ Active Target Platforms & Verticals")
-                    for ts in target_sectors:
-                        st.markdown(f"- **{ts}**")
-
-        with col_p2:
-            delivered_projects = company_details.get("delivered_historical_projects", [])
-            if delivered_projects:
-                with st.container(border=True):
-                    st.markdown("#### 🏭 Verified Operating Companies & Portfolio Assets")
-                    for p in delivered_projects[:5]:
-                        st.markdown(f"- **{p.get('project_name')}**: {p.get('summary', '')}")
-
-            with st.container(border=True):
-                st.markdown("#### ⚠️ Core Diligence Friction")
-                st.write(company_details.get("operational_friction_and_pain_points") or req_summary.get("primary_operational_bottleneck", "Tracking fragmented capital project pipelines, stage-gate permitting, and off-market assets."))
-
-    # Tab 2: What We Can Offer Them (Matched Offerings & Top K Leaderboard)
+    # Tab 1: Matched Offerings & Top K Leaderboard
     with tab_offer:
-        st.subheader("🎯 What We Can Offer Them")
+        st.subheader("What We Can Offer Them")
         st.caption(f"Evidence-grounded offerings ranked by 1024-dimensional semantic similarity and verified corporate footprint:")
 
         if mappings:
@@ -295,7 +256,7 @@ if run_btn and target_url:
                     st.write(m.get("operational_value_driver", ""))
 
             st.divider()
-            st.markdown(f"### 🏆 Complete Top {len(candidate_sectors)} Candidate Offerings (Similarity Leaderboard)")
+            st.markdown(f"### Complete Top {len(candidate_sectors)} Candidate Offerings (Similarity Leaderboard)")
             if candidate_sectors:
                 cand_df = pd.DataFrame(candidate_sectors)
                 desired_cols = ["Primary Sector", "evidence_level", "confidence", "vector_cosine", "business_fit_score", "matched_keywords", "Definition"]
@@ -303,20 +264,20 @@ if run_btn and target_url:
                 st.dataframe(cand_df[cols_to_show], use_container_width=True)
 
             if disqualified_audit:
-                with st.expander("🔍 Transparent Disqualification & Speculative Audit", expanded=False):
+                with st.expander("Transparent Disqualification & Speculative Audit", expanded=False):
                     st.markdown("Audited non-commercial, out-of-scope, or speculative sectors that were rejected or flagged:")
                     for d in disqualified_audit:
                         st.markdown(f"- **{d.get('sector')}** (`{d.get('status')}`): {d.get('rationale')}")
         else:
             st.info("No direct catalog mappings available.")
 
-    # Tab 3: What to Deliver the Lead (Deliverables Blueprint)
+    # Tab 2: What to Deliver the Lead (Deliverables Blueprint)
     with tab_deliver:
-        st.subheader("📦 What to Deliver the Lead")
+        st.subheader("What to Deliver the Lead")
         st.caption("Multi-tier technical deliverables package and operational impact overview:")
 
         with st.container(border=True):
-            st.markdown(f"### 📦 Multi-Tier Data Deliverables Package for `{top_name}`")
+            st.markdown(f"### Multi-Tier Data Deliverables Package for `{top_name}`")
             
             st.markdown("""
             <div class="deliverable-card">
@@ -336,7 +297,7 @@ if run_btn and target_url:
         st.divider()
 
         with st.container(border=True):
-            st.markdown("### 📈 Quantified Strategic Advantage & Operational Impact")
+            st.markdown("### Quantified Strategic Advantage & Operational Impact")
             st.write(lead_blueprint.get("operational_value_driver", "Compresses diligence and evaluation cycles, eliminates infrastructure capacity blind spots, and generates proprietary deal flow 6-9 months ahead of public auctions."))
 
     # Download Button
