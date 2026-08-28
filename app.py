@@ -48,81 +48,6 @@ st.markdown("""
         height: 0px !important;
     }
 
-    /* Top Navigation Bar */
-    .top-nav {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        background: #ffffff;
-        padding: 14px 24px;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.02);
-    }
-    .nav-brand {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .nav-brand-text {
-        display: flex;
-        flex-direction: column;
-    }
-    .brand-name {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: #0f172a;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-    }
-    .brand-sub {
-        font-size: 0.70rem;
-        font-weight: 600;
-        color: #64748b;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-    }
-    .nav-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .nav-btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        font-size: 0.82rem;
-        font-weight: 600;
-        color: #475569;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        padding: 6px 12px;
-        border-radius: 8px;
-        transition: all 0.15s ease;
-        text-decoration: none;
-    }
-    .nav-btn:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-        border-color: #cbd5e1;
-    }
-    .nav-icon {
-        color: #64748b;
-        display: flex;
-        align-items: center;
-        padding: 6px 8px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        transition: all 0.15s ease;
-    }
-    .nav-icon:hover {
-        background: #f1f5f9;
-        color: #0f172a;
-        border-color: #cbd5e1;
-    }
-
     /* Hero Header */
     .hero-container {
         background: linear-gradient(135deg, #f0f7ff 0%, #ffffff 50%, #eff6ff 100%);
@@ -398,38 +323,6 @@ st.markdown("""
         color: #1d4ed8 !important;
     }
 </style>
-""", unsafe_allow_html=True)
-
-# Top Navigation Bar
-st.markdown("""
-<div class="top-nav">
-    <div class="nav-brand">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect width="24" height="24" rx="6" fill="#2563eb"/>
-            <circle cx="12" cy="12" r="5" fill="#ffffff"/>
-            <path d="M12 4v4M12 16v4M4 12h4M16 12h4" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
-        </svg>
-        <div class="nav-brand-text">
-            <span class="brand-name">LeadIntel</span>
-            <span class="brand-sub">Enterprise Intelligence</span>
-        </div>
-    </div>
-    <div class="nav-actions">
-        <span class="nav-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Share
-        </span>
-        <span class="nav-icon" title="Favorite">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-        </span>
-        <span class="nav-icon" title="Edit">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        </span>
-        <span class="nav-icon" title="GitHub Repository">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-        </span>
-    </div>
-</div>
 """, unsafe_allow_html=True)
 
 # 2-Column Hero Section
