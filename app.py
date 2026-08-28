@@ -381,8 +381,7 @@ st.markdown("""
 <div class="hero-container">
     <div style="flex: 1; padding-right: 24px;">
         <div class="hero-badge">ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
-        <h1 class="hero-title">Lead Research</h1>
-        <p class="hero-subtitle">Dynamic Contextual Discovery &bull; Multi-Stage Hybrid Vector Search &bull; Evidence-Grounded Definition Entailment</p>
+        <h1 class="hero-title" style="margin-bottom:0;">Lead Research</h1>
     </div>
     <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
         <svg width="180" height="110" viewBox="0 0 180 110" fill="none" xmlns="http://www.w3.org/2000/svg">
