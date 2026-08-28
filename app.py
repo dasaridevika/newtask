@@ -15,7 +15,7 @@ from worker_ai import ai
 
 # Streamlit Page Config
 st.set_page_config(
-    page_title="LeadIntel — Enterprise Lead Intelligence & Offering Matcher",
+    page_title="Lead Research",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -362,7 +362,7 @@ st.markdown("""
 <div class="hero-container">
     <div style="flex: 1; padding-right: 24px;">
         <div class="hero-badge">ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
-        <h1 class="hero-title">Enterprise Lead Intelligence & Offering Matcher</h1>
+        <h1 class="hero-title">Lead Research</h1>
         <p class="hero-subtitle">Dynamic Contextual Discovery &bull; Multi-Stage Hybrid Vector Search &bull; Evidence-Grounded Definition Entailment</p>
     </div>
     <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
