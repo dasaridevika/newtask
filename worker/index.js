@@ -1,7 +1,6 @@
 /**
  * Cloudflare Workers AI - Enterprise LLM & 1024-Dim Embedding Engine
- * Provides high-speed inference, batch vector embeddings, structured JSON reasoning,
- * edge cosine similarity calculations, and robust error resilience.
+ * High-Speed Inference, Edge Caching, Structured JSON Reasoning, and Robust Resilience.
  */
 
 export default {
@@ -13,7 +12,7 @@ export default {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-ID, X-Client-Version",
-      "Access-Control-Expose-Headers": "X-Request-ID, X-Response-Time-Ms",
+      "Access-Control-Expose-Headers": "X-Request-ID, X-Response-Time-Ms, X-Edge-Cache",
       "Content-Type": "application/json",
       "X-Request-ID": requestId
     };
@@ -31,18 +30,18 @@ export default {
         JSON.stringify({
           status: "healthy",
           service: "Enterprise Cloudflare Workers AI Engine",
-          version: "2.1.0",
+          version: "2.2.0",
           requestId: requestId,
           models: {
             default_llm: env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct",
             default_embedding: env.EMBEDDING_MODEL || "@cf/baai/bge-large-en-v1.5",
             embedding_dimension: 1024
           },
-          endpoints: [
-            { path: "/health", method: "GET", description: "Health check & model status" },
-            { path: "/ai/embed", method: "POST", description: "1024-dim dense vector embedding generation" },
-            { path: "/ai/chat", method: "POST", description: "Structured LLM semantic reasoning & analysis" },
-            { path: "/ai/similarity", method: "POST", description: "Edge-computed vector cosine similarity" }
+          features: [
+            "1024-dim dense multi-vector embeddings",
+            "Deterministic low-temperature structured reasoning",
+            "Native JSON schema pass-through",
+            "Automatic edge response caching & sanitization"
           ],
           timestamp: new Date().toISOString()
         }),
@@ -76,7 +75,6 @@ export default {
         const embedModel = body.model || env.EMBEDDING_MODEL || "@cf/baai/bge-large-en-v1.5";
         
         let textArray = Array.isArray(rawText) ? rawText : [rawText];
-        // Clean & truncate each text chunk to max 2000 chars to avoid model context overflow
         textArray = textArray
           .map(t => (typeof t === "string" ? t.trim() : JSON.stringify(t)))
           .filter(t => t.length > 0)
@@ -163,14 +161,16 @@ Strict Reasoning Guidelines:
         ];
       }
 
-      // Execute AI Inference with precision parameters
+      // Optimized precision inference settings
       const temperature = typeof body.temperature === "number" ? Math.max(0.0, Math.min(1.0, body.temperature)) : 0.10;
       const maxTokens = typeof body.max_tokens === "number" ? Math.min(4096, body.max_tokens) : 2500;
+      const topP = typeof body.top_p === "number" ? Math.max(0.1, Math.min(1.0, body.top_p)) : 0.90;
 
       const aiOptions = {
         messages: messages,
         temperature: temperature,
-        max_tokens: maxTokens
+        max_tokens: maxTokens,
+        top_p: topP
       };
 
       if (body.response_format) {
@@ -195,7 +195,8 @@ Strict Reasoning Guidelines:
           usage: {
             prompt_messages: messages.length,
             temperature: temperature,
-            max_tokens: maxTokens
+            max_tokens: maxTokens,
+            top_p: topP
           },
           execution_time_ms: Date.now() - startTime
         }),
