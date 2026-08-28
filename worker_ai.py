@@ -643,24 +643,28 @@ class WorkerAI:
             facility_term = "Developments" if any(w in t_low for w in ("plant", "facility", "hub", "unit", "center", "line")) else "Facilities"
             
             # Determine client's operational relationship to this asset sector
-            if "manufacturer" in archetype.lower() or "provider" in archetype.lower() or "oem" in archetype.lower():
+            arch_low = archetype.lower()
+            if any(k in arch_low for k in ("manufacturer", "provider", "oem", "equipment", "infrastructure", "industrial", "technology", "commercial")):
                 client_rel = f"Equipment OEM & Critical Infrastructure Supplier for {title} {facility_term}"
                 if "recycling" in t_low or "decommission" in t_low:
                     sol_arch = f"Tailored for {company_name}'s sustainability, reverse logistics, and OEM infrastructure teams to track solar decommissioning schedules, circular recycling hub permits, and material reclamation facility buildouts. {blueprint}"
                 elif "manufacturing" in t_low or "cell" in t_low or "module" in t_low:
                     sol_arch = f"Tailored for {company_name}'s industrial equipment sales and engineering teams to identify new cell/module fabrication buildouts, cleanroom power distribution filings, and factory tooling tenders. {blueprint}"
                 elif "solar" in t_low or "photovoltaic" in t_low:
-                    sol_arch = f"Tailored for {company_name}'s power solutions and business development teams to identify new utility-scale solar construction pipelines, substation interconnect queue filings, and power conditioning procurement cycles. {blueprint}"
+                    sol_arch = f"Tailored for {company_name}'s commercial sales, power systems engineering, and business development units to identify new utility-scale solar construction pipelines, substation interconnect queue filings, and balance-of-plant equipment tenders. {blueprint}"
                 elif "data center" in t_low:
                     sol_arch = f"Tailored for {company_name}'s hyperscale sales and thermal engineering units to identify upcoming data center builds, utility substation load requests, and liquid cooling procurement cycles. {blueprint}"
                 else:
                     sol_arch = f"Tailored for {company_name}'s sales, engineering, and business development teams to identify new {title} project pipelines, utility interconnection dockets, and equipment procurement cycles. {blueprint}"
-            elif "private equity" in archetype.lower() or "sponsor" in archetype.lower():
+            elif any(k in arch_low for k in ("private equity", "sponsor", "invest")):
                 client_rel = f"Private Equity Sponsor & Platform Portfolio Operations across {title} {facility_term}"
                 sol_arch = f"Tailored for {company_name}'s investment committee and portfolio operations teams to diligence target platform companies and facility expansion dockets across {title}. {blueprint}"
+            elif any(k in arch_low for k in ("developer", "utility", "operator", "energy")):
+                client_rel = f"Project Developer & Asset Operator for {title} {facility_term}"
+                sol_arch = f"Tailored for {company_name}'s development and capital projects leadership to secure grid interconnection positions, zoning milestones, and EPC contracts across {title}. {blueprint}"
             else:
-                client_rel = f"Direct Operational & Strategic Market Exposure in {title} {facility_term}"
-                sol_arch = f"Tailored for {company_name}'s operational leadership to track stage-gate milestones and market expansion across {title}. {blueprint}"
+                client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
+                sol_arch = f"Tailored for {company_name}'s commercial and operational leadership to track stage-gate project milestones, procurement cycles, and market expansion across {title}. {blueprint}"
 
             val_driver = cand.get("operational_value_driver") or (
                 f"Accelerates engineering design cycles, verifies power interconnect queues, and secures proprietary visibility across {title} assets."

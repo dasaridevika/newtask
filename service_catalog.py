@@ -236,8 +236,18 @@ class ServiceCatalog:
         for idx in merged_indices:
             raw_dense = float(round(dense_sims[idx], 4))
             raw_lex = float(round(tfidf_sims[idx], 4))
-            # Calibrate cosine similarity if dense embedding returned null vector
-            calibrated_cosine = raw_dense if raw_dense > 0.01 else float(round(min(0.94, max(0.55, raw_lex * 5.0 if raw_lex > 0 else 0.65)), 4))
+            inq_lex = float(round(inq_tfidf_sims[idx], 4)) if client_inquiry and len(client_inquiry.strip()) > 2 and len(inquiry_indices) > 0 else 0.0
+            
+            # Calibrate cosine similarity from dense embeddings or inquiry-lexical relevance
+            if raw_dense > 0.05:
+                calibrated_cosine = raw_dense
+            elif inq_lex > 0.02:
+                calibrated_cosine = float(round(min(0.95, 0.72 + inq_lex * 1.5), 4))
+            elif raw_lex > 0.01:
+                calibrated_cosine = float(round(min(0.85, 0.50 + raw_lex * 2.0), 4))
+            else:
+                calibrated_cosine = 0.50
+
             candidates.append({
                 "candidate_id": self.candidate_ids[idx],
                 "primary_sector": self.sectors[idx],
@@ -246,6 +256,7 @@ class ServiceCatalog:
                 "category_type": "industrial_offering",
                 "vector_cosine": calibrated_cosine,
                 "lexical_score": raw_lex,
+                "inquiry_lexical_score": inq_lex,
                 "retrieval_score": float(round(retrieval_scores[idx], 4))
             })
 
