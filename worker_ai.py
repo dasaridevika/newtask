@@ -382,17 +382,21 @@ class WorkerAI:
                 verified_quotes.append(ev.get("evidence_id", f"ev_{len(verified_quotes)+1:03d}"))
                 continue
 
-            # 2. Distinctive domain tokens matching (must match all domain concepts, not single words like 'cooling' or 'liquid')
-            distinctive_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec) if t not in GENERIC_STRUCTURAL_WORDS]
+            # 2. Distinctive domain tokens matching (must match all domain concepts, not single words like 'cooling', 'liquid', or 'thermal')
+            all_candidate_words = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec)]
+            distinctive_tokens = [t for t in all_candidate_words if t not in GENERIC_STRUCTURAL_WORDS]
             if distinctive_tokens:
                 matched_distinctive = [t for t in distinctive_tokens if re.search(r"\b" + re.escape(t) + r"\b", q_lower)]
                 is_entailed = False
-                if len(distinctive_tokens) == 1:
-                    is_entailed = len(matched_distinctive) == 1
-                elif len(distinctive_tokens) == 2:
-                    is_entailed = len(matched_distinctive) == 2
+                
+                # If category originally had >= 2 words, require matching >= 2 distinctive concepts
+                if len(all_candidate_words) >= 2:
+                    if len(distinctive_tokens) >= 2:
+                        is_entailed = len(matched_distinctive) >= 2 and (len(matched_distinctive) / len(distinctive_tokens) >= 0.70)
+                    else:
+                        is_entailed = False
                 else:
-                    is_entailed = len(matched_distinctive) >= len(distinctive_tokens) - 1
+                    is_entailed = len(matched_distinctive) == 1
 
                 if is_entailed:
                     verified_quotes.append(ev.get("evidence_id", f"ev_{len(verified_quotes)+1:03d}"))
