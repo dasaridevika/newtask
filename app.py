@@ -383,12 +383,32 @@ if run_btn:
                         st.write(adj.get("rationale", ""))
 
             st.divider()
-            st.markdown(f"### Evaluated Candidate Offerings (Dynamic Semantic Leaderboard)")
+            st.markdown("### Evaluated Candidate Offerings (Dynamic Semantic Leaderboard)")
+            st.caption("Filter and audit all Top-K evaluated candidates by classification status:")
+            
             if scored_candidates:
                 cand_df = pd.DataFrame(scored_candidates)
                 desired_cols = ["candidate_id", "primary_sector", "evidence_level", "classification", "verified_evidence_count", "vector_cosine", "final_score", "confidence"]
                 cols_to_show = [c for c in desired_cols if c in cand_df.columns]
-                st.dataframe(cand_df[cols_to_show], use_container_width=True)
+                
+                # Filter selector
+                f_col1, f_col2 = st.columns([3, 2])
+                with f_col1:
+                    filter_choice = st.radio(
+                        "Leaderboard View Filter:",
+                        options=["Verified Matches Only (Exact / LEVEL 1 & 2)", "All Evaluated Candidates (Including Rejections)", "Rejected Candidates Only"],
+                        index=0,
+                        horizontal=True
+                    )
+                
+                if filter_choice == "Verified Matches Only (Exact / LEVEL 1 & 2)":
+                    filtered_df = cand_df[cand_df["classification"].isin(["exact", "adjacent"])]
+                elif filter_choice == "Rejected Candidates Only":
+                    filtered_df = cand_df[cand_df["classification"] == "reject"]
+                else:
+                    filtered_df = cand_df
+
+                st.dataframe(filtered_df[cols_to_show], use_container_width=True)
 
             if disqualified_audit:
                 with st.expander("Transparent Disqualification & Speculative Audit", expanded=False):
