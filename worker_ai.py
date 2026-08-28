@@ -323,11 +323,14 @@ class WorkerAI:
             if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
             else:
-                inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if catalog.get_term_specificity(t) >= 3.5]
-                cand_substantive = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower) if catalog.get_term_specificity(t) >= 3.5]
-                if inq_tokens and cand_substantive:
+                inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if catalog.get_term_specificity(t) >= 3.0]
+                cand_substantive = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower + " " + defn_lower))
+                if inq_tokens:
                     matched_inq = [t for t in inq_tokens if t in cand_substantive]
-                    if len(matched_inq) >= 1 and (len(matched_inq) / len(inq_tokens) >= 0.5):
+                    inq_total_wt = sum(catalog.get_term_specificity(t) for t in inq_tokens)
+                    inq_match_wt = sum(catalog.get_term_specificity(t) for t in matched_inq)
+                    inq_ratio = inq_match_wt / (inq_total_wt if inq_total_wt > 0 else 1.0)
+                    if inq_ratio >= 0.70:
                         is_inquiry_match = True
 
         # Check Target Profile Targets
