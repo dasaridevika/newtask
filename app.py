@@ -245,6 +245,7 @@ if run_btn:
                             st.caption(f"Cosine: `{vec_score}` | Final Score: `{fit_score}`")
 
                         st.markdown(f"### {m.get('exact_offering_name')}")
+                        st.markdown(f"**Client Operational Relationship:** `{m.get('client_relationship_to_sector', 'Equipment OEM & Vendor')}`")
                         st.markdown(f"**How It Fulfills Client Requirements:** `{m.get('mapped_requirement')}`")
                         
                         rationale = m.get("rationale")

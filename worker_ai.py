@@ -622,8 +622,18 @@ class WorkerAI:
 
             offering_name = f"{title} Intelligence Platform"
             blueprint = get_domain_deliverable_blueprint(title)
-            sol_arch = f"Tailored for {company_name}'s operational and strategic diligence as a {archetype}. {blueprint}"
             
+            # Determine client's operational relationship to this asset sector
+            if "manufacturer" in archetype.lower() or "provider" in archetype.lower() or "oem" in archetype.lower():
+                client_rel = f"Equipment OEM & Critical Infrastructure Vendor into {title} Facilities"
+                sol_arch = f"Tailored for {company_name}'s sales, engineering, and business development teams to identify new {title} construction pipelines, utility substation queue filings, and equipment procurement cycles. {blueprint}"
+            elif "private equity" in archetype.lower() or "sponsor" in archetype.lower():
+                client_rel = f"Private Equity Sponsor & Platform Portfolio Operations across {title}"
+                sol_arch = f"Tailored for {company_name}'s investment committee and portfolio operations teams to diligence target platform companies and facility expansion dockets across {title}. {blueprint}"
+            else:
+                client_rel = f"Direct Operational & Strategic Market Exposure in {title}"
+                sol_arch = f"Tailored for {company_name}'s operational leadership to track stage-gate milestones and market expansion across {title}. {blueprint}"
+
             val_driver = cand.get("operational_value_driver") or (
                 f"Accelerates engineering design cycles, verifies power interconnect queues, and secures proprietary visibility across {title} assets."
             )
@@ -634,14 +644,15 @@ class WorkerAI:
                 "candidate_id": cid,
                 "primary_sector": title,
                 "exact_offering_name": offering_name,
+                "client_relationship_to_sector": client_rel,
                 "definition": defn,
                 "evidence_level": ev_level,
                 "confidence": conf,
                 "verified_evidence_ids": verified_eids or ev_ids,
                 "verified_evidence_count": len(supporting_citations) if supporting_citations else len(ev_ids),
                 "supporting_citations": supporting_citations,
-                "matched_functionality": f"Operational visibility across {title}",
-                "matched_intent": f"Strategic intelligence in {title}",
+                "matched_functionality": f"Market intelligence on {title} builds and equipment procurement",
+                "matched_intent": f"Strategic pipeline visibility in {title}",
                 "mapped_requirement": cand.get("requirement_solved") or f"Intelligence feed in {title}",
                 "rationale": cleaned_rationale,
                 "comprehensive_narrative": sol_arch,
