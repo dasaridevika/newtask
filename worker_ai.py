@@ -99,21 +99,20 @@ class WorkerAI:
             print(f"[Worker AI Error]: {last_error}")
         return ""
 
-    def _parse_json(self, raw_text: str) -> dict:
+    def _parse_json(self, raw_text: str) -> Any:
         if not raw_text:
             return {}
         try:
             cleaned = raw_text.strip()
-            cleaned = re.sub(r"^```json\s*", "", cleaned, flags=re.IGNORECASE)
-            cleaned = re.sub(r"^```\s*", "", cleaned)
-            cleaned = re.sub(r"```$", "", cleaned)
+            cleaned = re.sub(r"```(?:json)?\s*", "", cleaned, flags=re.IGNORECASE)
+            cleaned = re.sub(r"```", "", cleaned).strip()
 
             try:
                 return json.loads(cleaned)
             except Exception:
                 pass
 
-            match = re.search(r"\{.*\}", cleaned, re.DOTALL)
+            match = re.search(r"(\[[\s\S]*\]|\{[\s\S]*\})", cleaned)
             if match:
                 json_str = match.group(0)
                 json_str = re.sub(r",\s*([\]\}])", r"\1", json_str)
