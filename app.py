@@ -289,13 +289,20 @@ st.markdown("""
     }
 
     /* Primary Action Buttons */
+    .stButton > button[kind="primary"],
+    .stButton > button[kind="primary"] *,
+    .stButton > button[kind="primary"] p,
+    .stButton > button[kind="primary"] span,
+    .stButton > button[kind="primary"] div {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 0.98rem !important;
+        fill: #ffffff !important;
+    }
     .stButton > button[kind="primary"] {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
         border: none !important;
         border-radius: 10px !important;
-        color: #ffffff !important;
-        font-weight: 700 !important;
-        font-size: 0.98rem !important;
         padding: 12px 24px !important;
         min-height: 48px !important;
         box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25) !important;
@@ -305,6 +312,12 @@ st.markdown("""
         background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%) !important;
         box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35) !important;
         transform: translateY(-1px) !important;
+    }
+    .stButton > button[kind="primary"]:hover *,
+    .stButton > button[kind="primary"]:hover p,
+    .stButton > button[kind="primary"]:hover span,
+    .stButton > button[kind="primary"]:hover div {
+        color: #ffffff !important;
     }
     .stButton > button[kind="secondary"] {
         background: #ffffff !important;
