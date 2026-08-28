@@ -20,7 +20,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom Enterprise Design System & CSS Styling (Clean Light Mode)
+# Custom Enterprise Design System & CSS Styling (Matching LeadIntel Reference)
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
@@ -33,43 +33,115 @@ st.markdown("""
         font-family: 'JetBrains Mono', monospace !important;
     }
 
-    /* Hero Header */
+    /* Top Navbar */
+    .top-nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #ffffff;
+        padding: 10px 16px 14px 16px;
+        border-bottom: 1px solid #e2e8f0;
+        margin-bottom: 16px;
+    }
+    .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .brand-name {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #0f172a;
+        letter-spacing: -0.02em;
+    }
+    .nav-actions {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .nav-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #475569;
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+    }
+    .nav-btn:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+    .nav-icon {
+        color: #64748b;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        padding: 6px;
+        border-radius: 6px;
+        transition: all 0.15s ease;
+    }
+    .nav-icon:hover {
+        background: #f1f5f9;
+        color: #0f172a;
+    }
+
+    /* Hero Header matching reference */
     .hero-container {
-        background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 28px 32px;
+        background: linear-gradient(135deg, #e8f2ff 0%, #f0f7ff 50%, #e0edff 100%);
+        border: 1px solid #dbeafe;
+        border-radius: 20px;
+        padding: 36px 40px;
         margin-bottom: 24px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        overflow: hidden;
+        position: relative;
     }
     .hero-badge {
         display: inline-flex;
         align-items: center;
-        background: #e0f2fe;
-        color: #0369a1;
-        border: 1px solid #bae6fd;
+        background: #2563eb;
+        color: #ffffff;
         border-radius: 9999px;
-        padding: 4px 12px;
-        font-size: 0.72rem;
+        padding: 5px 14px;
+        font-size: 0.70rem;
         font-weight: 700;
         letter-spacing: 0.08em;
         text-transform: uppercase;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
+        box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
     }
     .hero-title {
-        font-size: 2rem;
+        font-size: 2.25rem;
         font-weight: 800;
-        letter-spacing: -0.025em;
-        color: #0f172a;
-        margin: 0 0 6px 0;
-        line-height: 1.2;
+        letter-spacing: -0.03em;
+        color: #0b1938;
+        margin: 0 0 10px 0;
+        line-height: 1.15;
     }
     .hero-subtitle {
-        font-size: 0.92rem;
+        font-size: 0.95rem;
         color: #475569;
         margin: 0;
         line-height: 1.5;
         font-weight: 500;
+        max-width: 650px;
+    }
+
+    /* Form Container */
+    .form-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 24px 28px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+        margin-bottom: 24px;
     }
 
     /* Metric Cards */
@@ -88,9 +160,9 @@ st.markdown("""
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     .metric-card:hover {
-        border-color: #0284c7;
+        border-color: #2563eb;
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(2, 132, 199, 0.12);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.12);
     }
     .metric-label {
         font-size: 0.70rem;
@@ -103,13 +175,13 @@ st.markdown("""
     .metric-val {
         font-size: 1.05rem;
         font-weight: 700;
-        color: #0284c7;
+        color: #1d4ed8;
         line-height: 1.35;
         word-break: break-word;
     }
     .metric-val-green { color: #059669; }
     .metric-val-amber { color: #d97706; }
-    .metric-val-cyan { color: #0284c7; }
+    .metric-val-cyan { color: #1d4ed8; }
 
     /* Tab Custom Styling */
     .stTabs [data-baseweb="tab-list"] {
@@ -131,7 +203,7 @@ st.markdown("""
     }
     .stTabs [aria-selected="true"] {
         background: #ffffff !important;
-        color: #0284c7 !important;
+        color: #1d4ed8 !important;
         border: 1px solid #cbd5e1 !important;
         box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06) !important;
     }
@@ -139,7 +211,7 @@ st.markdown("""
     /* Deliverable Item Card */
     .deliverable-card {
         background: #f8fafc;
-        border-left: 4px solid #0284c7;
+        border-left: 4px solid #1d4ed8;
         border-radius: 0 10px 10px 0;
         padding: 16px 20px;
         margin-bottom: 14px;
@@ -185,37 +257,105 @@ st.markdown("""
         border-right: 1px solid #dcfce7;
         border-bottom: 1px solid #dcfce7;
     }
+
+    /* Buttons */
+    .stButton > button[kind="primary"] {
+        background: #1d4ed8 !important;
+        border: none !important;
+        border-radius: 10px !important;
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+        padding: 12px 24px !important;
+        box-shadow: 0 4px 14px rgba(29, 78, 216, 0.3) !important;
+        transition: all 0.2s ease !important;
+    }
+    .stButton > button[kind="primary"]:hover {
+        background: #1e40af !important;
+        box-shadow: 0 6px 20px rgba(29, 78, 216, 0.45) !important;
+        transform: translateY(-1px);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# Custom Hero Section
+# Top Navbar matching LeadIntel reference
 st.markdown("""
-<div class="hero-container">
-    <div class="hero-badge">ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
-    <h1 class="hero-title">Enterprise Lead Intelligence & Offering Matcher</h1>
-    <p class="hero-subtitle">Dynamic Contextual Discovery &bull; Multi-Stage Hybrid Vector Search &bull; Evidence-Grounded Definition Entailment</p>
+<div class="top-nav">
+    <div class="nav-brand">
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="9" stroke="#2563eb" stroke-width="2"/>
+            <path d="M12 3v18M3 12h18M5.5 5.5l13 13M18.5 5.5l-13 13" stroke="#3b82f6" stroke-width="1.5"/>
+            <circle cx="12" cy="12" r="3" fill="#1d4ed8"/>
+        </svg>
+        <span class="brand-name">LeadIntel</span>
+    </div>
+    <div class="nav-actions">
+        <span class="nav-btn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+            Share
+        </span>
+        <span class="nav-icon" title="Favorite">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </span>
+        <span class="nav-icon" title="Edit">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </span>
+        <span class="nav-icon" title="GitHub">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        </span>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-# Input Section in an atomic form
+# Custom Hero Section matching reference 2-column layout with 3D illustration
+st.markdown("""
+<div class="hero-container">
+    <div style="flex: 1; padding-right: 20px;">
+        <div class="hero-badge">ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
+        <h1 class="hero-title">Enterprise Lead Intelligence & Offering Matcher</h1>
+        <p class="hero-subtitle">Dynamic Contextual Discovery &bull; Multi-Stage Hybrid Vector Search &bull; Evidence-Grounded Definition Entailment</p>
+    </div>
+    <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+        <svg width="220" height="135" viewBox="0 0 220 135" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="110" cy="110" rx="75" ry="22" fill="#dbeafe" opacity="0.6"/>
+            <ellipse cx="110" cy="105" rx="55" ry="16" fill="#bfdbfe" opacity="0.8"/>
+            <rect x="76" y="60" width="20" height="42" rx="3" fill="#3b82f6"/>
+            <rect x="100" y="42" width="24" height="60" rx="3" fill="#1d4ed8"/>
+            <rect x="128" y="65" width="18" height="37" rx="3" fill="#60a5fa"/>
+            <circle cx="112" cy="68" r="34" stroke="#1e40af" stroke-width="5" fill="#ffffff" fill-opacity="0.35"/>
+            <line x1="136" y1="92" x2="168" y2="124" stroke="#1e3a8a" stroke-width="8" stroke-linecap="round"/>
+            <rect x="18" y="26" width="46" height="30" rx="5" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <circle cx="30" cy="41" r="5" fill="#3b82f6"/>
+            <rect x="155" y="18" width="50" height="34" rx="5" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <circle cx="168" cy="35" r="5" fill="#60a5fa"/>
+            <rect x="160" y="68" width="44" height="34" rx="5" fill="#ffffff" stroke="#e2e8f0" stroke-width="1.5"/>
+            <rect x="166" y="84" width="4" height="12" fill="#2563eb"/>
+            <rect x="174" y="78" width="4" height="18" fill="#3b82f6"/>
+            <rect x="182" y="72" width="4" height="24" fill="#60a5fa"/>
+        </svg>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# Input Section in an atomic form matching reference icons
 with st.form("lead_matcher_form", clear_on_submit=False):
     col_url, col_k = st.columns([4, 1])
     with col_url:
         target_url = st.text_input(
-            "Target Client Domain / Website URL",
+            "🌐 Target Client Domain / Website URL",
             value="",
-            placeholder="e.g. https://example.com or enterprise-domain.com"
+            placeholder="https://www.vertiv.com/"
         )
     with col_k:
-        top_k_val = st.number_input("Top K Candidates to Analyze", min_value=3, max_value=20, value=8, step=1)
+        top_k_val = st.number_input("👥 Top K Candidates to Analyze", min_value=3, max_value=20, value=8, step=1)
 
     client_inquiry = st.text_input(
-        "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
+        "💬 Client's Specific Message / Inquiry / Stated Requirement (Optional)",
         value="",
-        placeholder="e.g. 'Looking for commercial expansion intelligence, asset tracking, or market visibility in target regions.'"
+        placeholder="solar pv project"
     )
     
-    run_btn = st.form_submit_button("Analyze & Match", type="primary", use_container_width=True)
+    run_btn = st.form_submit_button("🔍 Analyze & Match", type="primary", use_container_width=True)
 
 if run_btn:
     clean_target_url = target_url.strip()
