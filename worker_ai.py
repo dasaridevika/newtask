@@ -318,28 +318,6 @@ class WorkerAI:
             for i, ev in enumerate(evidence_items[:15])
         ]
 
-        # 1. Attempt remote Worker LLM reasoning first
-        system_prompt = "You are a Senior Principal Semantic Reasoning Engine. Analyze candidate definition entailment against evidence passages and return strict JSON."
-        input_payload = {
-            "candidate": {"candidate_id": cand_id, "primary_sector": sec_name, "definition": definition},
-            "target_profile": {"company_name": company_name, "archetype": archetype},
-            "evidence": evidence_payload,
-            "client_inquiry": client_inquiry
-        }
-        prompt = f"Analyze candidate '{sec_name}':\n{json.dumps(input_payload, ensure_ascii=False)}"
-        raw = self._call_llm(prompt, system_prompt)
-        parsed = self._parse_json(raw)
-
-        if parsed and isinstance(parsed, dict) and "decision" in parsed:
-            parsed.setdefault("candidate_id", cand_id)
-            return parsed
-
-        # 2. Resilient Dynamic Semantic Evaluator (Deterministic & Context-Aware)
-        # Evaluates:
-        # a) Stated Client Inquiry Intent
-        # b) Target Profile Stated Focus
-        # c) Evidence Passage Entailment vs Metaphors & Polysemy
-        
         # Check Explicit Stated Inquiry Intent
         inq_lower = client_inquiry.lower().strip() if client_inquiry else ""
         sec_lower = sec_name.lower().strip()
@@ -368,8 +346,10 @@ class WorkerAI:
                     inq_total_wt = sum(catalog.get_term_specificity(t) for t in inq_tokens)
                     inq_match_wt = sum(catalog.get_term_specificity(t) for t in matched_inq)
                     inq_ratio = inq_match_wt / (inq_total_wt if inq_total_wt > 0 else 1.0)
-                    if inq_ratio >= 0.70:
+                    if inq_ratio >= 0.60:
                         is_inquiry_match = True
+
+
 
         # Check Target Profile Targets
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
