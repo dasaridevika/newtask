@@ -237,78 +237,57 @@ if run_btn:
         # Tab 1: Executive Intelligence & Strategy Summary
         with tab_summary:
             st.subheader(f"Executive Intelligence & Strategic Mandate: {company_details.get('company_name', 'Client Enterprise')}")
-            st.caption("Comprehensive synthesized profile, operational mandate, and strategic offering justification:")
+            st.caption("Clean synthesized strategic profile, operational mandate, and verified offering alignment:")
 
-            # Strategic Executive Brief Card
+            # 1. Executive Strategic Brief Card
             with st.container(border=True):
                 st.markdown("### Executive Strategic Brief")
                 st.write(company_details.get("executive_profile_analysis", ""))
-                st.markdown(f"**Business Model & Operations:** {company_details.get('business_model_and_revenue_drivers', '')}")
-                if client_inquiry:
-                    st.markdown(f"**Inbound Client Mandate:** `{client_inquiry}`")
-
-            # 4-Pillar Requirements & Operating Thesis
-            st.markdown("### Strategic Requirements & Operating Thesis")
-            c1, c2 = st.columns(2)
-            with c1:
-                with st.container(border=True):
-                    st.markdown("#### Core Growth Mandate")
-                    st.write(req_summary.get("core_growth_mandate", "Scale operational market presence and capital efficiency."))
                 
-                with st.container(border=True):
-                    st.markdown("#### Infrastructure & Asset Needs")
-                    st.write(req_summary.get("infrastructure_and_asset_needs", "Specialized power delivery and facility assets."))
+                col_meta1, col_meta2 = st.columns(2)
+                with col_meta1:
+                    st.markdown(f"**Business Model:** `{company_details.get('archetype', 'Industrial Infrastructure Provider')}`")
+                with col_meta2:
+                    if client_inquiry:
+                        st.markdown(f"**Inbound Mandate:** `{client_inquiry}`")
 
-            with c2:
+            # 2. Key Operational Pillars (2 Clean Columns)
+            st.markdown("### Strategic Requirements & Operational Context")
+            col_req1, col_req2 = st.columns(2)
+            with col_req1:
                 with st.container(border=True):
-                    st.markdown("#### Market Diligence & Deal Sourcing Needs")
-                    st.write(req_summary.get("market_diligence_and_deal_sourcing_needs", "Continuous visibility into capital project pipelines and utility interconnection queues."))
-                
+                    st.markdown("#### Growth & Infrastructure Mandate")
+                    st.write(req_summary.get("core_growth_mandate", "Scale operational pipeline visibility and capital efficiency."))
+                    st.caption(f"**Asset Needs:** {req_summary.get('infrastructure_and_asset_needs', 'Power delivery and specialized facility assets.')}")
+            
+            with col_req2:
                 with st.container(border=True):
-                    st.markdown("#### Regulatory, Permitting & ESG Compliance")
-                    st.write(req_summary.get("regulatory_permitting_and_esg_needs", "Compliance with environmental filings, safety standards, and municipal dockets."))
+                    st.markdown("#### Operational Bottlenecks & Mitigation")
+                    st.write(f"**Bottleneck:** {req_summary.get('primary_operational_bottleneck', 'Interconnection queue delays and equipment lead times.')}")
+                    st.write(f"**Mitigation:** {req_summary.get('risk_mitigation_strategy', 'Engage developers and EPCs 6-9 months ahead of RFP issuance.')}")
 
-            # Operational Friction & Risk Mitigation Deep-Dive
-            st.markdown("### Operational Friction & Risk Mitigation Strategy")
-            c_bot, c_mit = st.columns(2)
-            with c_bot:
-                with st.container(border=True):
-                    st.markdown("#### Primary Operational Bottlenecks")
-                    st.write(req_summary.get("primary_operational_bottleneck", "Capacity scaling constraints and infrastructure lead times."))
-            with c_mit:
-                with st.container(border=True):
-                    st.markdown("#### Strategic Risk Mitigation")
-                    st.write(req_summary.get("risk_mitigation_strategy", "Deploy stage-gate project tracking to engage developers and EPCs 6-9 months ahead of RFP issuance."))
-
-            # Commercial Execution Roadmap
-            with st.container(border=True):
-                st.markdown("### Actionable Commercial Execution Roadmap")
-                st.markdown("""
-                * **Phase 1: Pre-Permit Diligence & Substation Surveillance (Months 1–3)**: Monitor regional ISO/RTO interconnect queues and early municipal environmental filings to identify multi-megawatt capital project pipelines.
-                * **Phase 2: Stakeholder & EPC Contractor Mapping (Months 3–6)**: Establish proactive engagement with project developers, general contractors, and engineering procurement teams ahead of formal RFP release.
-                * **Phase 3: Technical Specification & Commercial Delivery (Months 6+)**: Embed technical equipment specifications (power conditioning, inverters, switchgear, thermal topologies) into baseline capital project tenders.
-                """)
-
-            # Multi-Offering Strategic Portfolio Breakdown
+            # 3. Recommended Solutions Overview (Crisp & Non-Redundant)
             if exact_matches:
                 with st.container(border=True):
-                    st.markdown("### Recommended Offering Portfolio Synthesis")
-                    for match_idx, match_item in enumerate(exact_matches):
-                        st.markdown(f"#### {match_item.get('tier_label', f'Solution {match_idx+1}')}: **{match_item.get('exact_offering_name')}** (`{match_item.get('candidate_id')}`)")
-                        st.markdown(f"- **Strategic Alignment:** {match_item.get('rationale', '')}")
-                        st.markdown(f"- **Operational Value Driver:** {match_item.get('operational_value_driver', '')}")
-                        st.markdown(f"- **Solution Scope:** {match_item.get('comprehensive_narrative', '')}")
-                        if match_idx < len(exact_matches) - 1:
-                            st.divider()
+                    st.markdown("### Recommended Strategic Offerings")
+                    st.caption("Evidence-grounded solutions aligned with the client's business model and active mandate:")
+                    for m_idx, m_item in enumerate(exact_matches):
+                        t_label = m_item.get('tier_label', f'Strategic Solution {m_idx+1}')
+                        c_id = m_item.get('candidate_id', '')
+                        o_name = m_item.get('exact_offering_name', '')
+                        v_driver = m_item.get('operational_value_driver', '')
+                        st.markdown(f"- **{t_label} (`{c_id}`) — {o_name}**")
+                        st.markdown(f"  *{v_driver}*")
 
-            # Target Executive Decision Maker Card
+            # 4. Target Executive Decision Maker & Commercial Strategy
             with st.container(border=True):
-                st.markdown("### Target Executive Decision Maker & Commercial Positioning")
-                c_dec1, c_dec2 = st.columns([2, 3])
-                with c_dec1:
-                    st.info(f"**Target Persona:**\n\n{req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Infrastructure Engineering / Business Development'))}")
-                with c_dec2:
-                    st.write("**Commercial Positioning Angle:** Position data deliverables as a high-margin commercial accelerator that eliminates infrastructure capacity blind spots, tracks utility grid interconnection queue milestones, and delivers proprietary sales leads 6–9 months ahead of public market auctions.")
+                st.markdown("### Target Executive Decision Maker & Commercial Angle")
+                dec_col1, dec_col2 = st.columns([2, 3])
+                with dec_col1:
+                    target_person = req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Infrastructure / Business Development'))
+                    st.info(f"**Target Persona:**\n\n{target_person}")
+                with dec_col2:
+                    st.markdown("**Commercial Angle:** Position data deliverables to eliminate infrastructure capacity blind spots, track multi-megawatt substation interconnection filings, and secure proprietary vendor positioning prior to formal RFP issuance.")
 
         # Tab 2: Matched Offerings & Top K Leaderboard
         with tab_offer:
