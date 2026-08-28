@@ -312,10 +312,16 @@ class WorkerAI:
 
         is_inquiry_match = False
         if inq_lower and len(inq_lower) >= 2:
-            inq_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower))
-            overlap = sec_tokens.intersection(inq_tokens)
-            if len(overlap) >= 1 or inq_lower in sec_lower or clean_sec in inq_lower or inq_lower in clean_sec:
+            from service_catalog import catalog
+            if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
+            else:
+                inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if catalog.get_term_specificity(t) >= 3.5]
+                cand_substantive = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower) if catalog.get_term_specificity(t) >= 3.5]
+                if inq_tokens and cand_substantive:
+                    matched_inq = [t for t in inq_tokens if t in cand_substantive]
+                    if len(matched_inq) >= 1 and (len(matched_inq) / len(inq_tokens) >= 0.5):
+                        is_inquiry_match = True
 
         # Check Target Profile Targets
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
