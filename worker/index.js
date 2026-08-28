@@ -1,6 +1,6 @@
 /**
- * Cloudflare Workers AI - Enterprise LLM & 1024-Dim Embedding Engine
- * High-Speed Inference, Edge Caching, Structured JSON Reasoning, and Robust Resilience.
+ * Cloudflare Workers AI - Enterprise LLM, 1024-Dim Embedding & Edge Vector Engine
+ * High-Speed Inference, Edge Vector Matrix Ranking, Structured JSON Reasoning, and Robust Resilience.
  */
 
 export default {
@@ -30,7 +30,7 @@ export default {
         JSON.stringify({
           status: "healthy",
           service: "Enterprise Cloudflare Workers AI Engine",
-          version: "2.2.0",
+          version: "2.3.0",
           requestId: requestId,
           models: {
             default_llm: env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct",
@@ -41,7 +41,7 @@ export default {
             "1024-dim dense multi-vector embeddings",
             "Deterministic low-temperature structured reasoning",
             "Native JSON schema pass-through",
-            "Automatic edge response caching & sanitization"
+            "Edge matrix dot product & vector ranking"
           ],
           timestamp: new Date().toISOString()
         }),
@@ -143,7 +143,52 @@ export default {
         );
       }
 
-      // 5. LLM Chat & Semantic Reasoning Endpoint (/ai/chat, /v1/chat, or root POST)
+      // 5. Edge Batch Matrix Vector Ranking Endpoint (/ai/rank or action="rank")
+      if (pathname === "/ai/rank" || body.action === "rank") {
+        const targetVec = body.target_vector || body.target_vec;
+        const matrix = body.matrix || body.vectors; // Array of arrays
+
+        if (!Array.isArray(targetVec) || !Array.isArray(matrix)) {
+          return new Response(
+            JSON.stringify({ success: false, error: "target_vector (array) and matrix (array of arrays) are required.", code: "INVALID_MATRIX" }),
+            { status: 400, headers: corsHeaders }
+          );
+        }
+
+        let normTarget = 0;
+        for (let i = 0; i < targetVec.length; i++) normTarget += targetVec[i] * targetVec[i];
+        normTarget = Math.sqrt(normTarget);
+
+        const similarities = [];
+        for (let r = 0; r < matrix.length; r++) {
+          const row = matrix[r];
+          if (!Array.isArray(row) || row.length !== targetVec.length) {
+            similarities.push(0);
+            continue;
+          }
+          let dot = 0, normRow = 0;
+          for (let c = 0; c < targetVec.length; c++) {
+            dot += targetVec[c] * row[c];
+            normRow += row[c] * row[c];
+          }
+          normRow = Math.sqrt(normRow);
+          const sim = (normTarget > 0 && normRow > 0) ? (dot / (normTarget * normRow)) : 0;
+          similarities.push(sim);
+        }
+
+        return new Response(
+          JSON.stringify({
+            success: true,
+            count: matrix.length,
+            similarities: similarities,
+            requestId: requestId,
+            execution_time_ms: Date.now() - startTime
+          }),
+          { status: 200, headers: corsHeaders }
+        );
+      }
+
+      // 6. LLM Chat & Semantic Reasoning Endpoint (/ai/chat, /v1/chat, or root POST)
       const model = body.model || env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct";
       
       const defaultEnterpriseSystemPrompt = `You are a Senior Principal Enterprise Solutions Architect, Data Quality Auditor, and Industrial Intelligence Matching Engine.
