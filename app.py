@@ -28,16 +28,14 @@ st.markdown("""
         background: #1e293b;
         border: 1px solid #334155;
         border-radius: 8px;
-        padding: 16px 18px;
+        padding: 14px 16px;
         color: #f8fafc;
-        min-height: 120px;
-        height: 120px;
+        min-height: 130px;
         display: flex;
         flex-direction: column;
         justify-content: flex-start;
         box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         box-sizing: border-box;
-        overflow: hidden;
     }
     .metric-label {
         font-size: 0.72rem;
@@ -48,16 +46,11 @@ st.markdown("""
         margin-bottom: 6px;
     }
     .metric-val {
-        font-size: 1.12rem;
+        font-size: 1.02rem;
         font-weight: 700;
         color: #38bdf8;
-        line-height: 1.35;
+        line-height: 1.3;
         word-break: break-word;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
     }
     .metric-val-green { color: #10b981; }
     .metric-val-amber { color: #f59e0b; }
