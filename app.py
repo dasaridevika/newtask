@@ -16,7 +16,6 @@ from worker_ai import ai
 # Streamlit Page Config
 st.set_page_config(
     page_title="Enterprise Lead Intelligence & Offering Matcher",
-    page_icon="⚡",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -241,46 +240,46 @@ if run_btn:
 
             # Strategic Executive Brief Card
             with st.container(border=True):
-                st.markdown("### 🏛️ Executive Strategic Brief")
+                st.markdown("### Executive Strategic Brief")
                 st.write(company_details.get("executive_profile_analysis", ""))
                 st.markdown(f"**Business Model & Operations:** {company_details.get('business_model_and_revenue_drivers', '')}")
 
             # 4-Pillar Requirements & Operating Thesis
-            st.markdown("### 🧭 Strategic Requirements & Operating Thesis")
+            st.markdown("### Strategic Requirements & Operating Thesis")
             c1, c2 = st.columns(2)
             with c1:
                 with st.container(border=True):
-                    st.markdown("#### 🎯 Core Growth Mandate")
+                    st.markdown("#### Core Growth Mandate")
                     st.write(req_summary.get("core_growth_mandate", "Scale operational market presence and capital efficiency."))
                 
                 with st.container(border=True):
-                    st.markdown("#### ⚡ Infrastructure & Asset Needs")
+                    st.markdown("#### Infrastructure & Asset Needs")
                     st.write(req_summary.get("infrastructure_and_asset_needs", "Specialized power delivery and facility assets."))
 
             with c2:
                 with st.container(border=True):
-                    st.markdown("#### 🔍 Market Diligence & Deal Sourcing Needs")
+                    st.markdown("#### Market Diligence & Deal Sourcing Needs")
                     st.write(req_summary.get("market_diligence_and_deal_sourcing_needs", "Continuous visibility into capital project pipelines and utility interconnection queues."))
                 
                 with st.container(border=True):
-                    st.markdown("#### 📜 Regulatory, Permitting & ESG Compliance")
+                    st.markdown("#### Regulatory, Permitting & ESG Compliance")
                     st.write(req_summary.get("regulatory_permitting_and_esg_needs", "Compliance with environmental filings, safety standards, and municipal dockets."))
 
             # Bottlenecks and Target Decision Maker
             c_bot, c_dec = st.columns([3, 2])
             with c_bot:
                 with st.container(border=True):
-                    st.markdown("#### ⚠️ Primary Operational Bottlenecks")
+                    st.markdown("#### Primary Operational Bottlenecks")
                     st.write(req_summary.get("primary_operational_bottleneck", "Capacity scaling constraints and infrastructure lead times."))
             with c_dec:
                 with st.container(border=True):
-                    st.markdown("#### 👤 Target Executive Decision Maker")
+                    st.markdown("#### Target Executive Decision Maker")
                     st.info(f"**{req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Engineering / Business Development'))}**")
 
             # Strategic Solution Recommendation Summary
             if exact_matches:
                 with st.container(border=True):
-                    st.markdown("### 💡 Recommended Offering Synthesis")
+                    st.markdown("### Recommended Offering Synthesis")
                     st.markdown(f"Based on verified evidence and explicit requirements, the primary strategic match is **{exact_matches[0]['exact_offering_name']}**.")
                     st.markdown(f"- **Strategic Alignment:** {exact_matches[0].get('rationale', '')}")
                     st.markdown(f"- **Operational Value Driver:** {exact_matches[0].get('operational_value_driver', '')}")
