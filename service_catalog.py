@@ -270,13 +270,15 @@ class ServiceCatalog:
             arch_align = sem.get("archetype_alignment", "strong")
             scale_score = 1.0 if scale_align in ("strong", "partial", "unknown") else 0.0
             arch_score = 1.0 if arch_align in ("strong", "partial", "unknown") else 0.0
+            inquiry_priority_boost = 0.08 if dec.get("reason_code") == "EXPLICIT_CLIENT_INQUIRY" else 0.0
 
-            # Deterministic multi-factor scoring formula (Section H)
+            # Deterministic multi-factor scoring formula (Explicit Inquiry > Passive Web Mentions)
             final_score = (
                 0.30 * ev_score +
                 0.20 * intent_score +
                 0.15 * func_score +
                 0.15 * entail_score +
+                inquiry_priority_boost +
                 0.10 * (raw_vec * arch_score) +
                 0.05 * scale_score +
                 0.05 * min(1.0, raw_lex * 2.0)
