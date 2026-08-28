@@ -84,7 +84,7 @@ DOMAIN_DICTIONARY: Dict[str, Dict[str, Any]] = {
         "facility_types": ["Multi-Story Office Building", "Corporate Headquarters", "Commercial Real Estate Plaza"]
     },
     "warehouse": {
-        "positive_context": ["distribution center", "fulfillment facility", "warehouse hub", "logistics terminal", "storage depot", "intermodal distribution", "cross-dock facility", "300k sf expansion"],
+        "positive_context": ["distribution center", "fulfillment facility", "warehouse hub", "logistics terminal", "storage depot", "intermodal distribution", "cross-dock facility", "300k sf expansion", "warehouse", "distribution and fulfilment"],
         "negative_context": ["data warehouse", "software warehouse", "warehouse of knowledge"],
         "scale_class": "commercial",
         "facility_types": ["Industrial Distribution Center", "Logistics Hub", "Automated Fulfillment Center"]
@@ -108,18 +108,112 @@ DOMAIN_DICTIONARY: Dict[str, Dict[str, Any]] = {
         "facility_types": ["Wireless Cellular Tower", "Broadcast Mast", "Microwave Tower"]
     },
     "solar photovoltaic power plant (pv)": {
-        "positive_context": ["solar pv farm", "photovoltaic plant", "utility solar project", "solar ground mount", "solar array interconnect", "solar farm megawatt", "solar power generation"],
+        "positive_context": [
+            "solar", "solar pv", "photovoltaic", "solar power", "solar farm", "solar project", 
+            "solar energy", "pv power", "utility solar", "solar array", "solar plant", "solar installation", 
+            "solar generation", "pv system", "solar module", "solar park", "pv plant", "solar ground mount",
+            "utility-scale solar", "solar panels", "clean electricity solar"
+        ],
         "negative_context": ["solar rooftop calculator", "solar energy trends"],
         "scale_class": "utility",
         "facility_types": ["Utility Solar Farm", "Ground-Mounted PV Facility", "Solar Interconnect Substation"]
     },
+    "concentrated solar power (csp)": {
+        "positive_context": ["csp", "concentrated solar", "solar thermal", "heliostat", "parabolic trough", "molten salt solar", "csp power plant"],
+        "negative_context": [],
+        "scale_class": "utility",
+        "facility_types": ["CSP Tower Facility", "Parabolic Trough Plant"]
+    },
+    "floating solar power plant": {
+        "positive_context": ["floating solar", "floatovoltaics", "fpv", "water solar", "floating pv", "reservoir solar"],
+        "negative_context": [],
+        "scale_class": "utility",
+        "facility_types": ["Floating PV Array", "Reservoir Solar Installation"]
+    },
+    "battery energy storage system (bess)": {
+        "positive_context": ["bess", "battery storage", "grid battery", "energy storage system", "battery energy storage", "utility battery", "btm bess", "megapack"],
+        "negative_context": [],
+        "scale_class": "utility",
+        "facility_types": ["Utility Battery Installation", "BESS Substation Facility"]
+    },
     "data center": {
-        "positive_context": ["hyperscale data center", "colocation facility", "server farm", "substation interconnect megawatt", "cooling topology data center", "enterprise data exchange"],
-        "negative_context": ["data center of excellence", "database", "data analytics"],
+        "positive_context": [
+            "data center", "datacenter", "data centre", "colocation", "hyperscale", "server farm", 
+            "substation interconnect megawatt", "cooling topology data center", "enterprise data exchange",
+            "rack density", "liquid cooling data center", "ai infrastructure", "critical digital infrastructure",
+            "white space data center", "coolchip", "avocent"
+        ],
+        "negative_context": ["data center of excellence", "database", "data analytics", "data warehouse"],
         "scale_class": "commercial",
         "facility_types": ["Hyperscale Data Center", "Colocation Facility", "Edge Compute Node"]
     }
 }
+
+# Rich Synonym Mapping for Acronyms and Industry Terms
+SECTOR_SYNONYM_MAP: Dict[str, List[str]] = {
+    "solar photovoltaic power plant (pv)": [
+        "solar pv", "solar", "photovoltaic", "solar power", "solar farm", "solar project", 
+        "solar energy", "pv power", "utility solar", "solar array", "solar plant", "solar installation", 
+        "solar generation", "pv system", "solar module", "solar park", "pv plant", "solar ground mount",
+        "utility-scale solar", "solar panels"
+    ],
+    "concentrated solar power (csp)": [
+        "csp", "concentrated solar", "solar thermal", "heliostat", "parabolic trough", "molten salt solar"
+    ],
+    "floating solar power plant": [
+        "floating solar", "floatovoltaics", "fpv", "water-based solar", "floating pv"
+    ],
+    "solar pv cells & modules manufacturing plant": [
+        "solar manufacturing", "pv cell manufacturing", "solar panel factory", "solar module assembly"
+    ],
+    "battery energy storage system (bess)": [
+        "bess", "battery storage", "grid battery", "energy storage system", "battery energy storage", "utility battery"
+    ],
+    "onshore wind power plant": [
+        "onshore wind", "wind farm", "wind turbine", "wind power", "wind energy", "wind project"
+    ],
+    "offshore wind power plant": [
+        "offshore wind", "offshore turbine", "marine wind", "offshore wind farm", "floating wind"
+    ],
+    "data center": [
+        "data center", "datacenter", "data centre", "colocation", "hyperscale", "server farm", 
+        "rack density", "cloud infrastructure", "edge compute", "ai infrastructure", "critical digital infrastructure"
+    ],
+    "warehouse": [
+        "warehouse", "distribution center", "fulfillment facility", "logistics hub", "storage depot", 
+        "intermodal distribution", "cross-dock", "logistics facility", "distribution facility"
+    ]
+}
+
+def get_candidate_aliases(sec_name: str) -> List[str]:
+    """Generates all valid aliases, acronyms, and synonyms for a catalog sector name."""
+    aliases = set()
+    sec_lower = sec_name.lower().strip()
+    aliases.add(sec_lower)
+    
+    # Clean version without parentheses
+    clean = re.sub(r"\(.*?\)", "", sec_lower).strip()
+    if clean:
+        aliases.add(clean)
+        
+    # Extract acronyms inside parentheses: (PV), (CSP), (SAF), (BESS), (LNG), etc.
+    acronyms = re.findall(r"\((.*?)\)", sec_lower)
+    for acr in acronyms:
+        acr_clean = acr.strip().lower()
+        if len(acr_clean) >= 2:
+            aliases.add(acr_clean)
+            
+    # Add mapped synonyms
+    if sec_lower in SECTOR_SYNONYM_MAP:
+        aliases.update(SECTOR_SYNONYM_MAP[sec_lower])
+    if clean in SECTOR_SYNONYM_MAP:
+        aliases.update(SECTOR_SYNONYM_MAP[clean])
+        
+    domain_meta = DOMAIN_DICTIONARY.get(sec_lower, {}) or DOMAIN_DICTIONARY.get(clean, {})
+    if domain_meta:
+        aliases.update(domain_meta.get("positive_context", []))
+        
+    return [a for a in aliases if a]
 
 @dataclass
 class ValidationResult:
@@ -141,17 +235,7 @@ def validate_evidence_for_candidate(
 ) -> ValidationResult:
     """
     Evaluates evidence against a catalog candidate using strict contextual validation.
-    Enforces all 10 required checks:
-    1. Real, non-empty evidence
-    2. Source URL present
-    3. Quoted text present and non-trivial
-    4. Evidence context entails candidate definition
-    5. Entity relationship is valid
-    6. Not merely generic corporate statement
-    7. Not based only on a shared polysemous word
-    8. Historical evidence not presented as current
-    9. Portfolio-company activity not incorrectly attributed to sponsor
-    10. Contradiction detection
+    Enforces all 10 required checks with rich synonym awareness.
     """
     ev_id = evidence_item.get("evidence_id", "")
     source_url = evidence_item.get("source_url", "")
@@ -163,7 +247,7 @@ def validate_evidence_for_candidate(
     definition = candidate.get("definition", "").strip().lower()
 
     # Check 1, 2, 3: Basic Presence
-    if not quoted_text or len(quoted_text) < 25:
+    if not quoted_text or len(quoted_text) < 20:
         return ValidationResult(is_valid=False, rejection_code="NO_VERIFIED_EVIDENCE", rejection_reason="Quoted evidence text is empty or too short.")
     if not source_url:
         return ValidationResult(is_valid=False, rejection_code="NO_VERIFIED_EVIDENCE", rejection_reason="Source URL is missing.")
@@ -172,7 +256,8 @@ def validate_evidence_for_candidate(
     if ev_relationship == "generic_statement" or any(p in norm_quote for p in ["all rights reserved", "privacy policy", "terms of use", "cookie preferences"]):
         return ValidationResult(is_valid=False, rejection_code="GENERIC_STATEMENT", rejection_reason="Evidence is a generic corporate statement or web boilerplate.")
 
-    domain_meta = DOMAIN_DICTIONARY.get(sec_lower, {})
+    clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
+    domain_meta = DOMAIN_DICTIONARY.get(sec_lower, {}) or DOMAIN_DICTIONARY.get(clean_sec, {})
     pos_contexts = domain_meta.get("positive_context", [])
     neg_contexts = domain_meta.get("negative_context", [])
 
@@ -186,15 +271,14 @@ def validate_evidence_for_candidate(
             negative_context_hits=neg_hits
         )
 
-    # Check 4: Contextual Entailment Check
-    matched_pos_phrases = [pc for pc in pos_contexts if pc in norm_quote]
-    
+    # Check 4: Contextual Entailment Check using Aliases and Domain Anchors
+    aliases = get_candidate_aliases(sec_name)
+    matched_pos_phrases = [a for a in aliases if re.search(r"\b" + re.escape(a) + r"\b", norm_quote)]
+
     # Check multi-word clean phrase match
-    clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
-    clean_sec_norm = clean_sec.replace(" ", "").replace("-", "")
     sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec) if t not in DOMAIN_STOPWORDS]
 
-    has_phrase_match = False
+    has_phrase_match = len(matched_pos_phrases) > 0
     if len(clean_sec.split()) >= 2 and re.search(r"\b" + re.escape(clean_sec) + r"\b", norm_quote):
         has_phrase_match = True
         matched_pos_phrases.append(clean_sec)
@@ -249,15 +333,15 @@ def determine_evidence_level(
     evidence_ledger: Optional[List[Dict[str, Any]]] = None
 ) -> Tuple[str, float, List[str], List[ValidationResult]]:
     """
-    Calculates deterministic evidence level in Python strictly following Section E.
-    LEVEL 1: Explicit target enterprise stated focus/requirement/project.
+    Calculates deterministic evidence level with robust alias and synonym matching.
+    LEVEL 1: Explicit target enterprise stated focus/requirement/project or direct client inquiry.
     LEVEL 2: Verified current/historical portfolio company explicitly operating in candidate sector.
     LEVEL 3: Verified strategic adjacency.
     LEVEL 4: Only lexical/embedding similarity (Never an exact match).
     """
     sec_name = candidate.get("primary_sector", "").strip()
     clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
-    sec_tokens = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec) if t not in DOMAIN_STOPWORDS]
+    aliases = get_candidate_aliases(sec_name)
 
     valid_results: List[ValidationResult] = []
     verified_evidence_ids: List[str] = []
@@ -274,11 +358,11 @@ def determine_evidence_level(
                         verified_evidence_ids.append(eid)
 
     # 1. CHECK INBOUND CLIENT INQUIRY (LEVEL 1)
-    if client_inquiry and len(client_inquiry.strip()) > 3:
+    if client_inquiry and len(client_inquiry.strip()) > 2:
         inq_lower = client_inquiry.lower()
-        if clean_sec in inq_lower:
+        if any(re.search(r"\b" + re.escape(a) + r"\b", inq_lower) for a in aliases):
             return "LEVEL 1 (Explicit Stated Requirement)", 0.95, verified_evidence_ids or ["inquiry_direct_stated"], valid_results
-        if len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(st) + r"\b", inq_lower) for st in sec_tokens):
+        if clean_sec in inq_lower or any(st in inq_lower for st in clean_sec.split() if st not in DOMAIN_STOPWORDS and len(st) >= 4):
             return "LEVEL 1 (Explicit Stated Requirement)", 0.95, verified_evidence_ids or ["inquiry_direct_stated"], valid_results
 
     if not company_details:
@@ -287,18 +371,16 @@ def determine_evidence_level(
     # 2. CHECK EXPLICIT PORTFOLIO TARGET SECTORS & STATED FOCUS (LEVEL 1 / LEVEL 2)
     target_secs = company_details.get("portfolio_target_sectors", [])
     for ts in target_secs:
-        ts_clean = re.sub(r"[^a-zA-Z0-9\s]", "", ts).lower().strip()
-        if clean_sec == ts_clean:
+        ts_lower = ts.lower().strip()
+        if any(re.search(r"\b" + re.escape(a) + r"\b", ts_lower) for a in aliases):
             return "LEVEL 1 (Explicit Stated Focus)", 0.95, verified_evidence_ids or ["profile_stated_focus"], valid_results
-        if len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(st) + r"\b", ts_clean) for st in sec_tokens):
-            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90, verified_evidence_ids or ["profile_target_sector"], valid_results
 
     # 3. CHECK CORE INDUSTRY FOCUS (LEVEL 1)
     ind_focus = str(company_details.get("industry_focus", "")).lower()
-    if clean_sec == ind_focus:
+    if ind_focus and any(re.search(r"\b" + re.escape(a) + r"\b", ind_focus) for a in aliases):
         return "LEVEL 1 (Explicit Core Sector)", 0.95, verified_evidence_ids or ["industry_core_focus"], valid_results
 
-    # 4. CHECK VERIFIED EVIDENCE VALIDATION RESULTS (LEVEL 2 / LEVEL 3)
+    # 4. CHECK VERIFIED EVIDENCE VALIDATION RESULTS (LEVEL 2)
     if valid_results:
         has_portfolio_rel = any(vr.entity_relationship_check in ("verified_portfolio_company", "verified_portfolio_expansion") for vr in valid_results)
         if has_portfolio_rel:
@@ -307,7 +389,7 @@ def determine_evidence_level(
 
     # 5. CHECK FUTURE STRATEGIC ROADMAPS (LEVEL 3)
     future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
-    if clean_sec in future_text and len(clean_sec) >= 5:
+    if any(re.search(r"\b" + re.escape(a) + r"\b", future_text) for a in aliases if len(a) >= 4):
         return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70, verified_evidence_ids or ["future_roadmap"], valid_results
 
     return "LEVEL 4 (Speculative / Semantic Only)", 0.40, [], valid_results
@@ -344,14 +426,15 @@ class ServiceCatalog:
 
         cleaned_corpus = []
         for s, d in zip(self.sectors, self.definitions):
-            combined = f"{s} {d}".lower()
+            aliases = get_candidate_aliases(s)
+            combined = f"{s} {' '.join(aliases)} {d}".lower()
             tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", combined) if t not in DOMAIN_STOPWORDS]
             cleaned_corpus.append(" ".join(tokens))
 
         self.tfidf_vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
             sublinear_tf=True,
-            max_features=6000
+            max_features=8000
         )
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(cleaned_corpus)
         return len(self.sectors)
@@ -424,11 +507,11 @@ class ServiceCatalog:
         if port_vec is None:
             port_vec = np.zeros(dim, dtype=np.float32)
 
-        if client_inquiry and len(client_inquiry.strip()) > 3:
+        if client_inquiry and len(client_inquiry.strip()) > 2:
             inq_vec = self._get_worker_embedding(f"Specific Client Inquiry & Stated Requirement: {client_inquiry}")
             if inq_vec is None:
                 inq_vec = np.zeros(dim, dtype=np.float32)
-            composite = 0.45 * strat_vec + 0.35 * port_vec + 0.20 * inq_vec
+            composite = 0.40 * strat_vec + 0.30 * port_vec + 0.30 * inq_vec
         else:
             composite = 0.55 * strat_vec + 0.45 * port_vec
 
@@ -436,7 +519,7 @@ class ServiceCatalog:
         normalized_vector = composite / (norm if norm > 0 else 1e-10)
 
         return {
-            "query_text": f"{strategy_text} {portfolio_text}",
+            "query_text": f"{strategy_text} {portfolio_text} {client_inquiry}",
             "vector": normalized_vector,
             "dimension": len(normalized_vector),
             "model_name": self.model_name
@@ -465,7 +548,7 @@ class ServiceCatalog:
 
         # 2. Dynamic TF-IDF Lexical Similarity
         company_lower = (company_text + " " + client_inquiry).lower()
-        if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_lower) > 20:
+        if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_lower) > 5:
             clean_company_tokens = [t for t in re.findall(r"\b[a-zA-Z]{3,}\b", company_lower) if t not in DOMAIN_STOPWORDS]
             company_tfidf = self.tfidf_vectorizer.transform([" ".join(clean_company_tokens)])
             tfidf_sims = (self.tfidf_matrix * company_tfidf.T).toarray().flatten()
@@ -481,8 +564,9 @@ class ServiceCatalog:
             raw_vec_score = float(dense_sims[idx])
             raw_tfidf_score = float(tfidf_sims[idx])
             clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
+            aliases = get_candidate_aliases(sec_name)
 
-            domain_meta = DOMAIN_DICTIONARY.get(clean_sec, {})
+            domain_meta = DOMAIN_DICTIONARY.get(clean_sec, {}) or DOMAIN_DICTIONARY.get(sec_name.lower(), {})
             pos_contexts = domain_meta.get("positive_context", [])
             neg_contexts = domain_meta.get("negative_context", [])
             scale_class = domain_meta.get("scale_class", "unknown")
@@ -493,7 +577,7 @@ class ServiceCatalog:
                 "primary_sector": sec_name,
                 "canonical_name": sec_name,
                 "definition": definition,
-                "positive_context_terms": pos_contexts,
+                "positive_context_terms": pos_contexts or aliases,
                 "negative_context_terms": neg_contexts,
                 "scale_class": scale_class,
                 "facility_types": facility_types
@@ -520,18 +604,20 @@ class ServiceCatalog:
 
             # Intent score (if inquiry is present)
             intent_score = 0.0
-            if client_inquiry:
+            if client_inquiry and len(client_inquiry.strip()) > 2:
                 inq_lower = client_inquiry.lower()
-                if clean_sec in inq_lower or any(st in inq_lower for st in clean_sec.split()):
+                if any(re.search(r"\b" + re.escape(a) + r"\b", inq_lower) for a in aliases):
                     intent_score = 1.0
+                elif clean_sec in inq_lower or any(st in inq_lower for st in clean_sec.split() if st not in DOMAIN_STOPWORDS and len(st) >= 4):
+                    intent_score = 0.90
 
             # Sub-scores derived deterministically
             functionality_score = float(raw_vec_score)
             definition_score = float(raw_vec_score)
             business_model_score = float(raw_vec_score * (1.0 if evidence_score > 0 else 0.8))
-            facility_score = 1.0 if any(p in company_lower for p in pos_contexts) else (0.5 if len(facility_types) > 0 else 0.2)
+            facility_score = 1.0 if any(a in company_lower for a in aliases) else (0.5 if len(facility_types) > 0 else 0.2)
 
-            # Deterministic multi-factor scoring formula from Section H
+            # Deterministic multi-factor scoring formula
             final_score = (
                 0.30 * evidence_score +
                 0.20 * intent_score +
@@ -548,7 +634,7 @@ class ServiceCatalog:
                 "matched_phrases": valid_traces[0].matched_phrases if valid_traces else [],
                 "ignored_terms": valid_traces[0].ignored_terms if valid_traces else [],
                 "negative_context_hits": valid_traces[0].negative_context_hits if valid_traces else [],
-                "synonym_expansions": [],
+                "synonym_expansions": aliases[:6],
                 "definition_entailment": valid_traces[0].definition_entailment if valid_traces else 0.0,
                 "entity_relationship_check": valid_traces[0].entity_relationship_check if valid_traces else "unverified",
                 "rejection_reason": valid_traces[0].rejection_reason if (valid_traces and not valid_traces[0].is_valid) else None
@@ -559,8 +645,8 @@ class ServiceCatalog:
                 "primary_sector": sec_name,
                 "canonical_name": sec_name,
                 "definition": definition,
-                "synonyms": [],
-                "positive_context_terms": pos_contexts,
+                "synonyms": aliases[:6],
+                "positive_context_terms": pos_contexts or aliases,
                 "negative_context_terms": neg_contexts,
                 "facility_types": facility_types,
                 "scale_class": scale_class,
