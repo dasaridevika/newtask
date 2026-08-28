@@ -194,14 +194,14 @@ class WorkerAI:
             # Dynamic industry focus
             industry_focus = "Critical Infrastructure & Technology" if "datacenter" in norm_lower or "data center" in norm_lower else ("Renewable Energy & Power" if "solar" in norm_lower or "clean energy" in norm_lower else "Commercial & Industrial Operations")
             
-            # Dynamic targets
+            # Dynamic canonical targets from verified catalog
             target_secs = []
-            if "data center" in norm_lower or "datacenter" in norm_lower:
-                target_secs.append("Data Center")
-            if "solar" in norm_lower or "photovoltaic" in norm_lower:
-                target_secs.append("Solar Power Generation")
-            if "warehouse" in norm_lower or "distribution" in norm_lower:
-                target_secs.append("Industrial Distribution")
+            from service_catalog import catalog
+            if catalog.sectors:
+                for s in catalog.sectors:
+                    if s.lower() in norm_lower:
+                        target_secs.append(s)
+            target_secs = target_secs[:5]
 
             # Extract 2-3 observed fact sentences
             facts = []
