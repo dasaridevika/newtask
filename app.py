@@ -51,6 +51,9 @@ st.markdown("""
     .metric-val-cyan {
         color: #38bdf8;
     }
+    .metric-val-amber {
+        color: #f59e0b;
+    }
 
     /* Level Badges */
     .level-badge-green {
@@ -108,11 +111,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def get_service_title(srv):
-    if not isinstance(srv, dict):
-        return "Target Offering"
-    return srv.get("Primary Sector") or srv.get("Service Name") or srv.get("primary_sector") or "Target Offering"
-
 # Header Section
 st.title("Enterprise Lead Intelligence & Offering Matcher")
 st.caption("Evidence-First Requirements Analysis -> 1024-Dim Multi-Vector Similarity -> Deterministic Audit Ledger")
@@ -151,7 +149,7 @@ if run_btn:
             evidence_store = serp_data.get("evidence_store")
             evidence_ledger = serp_data.get("evidence_ledger", [])
 
-            st.write("2. Synthesizing client requirements, operational bottlenecks, and growth mandate via Worker LLM...")
+            st.write("2. Synthesizing fact-grounded profile without synthetic assumptions via Worker LLM...")
             company_details = ai.extract_company_details(
                 serp_data["content"],
                 domain=serp_data["domain"],
@@ -159,7 +157,7 @@ if run_btn:
                 evidence_store=evidence_store
             )
 
-            st.write("3. Generating 1024-dim dense multi-vectors & executing evidence-grounded similarity search across 462 offerings...")
+            st.write("3. Generating 1024-dim dense multi-vectors & executing contextual validation across 462 offerings...")
             company_embed_info = catalog.embed_company(company_details, serp_data["content"], client_inquiry=client_inquiry)
             candidate_sectors = catalog.match_company_vector(
                 company_embed_info["vector"],
@@ -170,23 +168,24 @@ if run_btn:
                 top_k=int(top_k_val)
             )
 
-            st.write("4. Mapping exact company offerings with bespoke solution architectures & deliverables blueprints...")
+            st.write("4. Executing strict candidate ID reasoning, post-LLM validation, and fail-closed gatekeeping...")
             matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
             analysis = ai.analyze_fit(company_details, matched_services, evidence_ledger=evidence_ledger)
             status.update(label="Evidence Extraction, Requirements Analysis & Hybrid Matching Complete", state="complete", expanded=False)
 
         st.write("")
 
-        # Equal-Height, Aligned Header Metric Cards
-        top_name = get_service_title(matched_services[0]) if matched_services else "N/A"
+        # Metric Cards
+        exact_matches = analysis.get("exact_product_mappings", [])
+        adjacent_matches = analysis.get("adjacent_or_speculative_matches", [])
+        top_name = exact_matches[0]["exact_offering_name"] if exact_matches else (adjacent_matches[0]["exact_offering_name"] if adjacent_matches else "No Exact Match (Evidence Gap)")
         
         if evidence_store and evidence_store.confidence_score:
             conf_score = int(evidence_store.confidence_score * 100)
             conf_label = evidence_store.confidence_label.upper()
         else:
-            conf_assessment = company_details.get("confidence_assessment", {})
-            conf_label = conf_assessment.get("level", "high").upper()
-            conf_score = int(conf_assessment.get("score", 92))
+            conf_label = "LOW"
+            conf_score = 0
 
         m1, m2, m3, m4 = st.columns(4)
         with m1:
@@ -206,8 +205,8 @@ if run_btn:
         with m3:
             st.markdown(f"""
             <div class="metric-card">
-                <div class="metric-label">Evidence Confidence</div>
-                <div class="metric-val metric-val-green">{conf_label} ({conf_score}%)</div>
+                <div class="metric-label">Evidence Status</div>
+                <div class="metric-val metric-val-green">{analysis.get('status', 'verified').upper()} ({conf_score}%)</div>
             </div>
             """, unsafe_allow_html=True)
         with m4:
@@ -222,8 +221,7 @@ if run_btn:
 
         req_summary = analysis.get("client_requirements_summary", {})
         lead_blueprint = analysis.get("lead_delivery_blueprint", {})
-        mappings = analysis.get("exact_product_mappings", [])
-        disqualified_audit = analysis.get("disqualified_and_speculative_audit") or analysis.get("disqualified_audit", [])
+        disqualified_audit = analysis.get("disqualified_and_speculative_audit", [])
 
         # Main Presentation Tabs
         tab_offer, tab_deliver = st.tabs([
@@ -233,32 +231,32 @@ if run_btn:
 
         # Tab 1: Matched Offerings & Top K Leaderboard
         with tab_offer:
-            st.subheader("What We Can Offer Them")
-            st.caption("Evidence-grounded offerings ranked by 1024-dimensional semantic similarity and verified corporate footprint:")
+            st.subheader("Exact Matched Offerings (LEVEL 1 / LEVEL 2 Verified Only)")
+            st.caption("Evidence-grounded offerings backed by verified operating evidence and deterministic scoring:")
 
-            if mappings:
-                for i, m in enumerate(mappings):
+            if exact_matches:
+                for i, m in enumerate(exact_matches):
                     ev_level = m.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)")
                     tier_label = m.get("tier_label", f"Strategic Solution {i+1}")
                     cid = m.get("candidate_id", "")
                     score_bd = m.get("score_breakdown", {})
                     vec_score = score_bd.get("vector_cosine", 0.65)
-                    fit_score = score_bd.get("business_fit_score", 0.75)
+                    fit_score = score_bd.get("final_score", 0.75)
                     ev_count = m.get("verified_evidence_count", 0)
 
-                    badge_class = "level-badge-green" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else ("level-badge-blue" if "LEVEL 3" in ev_level else "level-badge-amber")
+                    badge_class = "level-badge-green" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "level-badge-blue"
 
                     with st.container(border=True):
                         col_t1, col_t2 = st.columns([4, 1])
                         with col_t1:
-                            st.markdown(f'<span class="{badge_class}">{tier_label} &bull; {cid} &bull; {ev_level}</span>', unsafe_allow_html=True)
+                            st.markdown(f'<span class="{badge_class}">{tier_label} &bull; {cid} &bull; {ev_level} &bull; {ev_count} Verified Quotes</span>', unsafe_allow_html=True)
                         with col_t2:
-                            st.caption(f"Cosine: `{vec_score}` | Fit Score: `{fit_score}`")
+                            st.caption(f"Cosine: `{vec_score}` | Final Score: `{fit_score}`")
 
                         st.markdown(f"### {m.get('exact_offering_name')}")
                         st.markdown(f"**How It Fulfills Client Requirements:** `{m.get('mapped_requirement')}`")
                         
-                        rationale = m.get("llm_match_rationale")
+                        rationale = m.get("rationale")
                         if rationale:
                             st.markdown(f"**Verified Evidence & Strategic Fit:** *{rationale}*")
 
@@ -277,37 +275,46 @@ if run_btn:
                         st.divider()
                         
                         st.markdown("**Offering Sector Definition:**")
-                        st.info(m.get("offering_definition", ""))
+                        st.info(m.get("definition", ""))
 
                         st.markdown("#### Solution Architecture & Data Deliverables")
                         st.write(m.get("comprehensive_narrative", ""))
 
                         st.markdown("#### Operational Value Impact")
                         st.write(m.get("operational_value_driver", ""))
-
-                st.divider()
-                st.markdown(f"### Complete Top {len(candidate_sectors)} Candidate Offerings (Similarity Leaderboard)")
-                if candidate_sectors:
-                    cand_df = pd.DataFrame(candidate_sectors)
-                    desired_cols = ["candidate_id", "primary_sector", "evidence_level", "verified_evidence_count", "vector_cosine", "business_fit_score", "final_score", "definition"]
-                    cols_to_show = [c for c in desired_cols if c in cand_df.columns]
-                    st.dataframe(cand_df[cols_to_show], use_container_width=True)
-
-                if disqualified_audit:
-                    with st.expander("Transparent Disqualification & Speculative Audit", expanded=False):
-                        st.markdown("Audited non-commercial, out-of-scope, or speculative sectors that were rejected or flagged:")
-                        for d in disqualified_audit:
-                            cid_str = f" (`{d.get('candidate_id')}`)" if d.get('candidate_id') else ""
-                            st.markdown(f"- **{d.get('sector')}**{cid_str} (`{d.get('status')}`): {d.get('rationale')}")
-
-                # Evidence Ledger Expander
-                if evidence_ledger:
-                    with st.expander("Harvested Evidence Ledger (Verifiable Citations)", expanded=False):
-                        st.markdown(f"Total verified text evidence items extracted: **{len(evidence_ledger)}**")
-                        for ev in evidence_ledger:
-                            st.markdown(f"- **[{ev.get('evidence_id')}]** `{ev.get('evidence_type')}`: \"{ev.get('quoted_text')}\" ([Source]({ev.get('source_url')}))")
             else:
-                st.info("No direct verified catalog mappings met evidence thresholds for this profile.")
+                st.info("No candidate offerings met the strict LEVEL 1 / LEVEL 2 ground-truth evidence threshold for exact matching. The system operates fail-closed to avoid ungrounded recommendations.")
+
+            # Strategic Adjacencies (LEVEL 3)
+            if adjacent_matches:
+                st.subheader("Strategic Adjacencies (LEVEL 3)")
+                st.caption("Adjacent sector expansion opportunities identified from strategic roadmaps:")
+                for adj in adjacent_matches:
+                    with st.container(border=True):
+                        st.markdown(f"**[{adj.get('candidate_id')}] {adj.get('exact_offering_name')}** (`{adj.get('evidence_level')}`)")
+                        st.write(adj.get("rationale", ""))
+
+            st.divider()
+            st.markdown(f"### Complete Top {len(candidate_sectors)} Candidate Offerings (Similarity Leaderboard)")
+            if candidate_sectors:
+                cand_df = pd.DataFrame(candidate_sectors)
+                desired_cols = ["candidate_id", "primary_sector", "evidence_level", "verified_evidence_count", "vector_cosine", "business_fit_score", "final_score", "scale_class"]
+                cols_to_show = [c for c in desired_cols if c in cand_df.columns]
+                st.dataframe(cand_df[cols_to_show], use_container_width=True)
+
+            if disqualified_audit:
+                with st.expander("Transparent Disqualification & Speculative Audit", expanded=False):
+                    st.markdown("Audited non-commercial, out-of-scope, or polysemous sectors that were rejected:")
+                    for d in disqualified_audit:
+                        cid_str = f" (`{d.get('candidate_id')}`)" if d.get('candidate_id') else ""
+                        st.markdown(f"- **{d.get('sector')}**{cid_str} (`{d.get('status')}`): {d.get('rationale')}")
+
+            # Evidence Ledger Expander
+            if evidence_ledger:
+                with st.expander("Harvested Evidence Ledger (Verifiable Citations)", expanded=False):
+                    st.markdown(f"Total verified text evidence items extracted: **{len(evidence_ledger)}**")
+                    for ev in evidence_ledger:
+                        st.markdown(f"- **[{ev.get('evidence_id')}]** `{ev.get('relationship')}`: \"{ev.get('quoted_text')}\" ([Source]({ev.get('source_url')}))")
 
         # Tab 2: What to Deliver the Lead (Deliverables Blueprint)
         with tab_deliver:
@@ -344,11 +351,13 @@ if run_btn:
             "url": target_url,
             "client_inquiry": client_inquiry,
             "client_requirements_analysis": req_summary,
-            "exact_matched_offerings": mappings,
+            "exact_matched_offerings": exact_matches,
+            "adjacent_or_speculative_matches": adjacent_matches,
             "top_k_similarity_search_results": candidate_sectors,
             "lead_delivery_blueprint": lead_blueprint,
             "disqualified_and_speculative_audit": disqualified_audit,
-            "evidence_ledger": evidence_ledger
+            "evidence_ledger": evidence_ledger,
+            "validation": analysis.get("validation", {})
         }
         st.download_button(
             label="Download Evidence-Backed Intelligence Dossier (JSON)",

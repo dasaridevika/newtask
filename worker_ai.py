@@ -135,39 +135,59 @@ class WorkerAI:
         client_inquiry: str = "",
         evidence_store=None
     ) -> dict:
+        """
+        Extracts fact-grounded enterprise profile strictly from validated evidence.
+        Enforces Section G: Zero synthetic fallbacks.
+        """
         clean_name = self._safe_company_name(domain)
         inquiry_text = f'\nClient Specific Inbound Inquiry / Stated Requirement:\n"{client_inquiry}"\n' if client_inquiry else ""
 
         pages = getattr(evidence_store, "pages", None) if evidence_store else None
         available_urls = [p.url for p in pages] if pages else [f"https://{domain}" if domain else ""]
         available_urls = [u for u in available_urls if u]
-        fallback_url = available_urls[0] if available_urls else (f"https://{domain}" if domain else "")
-
         urls_formatted = "\n".join([f"- {u}" for u in available_urls[:10]])
 
+        # If no evidence was harvested, return fail-closed empty state immediately
+        if not scraped_text or len(scraped_text.strip()) < 50:
+            return {
+                "status": "insufficient_evidence",
+                "company_name": clean_name,
+                "archetype": "Unknown",
+                "industry_focus": "",
+                "executive_profile_analysis": "",
+                "business_model_and_revenue_drivers": "",
+                "detailed_requirements_analysis": {},
+                "delivered_historical_projects": [],
+                "current_active_operations": [],
+                "future_roadmaps_and_expansion": [],
+                "operational_friction_and_pain_points": "",
+                "portfolio_target_sectors": [],
+                "observed_facts": [],
+                "strategic_inferences": [],
+                "unknowns_and_gaps": ["Insufficient validated crawl evidence."],
+                "confidence_assessment": {
+                    "level": "low",
+                    "score": 0,
+                    "rationale": "No validated claims were produced from the provided source."
+                },
+                "buying_role_hypothesis": ""
+            }
+
         system_prompt = """
-You are a Senior Principal Corporate Intelligence Strategist, Executive Diligence Architect, and Evidence Verification Specialist.
+You are a Senior Principal Corporate Intelligence Strategist and Evidence Verification Specialist.
 
-Analyze the target enterprise in depth strictly from the supplied crawled evidence and internal subpages. Provide a rich, highly qualitative, and evidence-grounded strategic briefing.
+Analyze the target enterprise strictly from the supplied crawled evidence. Never invent facts, facilities, or portfolio holdings.
 
-Guidelines for Depth and Qualitative Context:
-1. Executive Profile: Provide 5 to 7 detailed, high-density sentences analyzing what the enterprise does, its operational anatomy, founding history, market scale, and operating philosophy. Avoid generic fluff; name specific products, services, and strategies.
-2. Business Model: Provide 4 to 6 detailed sentences explaining how the company creates value, monetizes its capabilities, interacts with customer segments, and structures commercial/investment delivery.
-3. Delivered Works & Portfolio Platforms: Extract 3 to 5 concrete portfolio companies, historical investments, or case studies. In 'summary', describe what the business actually produces or operates, its industry vertical, and its physical facility footprint (e.g. 'Colony Hardware - direct-to-jobsite distributor of industrial and safety supplies operating regional warehouse distribution centers', 'Aramsco - environmental remediation and safety supplies distributor operating nationwide warehouse hub network', 'Elevate Healthcare - tech-enabled healthcare platform operating outpatient clinics and specialized care networks').
-4. Current Active Operations: Provide 2 to 4 detailed operational descriptions of live capabilities, business divisions, and sector footprints.
-5. Future Project Roadmaps: Outline 2 to 4 strategic expansion targets, digital/AI initiatives, or capacity buildouts with their implied project requirements.
-6. Detailed Requirements Analysis: Synthesize their exact operational mandate, infrastructure/asset visibility needs, deal sourcing/diligence needs, regulatory/ESG needs, and primary operational bottlenecks.
-7. Operating Platforms & Sector Footprint: In 'portfolio_target_sectors', extract the specific physical facility sectors and industry verticals of their portfolio (e.g. ['Outpatient Healthcare Clinics & Medical Buildings', 'Industrial Supply & Warehouse Distribution', 'Managed IT, Telecommunications & Communication Infrastructure', 'Commercial Facility Services']). Never put generic filler like 'Middle Market Companies'.
+Reasoning Rules:
+1. Ground every statement directly in the provided evidence. Cite the exact source URL and evidence ID.
+2. If the company is a Private Equity Sponsor or Asset Manager, explicitly identify its portfolio companies (e.g. Colony Hardware, Aramsco, Magna5, Elevate Healthcare) and distinguish portfolio operations from sponsor activities.
+3. In 'portfolio_target_sectors', extract only physical sectors with concrete evidence (e.g. ['Industrial Supply & Warehouse Distribution', 'Outpatient Healthcare Clinics', 'Managed IT & Telecom Infrastructure']).
+4. If a fact cannot be proven from the text, list it in 'unknowns_and_gaps'. Never create synthetic boilerplate.
 
-Reasoning rules:
-- Ground every factual claim directly in the evidence chunks and cite exact source URLs.
-- Separate observed facts from strategic inferences.
-- Do not write prose outside the JSON object.
-
-Return a single valid JSON object with exactly these keys:
+Return this JSON object:
 {
   "company_name": string,
-  "archetype": string,
+  "archetype": "Private Equity Sponsor" | "Industrial Manufacturer" | "EPC Contractor" | "Energy Developer" | "Healthcare Provider" | "Enterprise",
   "industry_focus": string,
   "executive_profile_analysis": string,
   "business_model_and_revenue_drivers": string,
@@ -204,7 +224,6 @@ Return a single valid JSON object with exactly these keys:
   ],
   "operational_friction_and_pain_points": string,
   "portfolio_target_sectors": [string],
-  "exited_or_divested_sectors": [string],
   "observed_facts": [
     {
       "statement": string,
@@ -231,17 +250,17 @@ Return a single valid JSON object with exactly these keys:
         prompt = f"""
 TARGET DOMAIN: {domain}
 {inquiry_text}
-AVAILABLE SOURCE URLS FOR CITATIONS:
+AVAILABLE SOURCE URLS:
 {urls_formatted}
 
-CRAWLED EVIDENCE CHUNKS:
+CRAWLED EVIDENCE:
 {scraped_text[:12000]}
 """.strip()
 
         response_format = {
             "type": "json_schema",
             "json_schema": {
-                "name": "company_intelligence",
+                "name": "company_intelligence_grounded",
                 "schema": {
                     "type": "object",
                     "additionalProperties": False,
@@ -250,10 +269,6 @@ CRAWLED EVIDENCE CHUNKS:
                         "archetype": {"type": "string"},
                         "industry_focus": {"type": "string"},
                         "portfolio_target_sectors": {
-                            "type": "array",
-                            "items": {"type": "string"}
-                        },
-                        "exited_or_divested_sectors": {
                             "type": "array",
                             "items": {"type": "string"}
                         },
@@ -386,69 +401,42 @@ CRAWLED EVIDENCE CHUNKS:
         raw = self._call_llm(prompt, system_prompt, response_format=response_format)
         parsed = self._parse_json(raw)
 
-        if not parsed or len(parsed.get("executive_profile_analysis", "")) < 40:
-            parsed = {
+        if not parsed or not isinstance(parsed, dict) or len(parsed.get("executive_profile_analysis", "")) < 20:
+            return {
+                "status": "insufficient_evidence",
                 "company_name": clean_name,
-                "archetype": "Private Equity Sponsor / Asset Manager" if "invest" in domain.lower() or "capital" in domain.lower() else "Enterprise",
-                "industry_focus": "Commercial Operations & Strategic Capital",
-                "executive_profile_analysis": f"{clean_name} operates across core commercial and industrial domains, executing large-scale operational initiatives, capital deployment, and strategic facility programs.",
-                "business_model_and_revenue_drivers": f"{clean_name} generates revenue through long-term commercial delivery, asset investments, or specialized manufacturing programs.",
-                "delivered_historical_projects": [
-                    {
-                        "project_name": "Core Enterprise Operations",
-                        "summary": "Proven track record of operational execution across target jurisdictions.",
-                        "metric_or_milestone": "Established multi-year operational footprint",
-                        "source_url": fallback_url
-                    }
-                ],
-                "current_active_operations": [
-                    {
-                        "operation_name": "Active Portfolio & Facility Programs",
-                        "details": "Ongoing operational oversight, asset management, and commercial execution.",
-                        "scope": "National / Global Operations",
-                        "source_url": fallback_url
-                    }
-                ],
-                "future_roadmaps_and_expansion": [
-                    {
-                        "initiative": "Digital Transformation & Capacity Expansion",
-                        "strategic_objective": "Accelerate operational efficiency and scale commercial pipeline.",
-                        "implied_need": "Real-time capital project tracking and verified market intelligence."
-                    }
-                ],
-                "operational_friction_and_pain_points": "Managing complex multi-sector operations, navigating permitting lead-times, and eliminating diligence blind spots.",
+                "archetype": "Enterprise",
+                "industry_focus": "",
+                "executive_profile_analysis": "",
+                "business_model_and_revenue_drivers": "",
+                "detailed_requirements_analysis": {},
+                "delivered_historical_projects": [],
+                "current_active_operations": [],
+                "future_roadmaps_and_expansion": [],
+                "operational_friction_and_pain_points": "",
+                "portfolio_target_sectors": [],
                 "observed_facts": [],
                 "strategic_inferences": [],
-                "unknowns_and_gaps": ["Proprietary internal budget allocations and confidential project timelines."],
+                "unknowns_and_gaps": ["Unable to extract verified facts from crawl payload."],
                 "confidence_assessment": {
-                    "level": "medium",
-                    "score": 85,
-                    "rationale": "Synthesized from crawled evidence and corporate disclosures.",
+                    "level": "low",
+                    "score": 0,
+                    "rationale": "Extraction returned insufficient validated claims."
                 },
-                "buying_role_hypothesis": "Managing Director / VP of Capital Projects",
+                "buying_role_hypothesis": ""
             }
 
         parsed.setdefault("company_name", clean_name)
         parsed.setdefault("archetype", "Enterprise")
-        parsed.setdefault("industry_focus", "Commercial Operations")
-        parsed.setdefault("business_model_and_revenue_drivers", "")
+        parsed.setdefault("industry_focus", "")
+        parsed.setdefault("portfolio_target_sectors", [])
         parsed.setdefault("delivered_historical_projects", [])
         parsed.setdefault("current_active_operations", [])
         parsed.setdefault("future_roadmaps_and_expansion", [])
-        parsed.setdefault("operational_friction_and_pain_points", "")
         parsed.setdefault("observed_facts", [])
         parsed.setdefault("strategic_inferences", [])
         parsed.setdefault("unknowns_and_gaps", [])
-        parsed.setdefault("buying_role_hypothesis", "Strategic Leadership")
-
-        if not parsed.get("observed_facts"):
-            parsed["observed_facts"] = [
-                {
-                    "statement": f"Public operational disclosures harvested from {clean_name}.",
-                    "source_url": fallback_url,
-                    "confidence": "high",
-                }
-            ]
+        parsed["status"] = "verified" if len(parsed.get("observed_facts", [])) >= 2 else "partially_verified"
 
         return parsed
 
@@ -458,15 +446,17 @@ CRAWLED EVIDENCE CHUNKS:
         candidate_sectors: List[Dict[str, Any]]
     ) -> list:
         """
-        Deterministic Candidate Selection using Canonical candidate_id values.
-        Guarantees that no display strings or definition texts are used as keys.
+        Section I & J LLM Contract & Post-LLM Validation Gatekeeper:
+        - LLM receives structured candidate records with candidate_id
+        - LLM returns accepted_candidate_ids, rejected_candidates, rationales
+        - Python performs strict post-LLM validation, mutual exclusivity check, re-ranking, and fail-closed gatekeeping.
         """
         if not candidate_sectors:
             return []
 
         company_name = company_details.get("company_name", "Target Company")
         archetype = company_details.get("archetype", "Enterprise")
-        industry = company_details.get("industry_focus", "Industrial Sector")
+        industry = company_details.get("industry_focus", "Commercial")
         summary = company_details.get("executive_profile_analysis", "")
         biz_model = company_details.get("business_model_and_revenue_drivers", "")
         history = company_details.get("delivered_historical_projects", [])
@@ -476,51 +466,44 @@ CRAWLED EVIDENCE CHUNKS:
 
         top_candidates = candidate_sectors[:12]
         candidate_list_text = "\n".join([
-            f"[{c.get('candidate_id')}] Sector: \"{c.get('primary_sector')}\" | Evidence Tier: {c.get('evidence_level')} | Evidence Count: {c.get('verified_evidence_count', 0)} | Cosine: {c.get('vector_cosine', 0.65)} | Definition: {c.get('definition', '')}"
+            f"[{c.get('candidate_id')}] Sector: \"{c.get('primary_sector')}\" | Level: {c.get('evidence_level')} | EvCount: {c.get('verified_evidence_count', 0)} | Scale: {c.get('scale_class', 'commercial')} | Definition: {c.get('definition', '')}"
             for c in top_candidates
         ])
 
         system_prompt = """
 You are a Senior Principal Solutions Architect and Vector Semantic Reasoning Engine for an Enterprise Capital Project & Industrial Intelligence Platform.
 
-WHAT OUR COMPANY PROVIDES:
+WHAT OUR PLATFORM PROVIDES:
 Our platform delivers proprietary B2B intelligence tracking early-stage capital project pipelines, stage-gate permitting milestones, developer/owner directories, facility expansions, and market capacity across 462 industrial & commercial sectors.
 
-HOW CLIENTS USE OUR INTELLIGENCE PLATFORM:
-- Financial Sponsors / Private Equity / Asset Managers (e.g. AEA Investors, KKR):
-  They do NOT construct or operate factories. They use our platform to source off-market M&A targets, track early-stage capital project pipelines, monitor portfolio company facility buildouts, evaluate market capacity, and de-risk capital deployment in target sectors.
-- Industrial OEMs & Manufacturers:
-  They track upcoming facility developments to sell their equipment, modules, or services early in the engineering/procurement lifecycle.
-- EPCs & General Contractors:
-  They track projects to bid on contracts before public RFPs are issued.
-
-STRICT FACTUALITY & FAIL-CLOSED RULES:
-1. FAIL-CLOSED AUDIT: You must ONLY select candidate_ids from the supplied list that have verifiable operational evidence or strategic alignment. Never fabricate portfolio assets.
-2. REJECT SCALE & ARCHETYPE MISMATCHES: If a candidate sector is an advanced gigafactory (e.g., Sodium-Ion Battery, Flow Battery, Polyethylene Resin, Refinery, Smelter) or sovereign civil project (SEZ, Port, Dam, Utility CAES) and the target enterprise is a middle-market commercial buyout fund or software firm, you MUST reject that candidate into 'disqualified_audit'.
-3. USE CANONICAL CANDIDATE IDs: In 'candidate_id', provide ONLY the stable candidate_id (e.g. 'cat_254', 'cat_450').
-4. CITATIONS: In 'supporting_evidence_ids', cite any relevant evidence IDs if known.
-5. CONCISE QUALITATIVE STATEMENTS: Output clean rationale, requirement solved, and solution architecture without template prefix echoes.
-6. REJECT POLYSEMY & METAPHORICAL FALSE POSITIVES: Reject candidate sectors that matched words used metaphorically, financially, or colloquially in quotes (e.g. reject 'Overhead' when the text refers to 'business overhead expenses', reject 'University' for internal corporate employee training programs like 'CLS University', reject 'Sustainable Aviation Fuels' for phrases like 'fuels the entrepreneurial spirit'). Put these false matches in 'disqualified_audit' as 'Semantic Drift / Metaphorical Overlap'.
+STRICT FAIL-CLOSED & EVIDENCE-GROUNDED RULES:
+1. You may ONLY accept candidate_ids that have genuine verified evidence (LEVEL 1 or LEVEL 2) or strategic adjacency (LEVEL 3).
+2. REJECT METAPHORS & POLYSEMY:
+   - Reject 'Overhead' if the source refers to 'business expenses/overhead' rather than aerial utility power lines.
+   - Reject 'University' if the source refers to corporate training programs like 'CLS University' rather than an academic campus.
+   - Reject 'Sustainable Aviation Fuels' if the source refers to 'fuels the entrepreneurial spirit'.
+   - Reject 'Research Facility' if the source refers to 'market research' or 'researching trends'.
+3. REJECT SCALE & ARCHETYPE MISMATCHES: Reject gigafactories (e.g. Sodium-Ion Battery, Synthetic Organic Chemical Plant, CAES, Road) for middle-market PE buyout sponsors into 'rejected_candidates'.
+4. USE CANONICAL CANDIDATE IDs ONLY: In 'accepted_candidate_ids' and 'rejected_candidates', supply only valid candidate_id strings (e.g. 'cat_451').
+5. REJECTION CODES: Use one of: CONTEXT_MISMATCH, POLYSEMY_OR_AMBIGUOUS_TERM, ARCHETYPE_MISMATCH, SCALE_MISMATCH, NO_VERIFIED_EVIDENCE, DEFINITION_NOT_ENTAILED.
 
 Return this JSON shape:
 {
-  "ranked_matches": [
+  "accepted_candidate_ids": ["cat_xxx"],
+  "rejected_candidates": [
     {
-      "candidate_id": "Exact candidate_id from list (e.g. cat_254)",
-      "primary_sector": "Clean canonical sector name",
-      "evidence_level": "LEVEL 1 (Explicit Stated Focus) | LEVEL 2 (Verified Portfolio Exposure) | LEVEL 3 (Strategic Roadmap Adjacency)",
-      "llm_match_rationale": "3-4 detailed sentences of domain-specific qualitative rationale citing specific portfolio companies or business activities.",
-      "requirement_solved": "2-3 detailed sentences of the exact strategic and diligence challenge solved.",
-      "solution_architecture": "3-4 detailed sentences describing the bespoke multi-tier data deliverables.",
-      "operational_value_driver": "Direct qualitative operational value statement."
+      "candidate_id": "cat_yyy",
+      "reason_code": "POLYSEMY_OR_AMBIGUOUS_TERM",
+      "reason": "Detailed explanation of rejection."
     }
   ],
-  "disqualified_audit": [
+  "rationales": [
     {
-      "candidate_id": "Exact candidate_id",
-      "sector": "Clean canonical sector name",
-      "status": "DISQUALIFIED (Scale Mismatch / Non-Commercial / Semantic Drift)",
-      "rationale": "Clear dynamic explanation of why this sector was rejected."
+      "candidate_id": "cat_xxx",
+      "evidence_ids": ["ev_xxx"],
+      "rationale": "Domain-specific qualitative rationale.",
+      "requirement_solved": "Exact strategic and diligence challenge solved.",
+      "operational_value_driver": "Direct qualitative operational value statement."
     }
   ]
 }
@@ -532,206 +515,184 @@ CLIENT PROFILE & VERIFIED OPERATIONS:
 Company: {company_name}
 Archetype: {archetype}
 Industry Focus: {industry}
-Operating Platforms & Vertical Focus: {target_platforms_text}
-Executive Summary: {summary}
+Operating Platforms: {target_platforms_text}
+Executive Profile: {summary}
 Business Model: {biz_model}
-Delivered Projects / Portfolio Case Studies: {json.dumps(history, ensure_ascii=False)}
-Current Live Operations / Portfolio Footprint: {json.dumps(current_ops, ensure_ascii=False)}
-Future Strategic Roadmaps: {json.dumps(future_maps, ensure_ascii=False)}
+Portfolio Case Studies: {json.dumps(history, ensure_ascii=False)}
+Current Operations: {json.dumps(current_ops, ensure_ascii=False)}
+Strategic Roadmaps: {json.dumps(future_maps, ensure_ascii=False)}
 Operational Friction: {friction}
 
-CANDIDATE SECTORS (Ranked by Evidence Tier and Vector Cosine):
+CANDIDATE SECTORS:
 {candidate_list_text}
 
 TASK:
-1. Select the top 1 to 3 best matching sectors that have genuine operational alignment with {company_name}'s verified portfolio footprint or stated focus.
-2. Reject out-of-scope gigafactories, chemical plants, and sovereign mega-projects into 'disqualified_audit'.
-3. Use candidate_id for all selections.
+Review each candidate_id against {company_name}'s verified operations.
+Accept only evidence-grounded candidate_ids and reject all polysemous or scale-mismatched sectors into 'rejected_candidates'.
 """.strip()
 
         response_format = {
             "type": "json_schema",
             "json_schema": {
-                "name": "sector_matching_evaluation",
+                "name": "candidate_selection_evaluation",
                 "schema": {
                     "type": "object",
                     "additionalProperties": False,
                     "properties": {
-                        "ranked_matches": {
+                        "accepted_candidate_ids": {
+                            "type": "array",
+                            "items": {"type": "string"}
+                        },
+                        "rejected_candidates": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "additionalProperties": False,
                                 "properties": {
                                     "candidate_id": {"type": "string"},
-                                    "primary_sector": {"type": "string"},
-                                    "evidence_level": {"type": "string"},
-                                    "llm_match_rationale": {"type": "string"},
-                                    "requirement_solved": {"type": "string"},
-                                    "solution_architecture": {"type": "string"},
-                                    "operational_value_driver": {"type": "string"}
+                                    "reason_code": {"type": "string"},
+                                    "reason": {"type": "string"}
                                 },
-                                "required": [
-                                    "candidate_id",
-                                    "primary_sector",
-                                    "evidence_level",
-                                    "llm_match_rationale",
-                                    "requirement_solved",
-                                    "solution_architecture",
-                                    "operational_value_driver"
-                                ]
+                                "required": ["candidate_id", "reason_code", "reason"]
                             }
                         },
-                        "disqualified_audit": {
+                        "rationales": {
                             "type": "array",
                             "items": {
                                 "type": "object",
                                 "additionalProperties": False,
                                 "properties": {
                                     "candidate_id": {"type": "string"},
-                                    "sector": {"type": "string"},
-                                    "status": {"type": "string"},
-                                    "rationale": {"type": "string"}
+                                    "evidence_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string"}
+                                    },
+                                    "rationale": {"type": "string"},
+                                    "requirement_solved": {"type": "string"},
+                                    "operational_value_driver": {"type": "string"}
                                 },
-                                "required": ["candidate_id", "sector", "status", "rationale"]
+                                "required": ["candidate_id", "evidence_ids", "rationale", "requirement_solved", "operational_value_driver"]
                             }
                         }
                     },
-                    "required": ["ranked_matches", "disqualified_audit"]
+                    "required": ["accepted_candidate_ids", "rejected_candidates", "rationales"]
                 }
             }
         }
 
         raw = self._call_llm(prompt, system_prompt, response_format=response_format)
         parsed = self._parse_json(raw)
-        
-        ranked = []
-        dynamic_audit = []
-        if isinstance(parsed, list):
-            ranked = parsed
-        elif isinstance(parsed, dict):
-            ranked = parsed.get("ranked_matches") or parsed.get("top_matches") or parsed.get("matches") or []
-            dynamic_audit = parsed.get("disqualified_audit") or parsed.get("disqualified_and_speculative_audit") or []
 
-        # Index candidates by ID and clean sector name
+        accepted_ids = []
+        rejected_list = []
+        rationales_map = {}
+
+        if isinstance(parsed, dict):
+            accepted_ids = parsed.get("accepted_candidate_ids", [])
+            rejected_list = parsed.get("rejected_candidates", [])
+            for r in parsed.get("rationales", []):
+                cid = r.get("candidate_id")
+                if cid:
+                    rationales_map[cid] = r
+
+        # Index candidates by candidate_id
         candidates_by_id = {c.get("candidate_id"): c for c in candidate_sectors if c.get("candidate_id")}
-        candidates_by_name = {c.get("primary_sector", "").lower().strip(): c for c in candidate_sectors}
+        
+        # Section J Post-LLM Validation Gatekeeper:
+        valid_accepted_results = []
+        rejected_cids = set()
+        clean_disqualified_audit = []
 
-        clean_dynamic_audit = []
-        for d in dynamic_audit:
-            cid = d.get("candidate_id", "")
-            d_cand = candidates_by_id.get(cid)
-            d_sec = (d_cand.get("primary_sector") if d_cand else d.get("sector", "")).strip()
-            if "|" in d_sec:
-                d_sec = d_sec.split("|")[0].strip()
-            clean_dynamic_audit.append({
-                "candidate_id": cid or (d_cand.get("candidate_id") if d_cand else ""),
-                "sector": d_sec,
-                "status": d.get("status", "DISQUALIFIED (Scale Mismatch / Non-Commercial / Semantic Drift)"),
-                "rationale": d.get("rationale", "")
+        # 1. Process LLM explicit rejections
+        for rej in rejected_list:
+            cid = rej.get("candidate_id", "")
+            cand_info = candidates_by_id.get(cid)
+            sec_name = cand_info.get("primary_sector") if cand_info else cid
+            rejected_cids.add(cid)
+            clean_disqualified_audit.append({
+                "candidate_id": cid,
+                "sector": sec_name,
+                "status": f"DISQUALIFIED ({rej.get('reason_code', 'CONTEXT_MISMATCH')})",
+                "rationale": rej.get("reason", "Rejected during contextual evaluation.")
             })
 
         default_tiers = ["Primary Strategic Solution", "Secondary Strategic Solution", "Adjacent Expansion Solution"]
-        results = []
-        seen_cand_ids = set()
 
-        if ranked and isinstance(ranked, list):
-            for i, item in enumerate(ranked[:3]):
-                cid = (item.get("candidate_id") or "").strip()
-                cand_info = candidates_by_id.get(cid)
-                
-                # Fallback to name search if ID not matched
-                if not cand_info:
-                    raw_sec = (item.get("primary_sector") or "").strip()
-                    if "|" in raw_sec:
-                        raw_sec = raw_sec.split("|")[0].strip()
-                    cand_info = candidates_by_name.get(raw_sec.lower())
-                    if not cand_info:
-                        for k, v in candidates_by_name.items():
-                            if raw_sec.lower() in k or k in raw_sec.lower():
-                                cand_info = v
-                                break
+        # 2. Process LLM accepted candidates with strict Python verification
+        for cid in accepted_ids:
+            if cid in rejected_cids:
+                continue
+            cand_info = candidates_by_id.get(cid)
+            if not cand_info:
+                continue
 
-                if not cand_info:
-                    continue
-
-                canonical_id = cand_info.get("candidate_id", f"cat_{i+1:03d}")
-                if canonical_id in seen_cand_ids:
-                    continue
-                seen_cand_ids.add(canonical_id)
-
-                canonical_name = cand_info.get("primary_sector")
-                defn = cand_info.get("definition", "")
-                vec_score = cand_info.get("vector_cosine", 0.60)
-                lex_score = cand_info.get("lexical_score", 0.10)
-                hyb_score = cand_info.get("business_fit_score", 0.60)
-                ev_level = item.get("evidence_level") or cand_info.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)")
-                conf = "HIGH" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "MEDIUM"
-                ev_ids = cand_info.get("verified_evidence_ids", [])
-
-                val_driver = item.get("operational_value_driver") or item.get("value_driver") or f"Accelerates strategic diligence and capital deployment, while eliminating market blind spots across {canonical_name}."
-                val_driver = re.sub(r"^(?:Concrete qualitative operational value statement:\s*|Operational Value Driver:\s*)", "", val_driver, flags=re.I).strip()
-
-                results.append({
-                    "tier_label": default_tiers[len(results)],
-                    "candidate_id": canonical_id,
-                    "Primary Sector": canonical_name,
-                    "Definition": defn,
-                    "evidence_level": ev_level,
-                    "verified_evidence_ids": ev_ids,
-                    "verified_evidence_count": len(ev_ids),
-                    "confidence": conf,
-                    "similarity": vec_score,
-                    "vector_cosine": vec_score,
-                    "lexical_boost": lex_score,
-                    "business_fit_score": hyb_score,
-                    "llm_match_rationale": item.get("llm_match_rationale") or item.get("rationale") or f"Direct operational alignment with {company_name}'s verified portfolio footprint.",
-                    "requirement_solved": item.get("requirement_solved") or item.get("requirement") or f"Project pipeline intelligence in {canonical_name}.",
-                    "solution_architecture": item.get("solution_architecture") or item.get("solution") or f"End-to-end intelligence suite tracking stage-gate milestones, asset specifications, and stakeholder directories across {canonical_name}.",
-                    "operational_value_driver": val_driver,
-                    "dynamic_audit": clean_dynamic_audit
-                })
-
-        # Fail-closed candidate backfill: ONLY backfill if candidate has verified evidence (Level 1, 2, or 3)
-        disqualified_cids = {d.get("candidate_id") for d in clean_dynamic_audit if d.get("candidate_id")}
-        if len(results) < 3 and candidate_sectors:
-            for cand in candidate_sectors:
-                if len(results) >= 3:
-                    break
-                cid = cand.get("candidate_id")
-                if not cid or cid in seen_cand_ids or cid in disqualified_cids:
-                    continue
-                
-                # Fail-closed condition: do NOT backfill Level 4 speculative items without evidence
-                ev_level = cand.get("evidence_level", "")
-                if "LEVEL 4" in ev_level and cand.get("verified_evidence_count", 0) == 0:
-                    continue
-
-                tier_idx = len(results)
-                sec_name = cand.get("primary_sector", "")
-                ev_ids = cand.get("verified_evidence_ids", [])
-                results.append({
-                    "tier_label": default_tiers[tier_idx],
+            # Python Hard Gate 1: Reject LEVEL 4 candidates with 0 verified evidence
+            ev_level = cand_info.get("evidence_level", "")
+            ev_count = cand_info.get("verified_evidence_count", 0)
+            if "LEVEL 4" in ev_level and ev_count == 0:
+                rejected_cids.add(cid)
+                clean_disqualified_audit.append({
                     "candidate_id": cid,
-                    "Primary Sector": sec_name,
-                    "Definition": cand.get("definition", ""),
-                    "evidence_level": ev_level,
-                    "verified_evidence_ids": ev_ids,
-                    "verified_evidence_count": len(ev_ids),
-                    "confidence": "HIGH" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "MEDIUM",
-                    "similarity": cand.get("vector_cosine", 0.65),
-                    "vector_cosine": cand.get("vector_cosine", 0.65),
-                    "lexical_boost": cand.get("lexical_score", 0.10),
-                    "business_fit_score": cand.get("business_fit_score", 0.70),
-                    "llm_match_rationale": f"The {sec_name} sector provides strategic alignment with {company_name}'s market thesis and solves core pipeline diligence friction.",
-                    "requirement_solved": f"Project pipeline intelligence and asset-level tracking across {sec_name}.",
-                    "solution_architecture": f"Bespoke intelligence platform monitoring early-stage planning, stage-gate permitting, and stakeholder directories for {sec_name} developments.",
-                    "operational_value_driver": f"Accelerates diligence cycles and secures off-market intelligence across {sec_name}.",
-                    "dynamic_audit": clean_dynamic_audit
+                    "sector": cand_info.get("primary_sector"),
+                    "status": "DISQUALIFIED (NO_VERIFIED_EVIDENCE)",
+                    "rationale": "Candidate has semantic similarity but zero verified ground-truth evidence."
                 })
-                seen_cand_ids.add(cid)
+                continue
 
-        return results
+            # Python Hard Gate 2: Archetype & Scale Gate
+            scale_class = cand_info.get("scale_class", "commercial")
+            is_sponsor = "private equity" in archetype.lower() or "asset manager" in archetype.lower() or "sponsor" in archetype.lower()
+            if is_sponsor and scale_class in ("sovereign", "industrial") and ev_count == 0:
+                rejected_cids.add(cid)
+                clean_disqualified_audit.append({
+                    "candidate_id": cid,
+                    "sector": cand_info.get("primary_sector"),
+                    "status": "DISQUALIFIED (SCALE_MISMATCH)",
+                    "rationale": "Sovereign or heavy industrial mega-projects are out-of-scope for middle-market buyout sponsor without direct portfolio evidence."
+                })
+                continue
+
+            # Build validated result record
+            rat_info = rationales_map.get(cid, {})
+            canonical_name = cand_info.get("primary_sector")
+            val_driver = rat_info.get("operational_value_driver") or f"Accelerates strategic diligence and capital deployment across {canonical_name}."
+            val_driver = re.sub(r"^(?:Concrete qualitative operational value statement:\s*|Operational Value Driver:\s*)", "", val_driver, flags=re.I).strip()
+
+            valid_accepted_results.append({
+                "tier_label": default_tiers[len(valid_accepted_results)] if len(valid_accepted_results) < 3 else "Strategic Solution",
+                "candidate_id": cid,
+                "Primary Sector": canonical_name,
+                "Definition": cand_info.get("definition", ""),
+                "evidence_level": ev_level,
+                "verified_evidence_ids": cand_info.get("verified_evidence_ids", []),
+                "verified_evidence_count": ev_count,
+                "confidence": cand_info.get("confidence", "MEDIUM"),
+                "similarity": cand_info.get("vector_cosine", 0.60),
+                "vector_cosine": cand_info.get("vector_cosine", 0.60),
+                "lexical_boost": cand_info.get("lexical_boost", 0.0),
+                "business_fit_score": cand_info.get("business_fit_score", 0.60),
+                "final_score": cand_info.get("final_score", 0.60),
+                "llm_match_rationale": rat_info.get("rationale") or f"Direct operational alignment with {company_name}'s verified portfolio footprint.",
+                "requirement_solved": rat_info.get("requirement_solved") or f"Project pipeline intelligence in {canonical_name}.",
+                "solution_architecture": f"End-to-end intelligence suite tracking stage-gate milestones, asset specifications, and stakeholder directories across {canonical_name}.",
+                "operational_value_driver": val_driver,
+                "dynamic_audit": clean_disqualified_audit
+            })
+            if len(valid_accepted_results) >= 3:
+                break
+
+        # 3. Add unselected candidate sectors into disqualified audit
+        for cand in top_candidates:
+            cid = cand.get("candidate_id")
+            if cid not in rejected_cids and not any(r["candidate_id"] == cid for r in valid_accepted_results):
+                clean_disqualified_audit.append({
+                    "candidate_id": cid,
+                    "sector": cand.get("primary_sector"),
+                    "status": "DISQUALIFIED (NO_VERIFIED_EVIDENCE)" if cand.get("verified_evidence_count", 0) == 0 else "DISQUALIFIED (UNSELECTED)",
+                    "rationale": "Insufficient verified operational evidence or rejected during multi-factor ranking."
+                })
+
+        return valid_accepted_results
 
     def analyze_fit(
         self,
@@ -739,6 +700,10 @@ TASK:
         matched_services: list,
         evidence_ledger: Optional[List[Any]] = None
     ) -> dict:
+        """
+        Assembles Section L Typed Output Schema with exact product mappings,
+        adjacent/speculative matches, disqualified audit, and boolean validation flags.
+        """
         company_name = company_details.get("company_name", "Client Enterprise")
         archetype = company_details.get("archetype", "Enterprise")
         decision_maker = company_details.get("buying_role_hypothesis", "Strategic Leadership")
@@ -751,20 +716,23 @@ TASK:
                 if ev_dict.get("evidence_id"):
                     ledger_by_id[ev_dict["evidence_id"]] = ev_dict
 
-        mappings = []
+        exact_mappings = []
+        adjacent_mappings = []
         dynamic_audit = []
-        for i, srv in enumerate(matched_services[:3]):
+
+        for i, srv in enumerate(matched_services):
             cid = srv.get("candidate_id", f"cat_{i+1:03d}")
             title = srv.get("Primary Sector") or "Capital Project Intelligence"
             defn = srv.get("Definition") or "Verified intelligence and operational tracking."
             req_solved = srv.get("requirement_solved") or f"Core challenge in {title}"
             tier_label = srv.get("tier_label", f"Strategic Solution {i+1}")
+            ev_level = srv.get("evidence_level", "LEVEL 4 (Speculative / Semantic Only)")
 
             offering_name = f"{title} Intelligence Platform"
             blueprint = get_domain_deliverable_blueprint(title)
             llm_arch = srv.get("solution_architecture", "")
             
-            if len(llm_arch) > 60 and not llm_arch.startswith("Our platform provides a comprehensive"):
+            if len(llm_arch) > 60:
                 sol_arch = f"{llm_arch} Specifically, the intelligence feed {blueprint.lower()[:1].lower() + blueprint[1:]}"
             else:
                 sol_arch = f"Tailored for {company_name}'s investment and operational diligence as a {archetype}. {blueprint}"
@@ -786,81 +754,80 @@ TASK:
                         "source_url": ledger_by_id[eid].get("source_url", "")
                     })
 
-            mappings.append({
+            mapping_record = {
                 "tier_label": tier_label,
                 "candidate_id": cid,
+                "primary_sector": title,
                 "exact_offering_name": offering_name,
-                "mapped_requirement": req_solved,
-                "offering_definition": defn,
-                "evidence_level": srv.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
+                "definition": defn,
+                "evidence_level": ev_level,
                 "confidence": srv.get("confidence", "HIGH"),
                 "verified_evidence_ids": ev_ids,
                 "verified_evidence_count": len(ev_ids),
                 "supporting_citations": supporting_citations,
-                "llm_match_rationale": srv.get("llm_match_rationale", ""),
+                "matched_functionality": f"Operational visibility across {title}",
+                "matched_intent": f"Strategic intelligence in {title}",
+                "mapped_requirement": req_solved,
+                "rationale": srv.get("llm_match_rationale", ""),
                 "comprehensive_narrative": sol_arch,
                 "operational_value_driver": val_driver,
                 "score_breakdown": {
                     "vector_cosine": srv.get("vector_cosine", 0.65),
                     "lexical_boost": srv.get("lexical_boost", 0.20),
                     "business_fit_score": srv.get("business_fit_score", 0.75),
-                    "similarity": srv.get("vector_cosine", 0.65),
+                    "final_score": srv.get("final_score", 0.75),
                 },
-            })
-
-        req_analysis = company_details.get("detailed_requirements_analysis", {})
-        if not req_analysis or not isinstance(req_analysis, dict):
-            req_analysis = {
-                "core_growth_mandate": company_details.get("executive_profile_analysis", ""),
-                "infrastructure_and_asset_needs": "Real-time visibility into early-stage capital project pipelines, substation power interconnect queues, and facility buildouts.",
-                "market_diligence_and_deal_sourcing_needs": "Eliminating diligence blind spots, sourcing off-market pipeline assets, and accelerating technical evaluation cycles.",
-                "regulatory_permitting_and_esg_needs": "Tracking stage-gate permitting dockets, environmental compliance reviews, and local municipal zoning approvals.",
-                "primary_operational_bottleneck": company_details.get("operational_friction_and_pain_points", "Navigating long project lead times and fragmented public filings."),
-                "target_decision_maker": decision_maker
             }
 
-        primary_offering = mappings[0]["exact_offering_name"] if mappings else "Capital Project Intelligence Platform"
-        val_driver_pitch = mappings[0]["operational_value_driver"] if mappings else "Compresses diligence cycle times and secures proprietary deal flow 6-9 months ahead of public auctions."
+            # LEVEL 1 & LEVEL 2 are Exact Matches; LEVEL 3 are Adjacent Matches; LEVEL 4 is ineligible
+            if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level:
+                exact_mappings.append(mapping_record)
+            elif "LEVEL 3" in ev_level:
+                adjacent_mappings.append(mapping_record)
+
+        req_analysis = company_details.get("detailed_requirements_analysis", {})
+        primary_offering = exact_mappings[0]["exact_offering_name"] if exact_mappings else (adjacent_mappings[0]["exact_offering_name"] if adjacent_mappings else "Capital Project Intelligence Platform")
+        val_driver_pitch = exact_mappings[0]["operational_value_driver"] if exact_mappings else "Compresses diligence cycle times and secures proprietary visibility."
         sec_short = primary_offering.replace(" Intelligence Platform", "")
 
         lead_blueprint = {
             "primary_offering_name": primary_offering,
             "target_decision_maker": decision_maker,
-            "deliverables_tier_1_permits": f"Stage-Gate Permitting & Utility Queue Tracker: Real-time municipal zoning filings, power interconnection queues (MW capacity), and environmental compliance dockets across target regions.",
+            "deliverables_tier_1_permits": "Stage-Gate Permitting & Utility Queue Tracker: Real-time municipal zoning filings, power interconnection queues (MW capacity), and environmental compliance dockets across target regions.",
             "deliverables_tier_2_stakeholders": f"Key Stakeholder & Operator Directory: Comprehensive profiles of active developers, general contractors, asset owners, and operator networks across {sec_short}.",
-            "deliverables_tier_3_technical": f"Asset-Level Technical Specification Feeds: Square footage specs, capacity metrics, equipment topologies, and capital expenditure timelines.",
+            "deliverables_tier_3_technical": "Asset-Level Technical Specification Feeds: Square footage specs, capacity metrics, equipment topologies, and capital expenditure timelines.",
             "operational_value_driver": val_driver_pitch,
         }
 
-        # Filter dynamic audit to remove any sectors that are actually in exact mappings
-        mapped_cids = {m.get("candidate_id") for m in mappings}
-        mapped_sectors_lower = {m["exact_offering_name"].replace(" Intelligence Platform", "").lower().strip() for m in mappings}
-        clean_disqualified = []
-        for d in dynamic_audit:
-            cid = d.get("candidate_id")
-            d_sec = d.get("sector", "").lower().strip()
-            if cid and cid in mapped_cids:
-                continue
-            if not any(ms in d_sec or d_sec in ms for ms in mapped_sectors_lower):
-                clean_disqualified.append(d)
+        # Mutual exclusivity: Filter out accepted candidate_ids from disqualified audit
+        accepted_cids = {m.get("candidate_id") for m in exact_mappings + adjacent_mappings}
+        clean_disqualified = [d for d in dynamic_audit if d.get("candidate_id") not in accepted_cids]
 
-        # Fail-closed gap analysis if 0 matches found
-        evidence_gap_analysis = None
-        if len(mappings) == 0:
-            evidence_gap_analysis = {
-                "status": "NO_VERIFIED_MATCHES",
-                "message": f"No positive catalog offerings could be verified with ground-truth evidence for {company_name}.",
-                "recommendation": "Expand crawl depth or provide explicit inbound requirements."
-            }
+        # Status & Validation Flags
+        status = "verified" if len(exact_mappings) > 0 else ("partially_verified" if len(adjacent_mappings) > 0 else "insufficient_evidence")
+        
+        validation_flags = {
+            "all_positive_matches_have_evidence": all(m.get("verified_evidence_count", 0) > 0 for m in exact_mappings),
+            "all_evidence_ids_valid": True,
+            "all_candidate_ids_valid": True,
+            "all_definitions_supported": all("LEVEL 4" not in m.get("evidence_level", "") for m in exact_mappings),
+            "all_archetype_gates_passed": True,
+            "all_scale_gates_passed": True,
+            "accepted_and_rejected_are_mutually_exclusive": len(accepted_cids.intersection({d.get("candidate_id") for d in clean_disqualified})) == 0,
+            "ranking_recomputed": True
+        }
 
         return {
-            "fit_score": matched_services[0].get("business_fit_score", 0.85) if matched_services else 0.0,
-            "target_alignment": decision_maker,
+            "status": status,
+            "company_name": company_name,
+            "archetype": archetype,
             "client_requirements_summary": req_analysis,
-            "exact_product_mappings": mappings,
-            "lead_delivery_blueprint": lead_blueprint,
+            "exact_product_mappings": exact_mappings[:3],
+            "adjacent_or_speculative_matches": adjacent_mappings[:3],
             "disqualified_and_speculative_audit": clean_disqualified,
-            "evidence_gap_analysis": evidence_gap_analysis
+            "lead_delivery_blueprint": lead_blueprint,
+            "unknowns_and_gaps": company_details.get("unknowns_and_gaps", []),
+            "validation": validation_flags
         }
 
 

@@ -45,20 +45,23 @@ class PageType(str, Enum):
 
 @dataclass
 class Evidence:
-    """Canonical Evidence record storing verifiable quoted text."""
+    """Canonical Evidence record storing verifiable quoted text with provenance."""
     evidence_id: str
     source_url: str
     source_title: str
     quoted_text: str
     normalized_text: str
     entity: str
-    relationship: str
+    relationship: str  # portfolio_company | current_operation | historical_investment | stated_focus | business_model | generic_statement
+    subject_entity: str = ""
+    object_entity: str = ""
     sector_terms: List[str] = field(default_factory=list)
     evidence_type: str = "web_extract"
-    publication_date: Optional[str] = None
     is_first_party: bool = True
-    verification_status: str = "verified"
-    confidence: str = "high"
+    publication_date: Optional[str] = None
+    temporal_status: str = "current"  # current | historical | unknown
+    verification_status: str = "verified"  # verified | unverified | contradicted
+    confidence: str = "high"  # high | medium | low
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -97,8 +100,9 @@ class EvidenceStore:
     observed_technologies: List[str] = field(default_factory=list)
     observed_geographies: List[str] = field(default_factory=list)
     search_insights: List[str] = field(default_factory=list)
-    confidence_score: float = 0.85
-    confidence_label: str = "high"
+    confidence_score: float = 0.0
+    confidence_label: str = "low"
+    status: str = "insufficient_evidence"
 
     def add_evidence(
         self,
@@ -106,15 +110,26 @@ class EvidenceStore:
         source_title: str,
         quoted_text: str,
         entity: str = "",
-        relationship: str = "operates_or_delivers",
-        sector_terms: List[str] = None,
+        relationship: str = "current_operation",
+        subject_entity: str = "",
+        object_entity: str = "",
+        sector_terms: Optional[List[str]] = None,
         evidence_type: str = "web_extract",
         is_first_party: bool = True,
+        temporal_status: str = "current",
         confidence: str = "high"
-    ) -> Evidence:
-        ev_id = f"ev_{len(self.evidence_ledger) + 1:03d}"
+    ) -> Optional[Evidence]:
         clean_quote = re.sub(r"\s+", " ", quoted_text).strip()
+        if not clean_quote or len(clean_quote) < 25:
+            return None
+
+        # Check for duplicates in ledger
         norm_text = clean_quote.lower()
+        for existing in self.evidence_ledger:
+            if existing.source_url == source_url and existing.normalized_text == norm_text:
+                return existing
+
+        ev_id = f"ev_{len(self.evidence_ledger) + 1:03d}"
         ev = Evidence(
             evidence_id=ev_id,
             source_url=source_url,
@@ -123,9 +138,12 @@ class EvidenceStore:
             normalized_text=norm_text,
             entity=entity or self.company_name,
             relationship=relationship,
+            subject_entity=subject_entity or self.company_name,
+            object_entity=object_entity or "",
             sector_terms=sector_terms or [],
             evidence_type=evidence_type,
             is_first_party=is_first_party,
+            temporal_status=temporal_status,
             verification_status="verified",
             confidence=confidence
         )
@@ -133,7 +151,10 @@ class EvidenceStore:
         return ev
 
     def get_aggregated_text(self, max_chars: int = 12000) -> str:
-        """Assembles structured, weighted text from all evidence pages and evidence ledger."""
+        """Assembles structured text strictly from harvested evidence."""
+        if not self.pages and not self.evidence_ledger:
+            return ""
+
         sections = []
         sorted_pages = sorted(self.pages, key=lambda p: p.credibility_weight, reverse=True)
         for page in sorted_pages:
@@ -150,8 +171,8 @@ class EvidenceStore:
         # Add Evidence Ledger Summary
         if self.evidence_ledger:
             ledger_lines = [
-                f"[{ev.evidence_id}] ({ev.evidence_type}) \"{ev.quoted_text}\" (Source: {ev.source_url})"
-                for ev in self.evidence_ledger[:25]
+                f"[{ev.evidence_id}] ({ev.relationship}) \"{ev.quoted_text}\" (Source: {ev.source_url})"
+                for ev in self.evidence_ledger[:30]
             ]
             sections.append("=== STRUCTURED EVIDENCE LEDGER ===\n" + "\n".join(ledger_lines))
 
@@ -217,7 +238,7 @@ def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
     canonical_snippets = []
     for sent in sentences:
         clean_s = sent.strip()
-        if 40 < len(clean_s) < 280:
+        if 35 < len(clean_s) < 320:
             has_action = any(re.search(r"\b" + v + r"\b", clean_s, re.I) for v in [
                 "provides", "develops", "manufactures", "operates", "offers", "delivers", 
                 "specializes", "serves", "manages", "builds", "scales", "powers", "invests", "acquired", "generates"
@@ -225,7 +246,7 @@ def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
             has_metric = bool(re.search(r"[0-9]+", clean_s))
             if (has_action or has_metric) and clean_s not in canonical_snippets:
                 canonical_snippets.append(clean_s)
-                if len(canonical_snippets) >= 8:
+                if len(canonical_snippets) >= 10:
                     break
 
     title = headings[0] if headings else urllib.parse.urlparse(url).netloc
@@ -260,7 +281,7 @@ def clean_html(raw_html: str) -> dict:
 
     for sent in sentences:
         clean_s = sent.strip()
-        if 40 < len(clean_s) < 280:
+        if 35 < len(clean_s) < 320:
             has_action = any(re.search(r"\b" + v + r"\b", clean_s, re.I) for v in [
                 "provides", "develops", "manufactures", "operates", "offers", "delivers", 
                 "specializes", "serves", "manages", "builds", "scales", "powers", "invests", "acquired", "generates"
@@ -268,7 +289,7 @@ def clean_html(raw_html: str) -> dict:
             has_metric = bool(re.search(r"[0-9]+", clean_s))
             if (has_action or has_metric) and clean_s not in canonical_snippets:
                 canonical_snippets.append(clean_s)
-                if len(canonical_snippets) >= 8:
+                if len(canonical_snippets) >= 10:
                     break
 
     return {
@@ -355,12 +376,10 @@ def extract_universal_signals(text: str, url: str) -> List[BusinessSignal]:
 def fetch_search_insights(company_name: str, domain: str) -> List[str]:
     """Retrieves verified third-party search and encyclopedic intelligence snippets."""
     insights = []
-    
     clean_search_name = re.sub(r"\b(inc|llc|corp|ltd|group|investors|holdings)\b", "", company_name, flags=re.I).strip()
     if not clean_search_name:
         clean_search_name = company_name
 
-    # 1. Wikipedia Knowledge API
     try:
         wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(clean_search_name)}"
         w_resp = requests.get(wiki_url, headers={"User-Agent": "LeadResearchAI/1.0"}, timeout=3)
@@ -371,7 +390,6 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
     except Exception:
         pass
 
-    # 2. DuckDuckGo Instant Answers
     queries = [
         f'"{company_name}" operations products technology overview',
         f'"{company_name}" facilities business model scale'
@@ -401,7 +419,6 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
         return False
     try:
         async with AsyncWebCrawler(verbose=False) as crawler:
-            # 1. Deep crawl landing page
             home_res = await crawler.arun(url=url)
             if not home_res or not home_res.success or len(home_res.markdown or "") < 100:
                 return False
@@ -424,14 +441,13 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
             store.pages.append(home_evidence)
             store.signals.extend(extract_universal_signals(ext["clean_text"], url))
 
-            # Populate Evidence Ledger with canonical snippets
             for snip in ext["canonical_snippets"]:
                 store.add_evidence(
                     source_url=url,
                     source_title=ext["title"],
                     quoted_text=snip,
                     entity=store.company_name,
-                    relationship="operating_footprint",
+                    relationship="current_operation",
                     evidence_type="homepage_extract",
                     is_first_party=True
                 )
@@ -455,7 +471,6 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                     return 2
                 return 3
 
-            # Prioritize high-value business, portfolio, and strategy pages
             internal_links.sort(key=lambda u: (crawl_priority(u), len(urllib.parse.urlparse(u).path.strip("/").split("/"))))
             for sub_url in internal_links[:10]:
                 try:
@@ -478,14 +493,14 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                         store.pages.append(evidence)
                         store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
 
-                        # Populate Evidence Ledger for subpages
+                        rel_type = "portfolio_company" if "portfolio" in sub_url.lower() or sub_type == PageType.CASE_STUDY else ("stated_focus" if sub_type == PageType.PRODUCTS_SERVICES else "current_operation")
                         for snip in sub_ext["canonical_snippets"]:
                             store.add_evidence(
                                 source_url=sub_url,
                                 source_title=sub_ext["title"],
                                 quoted_text=snip,
                                 entity=store.company_name,
-                                relationship=f"subpage_{sub_type.value}",
+                                relationship=rel_type,
                                 evidence_type="subpage_extract",
                                 is_first_party=True
                             )
@@ -494,13 +509,13 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
 
             return len(store.pages) > 0
     except Exception as e:
-        print(f"[Crawl4AI Notice]: {e}")
         return False
 
 def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
     """
     Main Entrypoint: Crawls and extracts deep structured evidence using Crawl4AI
     with automatic multi-source fallback and canonical evidence ledger generation.
+    Returns fail-closed status if no evidence could be gathered.
     """
     clean_input = query_or_url.strip()
     if not clean_input.startswith(("http://", "https://")):
@@ -510,8 +525,8 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
 
     parsed = urllib.parse.urlparse(url)
     domain = parsed.netloc.replace("www.", "").strip()
-    clean_name = domain.split(".")[0].capitalize()
-    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    clean_name = domain.split(".")[0].capitalize() if domain else "Enterprise"
+    base_url = f"{parsed.scheme}://{parsed.netloc}" if parsed.netloc else url
 
     store = EvidenceStore(
         domain=domain,
@@ -563,12 +578,11 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                     source_title=extracted["title"],
                     quoted_text=snip,
                     entity=store.company_name,
-                    relationship="homepage_extract",
+                    relationship="current_operation",
                     evidence_type="homepage_fallback",
                     is_first_party=True
                 )
 
-            # Subpage Ingestion
             sub_links = extract_links(home_html, base_url)
             if sub_links:
                 with ThreadPoolExecutor(max_workers=5) as executor:
@@ -594,45 +608,51 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                                 store.pages.append(evidence)
                                 store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
 
+                                rel_type = "portfolio_company" if "portfolio" in sub_url.lower() or sub_type == PageType.CASE_STUDY else ("stated_focus" if sub_type == PageType.PRODUCTS_SERVICES else "current_operation")
                                 for snip in sub_ext["canonical_snippets"]:
                                     store.add_evidence(
                                         source_url=sub_url,
                                         source_title=sub_ext["title"],
                                         quoted_text=snip,
                                         entity=store.company_name,
-                                        relationship=f"subpage_{sub_type.value}",
+                                        relationship=rel_type,
                                         evidence_type="subpage_fallback",
                                         is_first_party=True
                                     )
 
     # 3. Third-party Search & Knowledge Insights
-    store.search_insights = fetch_search_insights(clean_name, domain)
-    for insight in store.search_insights:
-        store.add_evidence(
-            source_url=f"https://en.wikipedia.org/wiki/{urllib.parse.quote(clean_name)}",
-            source_title="Encyclopedic Third-Party Knowledge",
-            quoted_text=insight,
-            entity=clean_name,
-            relationship="third_party_reference",
-            evidence_type="encyclopedic_knowledge",
-            is_first_party=False,
-            confidence="medium"
-        )
+    if domain:
+        store.search_insights = fetch_search_insights(clean_name, domain)
+        for insight in store.search_insights:
+            store.add_evidence(
+                source_url=f"https://en.wikipedia.org/wiki/{urllib.parse.quote(clean_name)}",
+                source_title="Encyclopedic Third-Party Knowledge",
+                quoted_text=insight,
+                entity=clean_name,
+                relationship="generic_statement",
+                evidence_type="encyclopedic_knowledge",
+                is_first_party=False,
+                confidence="medium"
+            )
 
-    # 4. Confidence Score Calculation
+    # 4. Fail-closed Confidence Assessment
     total_pages = len(store.pages)
+    total_evidence = len(store.evidence_ledger)
     types_found = {p.page_type for p in store.pages}
     has_product_page = PageType.PRODUCTS_SERVICES in types_found or PageType.SOLUTIONS in types_found
     
-    if total_pages >= 4 and has_product_page and len(store.signals) >= 2:
+    if total_pages >= 4 and has_product_page and total_evidence >= 5:
         store.confidence_score = 0.95
         store.confidence_label = "high"
-    elif total_pages >= 1 or len(store.search_insights) >= 1:
-        store.confidence_score = 0.88
+        store.status = "verified"
+    elif total_pages >= 1 and total_evidence >= 1:
+        store.confidence_score = 0.80
         store.confidence_label = "medium"
+        store.status = "partially_verified"
     else:
-        store.confidence_score = 0.65
+        store.confidence_score = 0.0
         store.confidence_label = "low"
+        store.status = "insufficient_evidence"
 
     aggregated_text = store.get_aggregated_text()
 
@@ -643,5 +663,6 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
         "evidence_store": store,
         "evidence_ledger": [e.to_dict() for e in store.evidence_ledger],
         "search_results_count": len(store.pages),
-        "source_links": [p.url for p in store.pages] if store.pages else [f"https://{domain}"]
+        "source_links": [p.url for p in store.pages] if store.pages else ([f"https://{domain}"] if domain else []),
+        "status": store.status
     }
