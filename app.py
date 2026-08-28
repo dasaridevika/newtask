@@ -228,12 +228,65 @@ if run_btn:
         disqualified_audit = analysis.get("disqualified_and_speculative_audit", [])
 
         # Main Presentation Tabs
-        tab_offer, tab_deliver = st.tabs([
-            "1. Matched Offerings & Evidence",
-            "2. Deliverables Blueprint"
+        tab_summary, tab_offer, tab_deliver = st.tabs([
+            "1. Executive Intelligence & Strategy Summary",
+            "2. Matched Offerings & Evidence Dossier",
+            "3. Deliverables Blueprint"
         ])
 
-        # Tab 1: Matched Offerings & Top K Leaderboard
+        # Tab 1: Executive Intelligence & Strategy Summary
+        with tab_summary:
+            st.subheader(f"Executive Intelligence & Strategic Mandate: {company_details.get('company_name', 'Client Enterprise')}")
+            st.caption("Comprehensive synthesized profile, operational mandate, and strategic offering justification:")
+
+            # Strategic Executive Brief Card
+            with st.container(border=True):
+                st.markdown("### 🏛️ Executive Strategic Brief")
+                st.write(company_details.get("executive_profile_analysis", ""))
+                st.markdown(f"**Business Model & Operations:** {company_details.get('business_model_and_revenue_drivers', '')}")
+
+            # 4-Pillar Requirements & Operating Thesis
+            st.markdown("### 🧭 Strategic Requirements & Operating Thesis")
+            c1, c2 = st.columns(2)
+            with c1:
+                with st.container(border=True):
+                    st.markdown("#### 🎯 Core Growth Mandate")
+                    st.write(req_summary.get("core_growth_mandate", "Scale operational market presence and capital efficiency."))
+                
+                with st.container(border=True):
+                    st.markdown("#### ⚡ Infrastructure & Asset Needs")
+                    st.write(req_summary.get("infrastructure_and_asset_needs", "Specialized power delivery and facility assets."))
+
+            with c2:
+                with st.container(border=True):
+                    st.markdown("#### 🔍 Market Diligence & Deal Sourcing Needs")
+                    st.write(req_summary.get("market_diligence_and_deal_sourcing_needs", "Continuous visibility into capital project pipelines and utility interconnection queues."))
+                
+                with st.container(border=True):
+                    st.markdown("#### 📜 Regulatory, Permitting & ESG Compliance")
+                    st.write(req_summary.get("regulatory_permitting_and_esg_needs", "Compliance with environmental filings, safety standards, and municipal dockets."))
+
+            # Bottlenecks and Target Decision Maker
+            c_bot, c_dec = st.columns([3, 2])
+            with c_bot:
+                with st.container(border=True):
+                    st.markdown("#### ⚠️ Primary Operational Bottlenecks")
+                    st.write(req_summary.get("primary_operational_bottleneck", "Capacity scaling constraints and infrastructure lead times."))
+            with c_dec:
+                with st.container(border=True):
+                    st.markdown("#### 👤 Target Executive Decision Maker")
+                    st.info(f"**{req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Engineering / Business Development'))}**")
+
+            # Strategic Solution Recommendation Summary
+            if exact_matches:
+                with st.container(border=True):
+                    st.markdown("### 💡 Recommended Offering Synthesis")
+                    st.markdown(f"Based on verified evidence and explicit requirements, the primary strategic match is **{exact_matches[0]['exact_offering_name']}**.")
+                    st.markdown(f"- **Strategic Alignment:** {exact_matches[0].get('rationale', '')}")
+                    st.markdown(f"- **Operational Value Driver:** {exact_matches[0].get('operational_value_driver', '')}")
+                    st.markdown(f"- **Implementation Scope:** {exact_matches[0].get('comprehensive_narrative', '')}")
+
+        # Tab 2: Matched Offerings & Top K Leaderboard
         with tab_offer:
             st.subheader("Exact Matched Offerings (LEVEL 1 / LEVEL 2 Verified Only)")
             st.caption("Evidence-grounded offerings backed by verified operating evidence and dynamic definition entailment:")
