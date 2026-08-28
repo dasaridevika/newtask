@@ -152,6 +152,7 @@ Guidelines for Depth and Qualitative Context:
 4. Current Active Operations: Provide 2 to 4 detailed operational descriptions of live capabilities, business divisions, and sector footprints.
 5. Future Project Roadmaps: Outline 2 to 4 strategic expansion targets, digital/AI initiatives, or capacity buildouts with their implied project requirements.
 6. Detailed Requirements Analysis: Synthesize their exact operational mandate, infrastructure/asset visibility needs, deal sourcing/diligence needs, regulatory/ESG needs, and primary operational bottlenecks.
+7. Operating Platforms & Sector Footprint: For financial sponsors, private equity funds, or holding companies, extract their concrete underlying industry verticals, operating companies, and physical facility footprints into 'portfolio_target_sectors' (e.g. ['Outpatient Healthcare Services & Specialized Clinics', 'Industrial Supply & Warehouse Distribution', 'Managed IT & Telecom Infrastructure', 'Commercial Services']).
 
 Reasoning rules:
 - Ground every factual claim directly in the evidence chunks and cite exact source URLs.
@@ -475,62 +476,123 @@ Our platform delivers proprietary B2B intelligence tracking early-stage capital 
 HOW CLIENTS USE OUR INTELLIGENCE PLATFORM:
 - Financial Sponsors / Private Equity / Asset Managers (e.g. AEA Investors, KKR):
   They do NOT construct or operate factories. They use our platform to source off-market M&A targets, track early-stage capital project pipelines, monitor portfolio company facility buildouts, evaluate market capacity, and de-risk capital deployment in target sectors.
-- Industrial OEMs & Manufacturers (e.g. First Solar, Siemens):
+- Industrial OEMs & Manufacturers:
   They track upcoming facility developments to sell their equipment, modules, or services early in the engineering/procurement lifecycle.
 - EPCs & General Contractors:
   They track projects to bid on contracts before public RFPs are issued.
 
 STRICT FACTUALITY & ACCURACY RULES:
-1. Never invent operational requirements. If a financial sponsor does not physically operate factories, classify their requirement strictly as Deal Sourcing, Add-On Target Diligence, or Portfolio Expansion Tracking.
-2. DO NOT fabricate percentage ROI claims (e.g. do not say "35-40% ROI" or "$500M savings"). Instead, describe concrete Operational Value Drivers (e.g. "Accelerates add-on target screening and eliminates site-selection permitting blind spots").
-3. Prioritize Level 1 (Explicit Stated), Level 2 (Verified Portfolio Exposure), and Level 3 (Strategic Roadmap Adjacency) sectors.
-4. If a sector is Level 4 (Speculative), clearly state that it is a semantic inference without direct operational exposure.
-5. Disqualify Level 5 (Out-of-Scope / Non-commercial / Scale mismatch) sectors.
-
-For each selected sector, provide:
-1. llm_match_rationale: 3 to 4 detailed sentences explaining the precise commercial, operational, and investment thesis alignment based on verified evidence.
-2. requirement_solved: 2 to 3 detailed sentences explaining the specific technical, regulatory, or diligence bottleneck solved.
-3. solution_architecture: 3 to 4 detailed sentences describing the multi-tier data deliverables: (1) Stage-Gate Permitting & Utility Queue Tracker, (2) Developer, Sponsor & Operator Directory, and (3) Asset-Level Technical Capacity & Specification Feeds.
-4. operational_value_driver: A concrete qualitative impact statement (e.g. "Compresses diligence cycle times, eliminates infrastructure capacity blind spots, and identifies off-market pipeline assets 6-9 months ahead of public auctions").
-
-Return strictly valid JSON.
+1. DYNAMIC EVALUATION: Review each candidate sector against the company profile, active portfolio companies, and business archetype.
+2. REJECT SCALE & ARCHETYPE MISMATCHES: If a candidate sector is an advanced gigafactory (e.g., Sodium-Ion Battery, Flow Battery, Polyethylene Resin, Refinery, Smelter) or sovereign civil project (SEZ, Port, Dam, Utility CAES) and the target enterprise is a middle-market commercial buyout fund or software firm, you MUST reject or disqualify that candidate.
+3. ZERO HALLUCINATIONS: Never fabricate that a client has "energy storage businesses", "battery facilities", or "chemical plants" if they do not exist in their verified portfolio. Disqualify ungrounded sectors into "disqualified_audit".
+4. GROUNDING: Prioritize sectors with Level 1 (Explicit Focus) or Level 2 (Verified Portfolio Exposure). Do NOT use generic template text. Explain the exact connection to their portfolio companies, operating platforms, or stated strategy.
+5. DYNAMIC DISQUALIFICATION AUDIT: For candidate sectors from the top candidates that are rejected or speculative, dynamically output them in "disqualified_audit" explaining why they were rejected (e.g. "Scale Mismatch - Middle-market buyout fund does not construct advanced battery gigafactories" or "Semantic Drift - No operational exposure").
 
 Return this JSON shape:
 {
   "ranked_matches": [
     {
       "primary_sector": "Exact Primary Sector Name from candidates",
-      "evidence_level": "LEVEL 1 | LEVEL 2 | LEVEL 3 | LEVEL 4",
-      "llm_match_rationale": "3-4 detailed sentences of domain-specific qualitative rationale.",
+      "evidence_level": "LEVEL 1 (Explicit Stated Focus) | LEVEL 2 (Verified Portfolio Exposure) | LEVEL 3 (Strategic Roadmap Adjacency)",
+      "llm_match_rationale": "3-4 detailed sentences of domain-specific qualitative rationale citing specific portfolio companies or business activities.",
       "requirement_solved": "2-3 detailed sentences of the exact strategic and diligence challenge solved.",
       "solution_architecture": "3-4 detailed sentences describing the bespoke multi-tier data deliverables.",
       "operational_value_driver": "Concrete qualitative operational value statement."
+    }
+  ],
+  "disqualified_audit": [
+    {
+      "sector": "Sector Name",
+      "status": "DISQUALIFIED (Scale Mismatch / Non-Commercial / Semantic Drift)",
+      "rationale": "Clear dynamic explanation of why this sector was rejected."
     }
   ]
 }
 """.strip()
 
+        target_platforms_text = ", ".join(company_details.get("portfolio_target_sectors", []))
         prompt = f"""
-CLIENT PROFILE & PROJECT ROADMAP:
+CLIENT PROFILE & VERIFIED OPERATIONS:
 Company: {company_name}
 Archetype: {archetype}
 Industry Focus: {industry}
+Operating Platforms & Vertical Focus: {target_platforms_text}
 Executive Summary: {summary}
 Business Model: {biz_model}
-Delivered Projects / Track Record: {json.dumps(history, ensure_ascii=False)}
-Current Live Operations: {json.dumps(current_ops, ensure_ascii=False)}
+Delivered Projects / Portfolio Case Studies: {json.dumps(history, ensure_ascii=False)}
+Current Live Operations / Portfolio Footprint: {json.dumps(current_ops, ensure_ascii=False)}
 Future Strategic Roadmaps: {json.dumps(future_maps, ensure_ascii=False)}
 Operational Friction: {friction}
 
-CANDIDATE SECTORS (Top Candidates):
+CANDIDATE SECTORS (Top Candidates from Vector Retrieval):
 {candidate_list_text}
 
-Select and rank the top 3 best matching sectors that solve their historical, current, or future project requirements.
+TASK:
+1. Review each candidate sector against {company_name}'s verified operations, active portfolio platforms, and archetype.
+2. Reject out-of-scope gigafactories, chemical plants, and sovereign mega-projects (e.g. CAES, EVA Plant, Flow Battery, Sodium-Ion Battery, Refinery, Smelter) that do not match their business model, logging the reason in "disqualified_audit".
+3. Select and rank the top 3 best matching sectors that have genuine operational alignment with their portfolio or stated strategy.
 """.strip()
 
-        raw = self._call_llm(prompt, system_prompt)
+        response_format = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "sector_matching_evaluation",
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "ranked_matches": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "primary_sector": {"type": "string"},
+                                    "evidence_level": {"type": "string"},
+                                    "llm_match_rationale": {"type": "string"},
+                                    "requirement_solved": {"type": "string"},
+                                    "solution_architecture": {"type": "string"},
+                                    "operational_value_driver": {"type": "string"}
+                                },
+                                "required": [
+                                    "primary_sector",
+                                    "evidence_level",
+                                    "llm_match_rationale",
+                                    "requirement_solved",
+                                    "solution_architecture",
+                                    "operational_value_driver"
+                                ]
+                            }
+                        },
+                        "disqualified_audit": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "sector": {"type": "string"},
+                                    "status": {"type": "string"},
+                                    "rationale": {"type": "string"}
+                                },
+                                "required": ["sector", "status", "rationale"]
+                            }
+                        }
+                    },
+                    "required": ["ranked_matches", "disqualified_audit"]
+                }
+            }
+        }
+
+        raw = self._call_llm(prompt, system_prompt, response_format=response_format)
         parsed = self._parse_json(raw)
-        ranked = parsed.get("ranked_matches", [])
+        
+        ranked = []
+        dynamic_audit = []
+        if isinstance(parsed, list):
+            ranked = parsed
+        elif isinstance(parsed, dict):
+            ranked = parsed.get("ranked_matches") or parsed.get("top_matches") or parsed.get("matches") or []
+            dynamic_audit = parsed.get("disqualified_audit") or parsed.get("disqualified_and_speculative_audit") or []
 
         default_tiers = ["Primary Strategic Solution", "Secondary Strategic Solution", "Adjacent Expansion Solution"]
         results = []
@@ -538,7 +600,7 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
 
         if ranked and isinstance(ranked, list):
             for i, item in enumerate(ranked[:3]):
-                sec_name = item.get("primary_sector", "").strip()
+                sec_name = (item.get("primary_sector") or item.get("sector") or item.get("Primary Sector") or "").strip()
                 cand_info = candidates_by_name.get(sec_name.lower())
                 if not cand_info:
                     for k, v in candidates_by_name.items():
@@ -546,12 +608,12 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                             cand_info = v
                             break
 
-                defn = cand_info.get("Definition", "") if cand_info else ""
-                vec_score = cand_info.get("vector_cosine", 0.65) if cand_info else 0.65
-                lex_score = cand_info.get("lexical_boost", 0.20) if cand_info else 0.20
-                hyb_score = cand_info.get("business_fit_score", 0.75) if cand_info else 0.75
-                ev_level = item.get("evidence_level") or (cand_info.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)") if cand_info else "LEVEL 2 (Verified Portfolio Exposure)")
-                conf = cand_info.get("confidence", "HIGH") if cand_info else "HIGH"
+                defn = (cand_info.get("Definition") if cand_info else item.get("definition", ""))
+                vec_score = cand_info.get("vector_cosine", 0.60) if cand_info else float(item.get("cosine", 0.60))
+                lex_score = cand_info.get("lexical_boost", 0.10) if cand_info else 0.10
+                hyb_score = cand_info.get("business_fit_score", 0.60) if cand_info else vec_score
+                ev_level = item.get("evidence_level") or item.get("level") or (cand_info.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)") if cand_info else "LEVEL 2 (Verified Portfolio Exposure)")
+                conf = "HIGH" if "LEVEL 1" in ev_level or "LEVEL 2" in ev_level else "MEDIUM"
 
                 results.append({
                     "tier_label": default_tiers[i],
@@ -563,36 +625,33 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
                     "vector_cosine": vec_score,
                     "lexical_boost": lex_score,
                     "business_fit_score": hyb_score,
-                    "llm_match_rationale": item.get("llm_match_rationale", f"Direct operational alignment with {company_name}'s core activities."),
-                    "requirement_solved": item.get("requirement_solved", f"Project pipeline intelligence in {sec_name}."),
-                    "solution_architecture": item.get("solution_architecture", f"End-to-end intelligence suite tracking stage-gate milestones, asset specifications, and stakeholder directories across {sec_name}."),
-                    "operational_value_driver": item.get("operational_value_driver", f"Accelerates strategic diligence and capital deployment, while eliminating market blind spots across {sec_name}.")
+                    "llm_match_rationale": item.get("llm_match_rationale") or item.get("rationale") or f"Direct operational alignment with {company_name}'s verified portfolio footprint.",
+                    "requirement_solved": item.get("requirement_solved") or item.get("requirement") or f"Project pipeline intelligence in {sec_name}.",
+                    "solution_architecture": item.get("solution_architecture") or item.get("solution") or f"End-to-end intelligence suite tracking stage-gate milestones, asset specifications, and stakeholder directories across {sec_name}.",
+                    "operational_value_driver": item.get("operational_value_driver") or item.get("value_driver") or f"Accelerates strategic diligence and capital deployment, while eliminating market blind spots across {sec_name}.",
+                    "dynamic_audit": dynamic_audit
                 })
 
-        if len(results) >= 3:
-            return results
-
-        for i, cand in enumerate(top_candidates[:3]):
-            if len(results) >= 3:
-                break
-            sec_name = cand.get("Primary Sector", "Unknown Sector")
-            if any(r["Primary Sector"].lower() == sec_name.lower() for r in results):
-                continue
-            results.append({
-                "tier_label": default_tiers[len(results)],
-                "Primary Sector": sec_name,
-                "Definition": cand.get("Definition", ""),
-                "evidence_level": cand.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
-                "confidence": cand.get("confidence", "HIGH"),
-                "similarity": cand.get("vector_cosine", 0.65),
-                "vector_cosine": cand.get("vector_cosine", 0.65),
-                "lexical_boost": cand.get("lexical_boost", 0.20),
-                "business_fit_score": cand.get("business_fit_score", 0.75),
-                "llm_match_rationale": f"The {sec_name} sector aligns with {company_name}'s stated operations and resolves key project discovery bottlenecks.",
-                "requirement_solved": f"Early-stage capital project tracking across {sec_name}.",
-                "solution_architecture": f"Bespoke intelligence platform monitoring planning, permitting, and engineering milestones for {sec_name} facilities.",
-                "operational_value_driver": f"Compresses project discovery cycles and strengthens commercial conversion through verified intelligence."
-            })
+        # Fallback if LLM ranked is empty
+        if not results and candidate_sectors:
+            for i, cand in enumerate(candidate_sectors[:3]):
+                sec_name = cand.get("Primary Sector", "Enterprise Sector")
+                results.append({
+                    "tier_label": default_tiers[i],
+                    "Primary Sector": sec_name,
+                    "Definition": cand.get("Definition", ""),
+                    "evidence_level": cand.get("evidence_level", "LEVEL 2 (Verified Portfolio Exposure)"),
+                    "confidence": cand.get("confidence", "HIGH"),
+                    "similarity": cand.get("vector_cosine", 0.65),
+                    "vector_cosine": cand.get("vector_cosine", 0.65),
+                    "lexical_boost": cand.get("lexical_boost", 0.20),
+                    "business_fit_score": cand.get("business_fit_score", 0.75),
+                    "llm_match_rationale": f"The {sec_name} sector aligns with {company_name}'s stated investment operations and solves critical project diligence bottlenecks.",
+                    "requirement_solved": f"Project pipeline intelligence tracking across {sec_name}.",
+                    "solution_architecture": f"Bespoke intelligence platform monitoring planning, permitting, and engineering milestones for {sec_name} assets.",
+                    "operational_value_driver": "Compresses project discovery cycles and strengthens commercial conversion through verified intelligence.",
+                    "dynamic_audit": dynamic_audit
+                })
 
         return results
 
@@ -602,6 +661,7 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
         decision_maker = company_details.get("buying_role_hypothesis", "Strategic Leadership")
 
         mappings = []
+        dynamic_audit = []
         for i, srv in enumerate(matched_services[:3]):
             title = srv.get("Primary Sector") or srv.get("Service Name") or "Intelligence"
             defn = srv.get("Definition") or srv.get("Value Proposition") or "Verified intelligence and operational tracking."
@@ -619,6 +679,9 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             val_driver = srv.get("operational_value_driver") or (
                 f"Compresses research and evaluation cycles, strengthens pitch accuracy, and delivers proprietary visibility across {title} assets."
             )
+
+            if srv.get("dynamic_audit"):
+                dynamic_audit = srv.get("dynamic_audit")
 
             mappings.append({
                 "tier_label": tier_label,
@@ -663,24 +726,13 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             "operational_value_driver": val_driver_pitch,
         }
 
-        # Transparent Disqualification & Speculative Audit
-        disqualified_audit = [
-            {
-                "sector": "Refinery / Petrochemical Facility",
-                "status": "DISQUALIFIED (Level 5 - Scale Mismatch)",
-                "rationale": f"Heavy crude refinery assets exceed middle-market buyout fund scope (${archetype} EV criteria)."
-            },
-            {
-                "sector": "University / School / Academic Facility",
-                "status": "DISQUALIFIED (Level 5 - Non-Commercial Institutional)",
-                "rationale": "Sponsorship of talent recruiting programs is HR hiring, not capital asset investment."
-            },
-            {
-                "sector": "Data Center",
-                "status": "FLAGGED (Level 4 - Speculative Semantic Fit)",
-                "rationale": "Matches tech-enablement thesis, but client does not directly own or construct physical hyperscale data center real estate."
-            }
-        ]
+        # Filter dynamic audit to remove any sectors that are actually in exact mappings (avoiding self-contradiction)
+        mapped_sectors_lower = {m["exact_offering_name"].replace(" Intelligence Platform", "").lower().strip() for m in mappings}
+        clean_disqualified = []
+        for d in dynamic_audit:
+            d_sec = d.get("sector", "").lower().strip()
+            if not any(ms in d_sec or d_sec in ms for ms in mapped_sectors_lower):
+                clean_disqualified.append(d)
 
         return {
             "fit_score": matched_services[0].get("business_fit_score", 0.85) if matched_services else 0.0,
@@ -688,7 +740,7 @@ Select and rank the top 3 best matching sectors that solve their historical, cur
             "client_requirements_summary": req_analysis,
             "exact_product_mappings": mappings,
             "lead_delivery_blueprint": lead_blueprint,
-            "disqualified_audit": disqualified_audit,
+            "disqualified_and_speculative_audit": clean_disqualified
         }
 
 

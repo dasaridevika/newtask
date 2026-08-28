@@ -214,7 +214,7 @@ if run_btn and target_url:
     req_summary = analysis.get("client_requirements_summary", {})
     lead_blueprint = analysis.get("lead_delivery_blueprint", {})
     mappings = analysis.get("exact_product_mappings", [])
-    disqualified_audit = analysis.get("disqualified_audit", [])
+    disqualified_audit = analysis.get("disqualified_and_speculative_audit") or analysis.get("disqualified_audit", [])
 
     # Tab 1: Detailed Client Requirements Analysis
     with tab_reqs:

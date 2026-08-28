@@ -23,31 +23,10 @@ DOMAIN_STOPWORDS = {
     "between", "both", "during", "each", "further", "having", "here", "more", "most",
     "once", "only", "same", "some", "such", "than", "then", "there", "they", "this", "those",
     "very", "what", "when", "where", "which", "while", "who", "whom", "why", "will", "wherever",
-    "data", "market", "markets", "care", "health", "specific", "track", "record", "project", "operations"
+    "data", "market", "markets", "care", "health", "specific", "track", "record", "project", "operations",
+    "technology", "technologies", "industry", "industries", "world", "assets", "under", "strategic", "capital",
+    "companies", "company", "products", "materials", "general", "waste"
 }
-
-# Sectors that are strictly out-of-scope for standard commercial / middle-market enterprises
-NON_COMMERCIAL_INSTITUTIONS = {
-    "university", "school", "penitentiary", "animal shelter", "barrack",
-    "armoury", "villa", "athletic track", "amusement facility", "prisons",
-    "aircraft manufacturing plant", "nuclear power plant", "amusement park",
-    "stadium", "sports complex", "crematorium", "cemetery",
-    "high-rise apartment", "prefabricated apartment", "condominium",
-    "launching pad", "other institutional buildings"
-}
-
-MEGA_INFRASTRUCTURE_KEYWORDS = [
-    "special economic zone", "upstream", "offshore oil", "refinery", "crude distillation",
-    "blast furnace", "smelter", "nuclear power", "sustainable aviation fuel",
-    "compressed-air energy", "compressed air energy", "flow battery", "road infrastructure", "road", "port facility",
-    "material recovery", "aircraft manufacturing", "oil & gas facilities", "oil & gas",
-    "steam turbine", "silicone monomer", "ethylene vinyl acetate", "polyethylene",
-    "gas turbine", "electrolyzer", "petrochemical", "coking plant", "coal mine",
-    "liquefied natural gas", "lng terminal", "crude oil", "launching pad",
-    "apartment", "condominium", "lead acid", "battery production",
-    "multi-family", "cable laying vessel", "agriculture and forestry", "mixed-use building",
-    "highway", "bridge", "tunnel", "railroad", "canal"
-]
 
 def determine_evidence_level(
     sec_name: str, 
@@ -56,41 +35,17 @@ def determine_evidence_level(
     client_inquiry: str = ""
 ) -> Tuple[str, float]:
     """
-    Classifies a candidate offering into strict Ground-Truth Evidence Levels (1 to 5).
+    Classifies a candidate offering into Ground-Truth Evidence Levels dynamically.
     Returns (level_label, confidence_multiplier).
     """
     clean_sec = re.sub(r"\(.*?\)", "", sec_name).lower().strip()
-    clean_sec_flat = re.sub(r"[^a-zA-Z0-9 ]", " ", sec_name).lower()
-    clean_sec_flat = re.sub(r"\s+", " ", clean_sec_flat).strip()
-    sec_lower = f"{sec_name} {definition}".lower()
+    clean_sec_norm = clean_sec.replace(" ", "").replace("-", "")
     sec_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", clean_sec)) - DOMAIN_STOPWORDS
 
     industry_lower = str(company_details.get("industry_focus", "")).lower() if company_details else ""
     archetype_lower = str(company_details.get("archetype", "")).lower() if company_details else ""
 
-    # 1. IMMEDIATE DISQUALIFICATION GATES (LEVEL 5)
-    # Gate A: Non-Commercial, Residential & Institutional
-    if clean_sec in NON_COMMERCIAL_INSTITUTIONS or clean_sec_flat in NON_COMMERCIAL_INSTITUTIONS:
-        is_inst = any(k in archetype_lower or k in industry_lower for k in ["university", "education", "school", "prison", "defense", "military", "aerospace", "sports", "residential"])
-        if not is_inst:
-            return "LEVEL 5 (Unsupported / Out-of-Scope)", 0.0
-
-    # Gate B: Exited / Divested Focus Negation
-    if company_details:
-        exited_list = company_details.get("exited_or_divested_sectors", [])
-        for ex in exited_list:
-            ex_clean = ex.lower().strip()
-            if clean_sec in ex_clean or any(t in ex_clean for t in sec_tokens if len(t) >= 4):
-                return "LEVEL 5 (Exited / Divested Focus)", 0.0
-
-    # Gate C: Heavy Asset / Sovereign Mega-Infrastructure Mismatch for Buyout Sponsors
-    if any(k in archetype_lower for k in ["private equity", "buyout", "middle market", "small business", "fund", "sponsor", "investor"]):
-        if any(kw in clean_sec_flat for kw in MEGA_INFRASTRUCTURE_KEYWORDS):
-            # Only allow if explicitly requested in client inquiry
-            if not (client_inquiry and any(kw in client_inquiry.lower() for kw in MEGA_INFRASTRUCTURE_KEYWORDS)):
-                return "LEVEL 5 (Scale Mismatch / Mega-Infrastructure)", 0.0
-
-    # 2. CHECK INBOUND INQUIRY (LEVEL 1)
+    # 1. CHECK INBOUND INQUIRY (LEVEL 1)
     inquiry_lower = client_inquiry.lower()
     if inquiry_lower and len(inquiry_lower) > 3:
         if clean_sec in inquiry_lower or (sec_tokens and all(re.search(r"\b" + re.escape(t) + r"\b", inquiry_lower) for t in sec_tokens)):
@@ -99,55 +54,47 @@ def determine_evidence_level(
     if not company_details:
         return "LEVEL 4 (Speculative / Semantic Only)", 0.40
 
-    # 3. CHECK EXPLICIT PORTFOLIO TARGET SECTORS (LEVEL 1 / 2)
+    # 2. CHECK EXPLICIT PORTFOLIO TARGET SECTORS (LEVEL 1 / 2)
     target_secs = company_details.get("portfolio_target_sectors", [])
-    clean_sec_norm = clean_sec.replace(" ", "").replace("-", "")
     for ts in target_secs:
-        ts_lower = ts.lower().strip()
-        ts_norm = ts_lower.replace(" ", "").replace("-", "")
-        if ts_norm in clean_sec_norm or clean_sec_norm in ts_norm:
+        ts_clean = re.sub(r"[^a-zA-Z0-9\s]", "", ts).lower().strip()
+        ts_norm = ts_clean.replace(" ", "")
+        
+        # Exact match of sector phrase
+        if clean_sec == ts_clean or clean_sec_norm == ts_norm:
             return "LEVEL 1 (Explicit Stated Focus)", 0.95
-        ts_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", ts_lower)) - DOMAIN_STOPWORDS
-        if ts_tokens and any(t in clean_sec or t in sec_lower for t in ts_tokens):
-            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
 
-    # 4. CHECK EXPLICIT CORE INDUSTRY (LEVEL 1)
-    if clean_sec in industry_lower:
+        # Check if distinctive target sector (>= 6 chars and not in stopwords) is contained in normalized sector name
+        if len(ts_norm) >= 6 and ts_norm not in DOMAIN_STOPWORDS and (ts_norm in clean_sec_norm or clean_sec_norm in ts_norm):
+            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+            
+        # Non-stopword tokens matching
+        ts_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", ts_clean)) - DOMAIN_STOPWORDS
+        if ts_tokens:
+            if len(ts_tokens) >= 2 and all(t in clean_sec for t in ts_tokens):
+                return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
+            elif len(ts_tokens) == 1 and all(t in clean_sec for t in ts_tokens) and len(list(ts_tokens)[0]) >= 6:
+                return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
+
+    # 3. CHECK EXPLICIT CORE INDUSTRY FOCUS (LEVEL 1)
+    if clean_sec == industry_lower:
         return "LEVEL 1 (Explicit Core Sector)", 0.95
     if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", industry_lower) for t in sec_tokens):
         return "LEVEL 1 (Explicit Core Sector)", 0.95
 
-    # 5. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
+    # 4. CHECK VERIFIED PORTFOLIO CASE STUDIES AND OPERATIONS (LEVEL 2)
     past_text = " ".join([p.get("project_name", "") + " " + p.get("summary", "") for p in company_details.get("delivered_historical_projects", [])]).lower()
     active_text = " ".join([o.get("operation_name", "") + " " + o.get("details", "") for o in company_details.get("current_active_operations", [])]).lower()
     portfolio_text = f"{past_text} {active_text}"
 
-    # Check for direct footprint mentions
-    if "distribution" in portfolio_text or "warehouse" in portfolio_text or "facility" in portfolio_text:
-        if clean_sec in ["warehouse", "distribution hub", "commercial building"]:
-            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
-    if "healthcare" in portfolio_text or "clinic" in portfolio_text:
-        if clean_sec in ["other health care building", "general hospital", "clinic"]:
-            return "LEVEL 2 (Verified Portfolio Exposure)", 0.90
-    if "managed services" in portfolio_text or "cybersecurity" in portfolio_text or "technology" in portfolio_text:
-        if clean_sec in ["other communication infrastructure", "data center"]:
-            return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
-
-    if clean_sec in portfolio_text:
-        return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
+    if clean_sec in portfolio_text and len(clean_sec) >= 5:
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
     if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", portfolio_text) for t in sec_tokens):
+        return "LEVEL 2 (Verified Portfolio Exposure)", 0.88
+    elif sec_tokens and len(sec_tokens) == 1 and len(list(sec_tokens)[0]) >= 6 and re.search(r"\b" + re.escape(list(sec_tokens)[0]) + r"\b", portfolio_text):
         return "LEVEL 2 (Verified Portfolio Exposure)", 0.85
 
-    # 6. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
-    future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
-    if clean_sec in future_text:
-        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
-    if sec_tokens and len(sec_tokens) >= 2 and all(re.search(r"\b" + re.escape(t) + r"\b", future_text) for t in sec_tokens):
-        return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
-
-    return "LEVEL 4 (Speculative / Semantic Only)", 0.40
-
-    # 6. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
+    # 5. CHECK STRATEGIC EXPANSION & ROADMAP (LEVEL 3)
     future_text = " ".join([f.get("initiative", "") + " " + f.get("strategic_objective", "") for f in company_details.get("future_roadmaps_and_expansion", [])]).lower()
     if clean_sec in future_text:
         return "LEVEL 3 (Strategic Roadmap Adjacency)", 0.70
@@ -197,36 +144,43 @@ class ServiceCatalog:
         return len(self.sectors)
 
     def _get_worker_embedding(self, text: str) -> np.ndarray:
-        """Generates a 1024-dim dense vector using Cloudflare Workers AI with caching."""
+        """Generates a 1024-dim dense vector using Cloudflare Workers AI with caching and retries."""
         cache_key = text.strip().lower()
         if cache_key in self._embedding_cache:
             return self._embedding_cache[cache_key]
 
         if not self.worker_url:
             return None
-        try:
-            resp = requests.post(
-                self.worker_url.rstrip("/") + "/ai/embed",
-                json={"model": self.model_name, "text": [text]},
-                headers={"Content-Type": "application/json"},
-                timeout=25
-            )
-            if resp.status_code == 200:
-                data = resp.json().get("data", [])
-                if data and isinstance(data[0], list):
-                    vec = np.array(data[0], dtype=np.float32)
-                    norm = np.linalg.norm(vec)
-                    normalized = vec / (norm if norm > 0 else 1e-10)
-                    self._embedding_cache[cache_key] = normalized
-                    return normalized
-                elif data and isinstance(data[0], dict) and "values" in data[0]:
-                    vec = np.array(data[0]["values"], dtype=np.float32)
-                    norm = np.linalg.norm(vec)
-                    normalized = vec / (norm if norm > 0 else 1e-10)
-                    self._embedding_cache[cache_key] = normalized
-                    return normalized
-        except Exception as e:
-            print(f"[Embedding Error]: {e}")
+            
+        for attempt in range(3):
+            try:
+                resp = requests.post(
+                    self.worker_url.rstrip("/") + "/ai/embed",
+                    json={"model": self.model_name, "text": [text[:2000]]},
+                    headers={"Content-Type": "application/json"},
+                    timeout=30
+                )
+                if resp.status_code == 200:
+                    data = resp.json().get("data", [])
+                    if data and isinstance(data[0], list):
+                        vec = np.array(data[0], dtype=np.float32)
+                        norm = np.linalg.norm(vec)
+                        normalized = vec / (norm if norm > 0 else 1e-10)
+                        self._embedding_cache[cache_key] = normalized
+                        return normalized
+                    elif data and isinstance(data[0], dict) and "values" in data[0]:
+                        vec = np.array(data[0]["values"], dtype=np.float32)
+                        norm = np.linalg.norm(vec)
+                        normalized = vec / (norm if norm > 0 else 1e-10)
+                        self._embedding_cache[cache_key] = normalized
+                        return normalized
+                elif resp.status_code in (429, 500, 502, 503, 504):
+                    time.sleep(1.0 * (attempt + 1))
+                    continue
+            except Exception as e:
+                if attempt == 2:
+                    print(f"[Embedding Error]: {e}")
+                time.sleep(1.0 * (attempt + 1))
         return None
 
     def embed_company(self, company_details: dict, scraped_text: str = "", client_inquiry: str = "") -> dict:
