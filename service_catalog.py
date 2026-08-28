@@ -208,9 +208,25 @@ class ServiceCatalog:
         # Top company profile indices
         top_comp_indices = [int(i) for i in np.argsort(-retrieval_scores)]
 
-        # Ordered deduplication: Inquiry candidates FIRST, followed by company profile candidates
+        # 4. Multi-Facet Discovery: Extract distinctive capabilities from sub-sections
+        facet_indices = []
+        if company_text and self.tfidf_vectorizer and self.tfidf_matrix is not None:
+            sub_sections = [s.strip() for s in company_text.split("===") if len(s.strip()) > 40]
+            if not sub_sections:
+                sub_sections = [s.strip() for s in company_text.split("\n\n") if len(s.strip()) > 40]
+            for sec in sub_sections[:8]:
+                try:
+                    s_vec = self.tfidf_vectorizer.transform([sec])
+                    s_sims = (self.tfidf_matrix * s_vec.T).toarray().flatten()
+                    for s_idx in np.argsort(-s_sims)[:3]:
+                        if s_sims[s_idx] > 0.05 and int(s_idx) not in facet_indices:
+                            facet_indices.append(int(s_idx))
+                except Exception:
+                    pass
+
+        # Ordered deduplication: Inquiry candidates FIRST, followed by multi-facet candidates, followed by global profile candidates
         merged_indices = []
-        for idx in inquiry_indices + top_comp_indices:
+        for idx in inquiry_indices + facet_indices + top_comp_indices:
             if idx not in merged_indices:
                 merged_indices.append(idx)
             if len(merged_indices) >= top_k:
