@@ -373,7 +373,8 @@ class WorkerAI:
             GENERIC_STRUCTURAL_WORDS = {
                 "plant", "plants", "facility", "facilities", "infrastructure", "system", "systems",
                 "production", "storage", "other", "services", "service", "building", "buildings",
-                "complex", "management", "support", "integrated", "center", "centers"
+                "complex", "management", "support", "integrated", "center", "centers", "energy",
+                "power", "general", "advanced", "specialized"
             }
 
             # 1. Exact canonical sector phrase match
