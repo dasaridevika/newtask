@@ -243,6 +243,8 @@ if run_btn:
                 st.markdown("### Executive Strategic Brief")
                 st.write(company_details.get("executive_profile_analysis", ""))
                 st.markdown(f"**Business Model & Operations:** {company_details.get('business_model_and_revenue_drivers', '')}")
+                if client_inquiry:
+                    st.markdown(f"**Inbound Client Mandate:** `{client_inquiry}`")
 
             # 4-Pillar Requirements & Operating Thesis
             st.markdown("### Strategic Requirements & Operating Thesis")
@@ -265,25 +267,47 @@ if run_btn:
                     st.markdown("#### Regulatory, Permitting & ESG Compliance")
                     st.write(req_summary.get("regulatory_permitting_and_esg_needs", "Compliance with environmental filings, safety standards, and municipal dockets."))
 
-            # Bottlenecks and Target Decision Maker
-            c_bot, c_dec = st.columns([3, 2])
+            # Operational Friction & Risk Mitigation Deep-Dive
+            st.markdown("### Operational Friction & Risk Mitigation Strategy")
+            c_bot, c_mit = st.columns(2)
             with c_bot:
                 with st.container(border=True):
                     st.markdown("#### Primary Operational Bottlenecks")
                     st.write(req_summary.get("primary_operational_bottleneck", "Capacity scaling constraints and infrastructure lead times."))
-            with c_dec:
+            with c_mit:
                 with st.container(border=True):
-                    st.markdown("#### Target Executive Decision Maker")
-                    st.info(f"**{req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Engineering / Business Development'))}**")
+                    st.markdown("#### Strategic Risk Mitigation")
+                    st.write(req_summary.get("risk_mitigation_strategy", "Deploy stage-gate project tracking to engage developers and EPCs 6-9 months ahead of RFP issuance."))
 
-            # Strategic Solution Recommendation Summary
+            # Commercial Execution Roadmap
+            with st.container(border=True):
+                st.markdown("### Actionable Commercial Execution Roadmap")
+                st.markdown("""
+                * **Phase 1: Pre-Permit Diligence & Substation Surveillance (Months 1–3)**: Monitor regional ISO/RTO interconnect queues and early municipal environmental filings to identify multi-megawatt capital project pipelines.
+                * **Phase 2: Stakeholder & EPC Contractor Mapping (Months 3–6)**: Establish proactive engagement with project developers, general contractors, and engineering procurement teams ahead of formal RFP release.
+                * **Phase 3: Technical Specification & Commercial Delivery (Months 6+)**: Embed technical equipment specifications (power conditioning, inverters, switchgear, thermal topologies) into baseline capital project tenders.
+                """)
+
+            # Multi-Offering Strategic Portfolio Breakdown
             if exact_matches:
                 with st.container(border=True):
-                    st.markdown("### Recommended Offering Synthesis")
-                    st.markdown(f"Based on verified evidence and explicit requirements, the primary strategic match is **{exact_matches[0]['exact_offering_name']}**.")
-                    st.markdown(f"- **Strategic Alignment:** {exact_matches[0].get('rationale', '')}")
-                    st.markdown(f"- **Operational Value Driver:** {exact_matches[0].get('operational_value_driver', '')}")
-                    st.markdown(f"- **Implementation Scope:** {exact_matches[0].get('comprehensive_narrative', '')}")
+                    st.markdown("### Recommended Offering Portfolio Synthesis")
+                    for match_idx, match_item in enumerate(exact_matches):
+                        st.markdown(f"#### {match_item.get('tier_label', f'Solution {match_idx+1}')}: **{match_item.get('exact_offering_name')}** (`{match_item.get('candidate_id')}`)")
+                        st.markdown(f"- **Strategic Alignment:** {match_item.get('rationale', '')}")
+                        st.markdown(f"- **Operational Value Driver:** {match_item.get('operational_value_driver', '')}")
+                        st.markdown(f"- **Solution Scope:** {match_item.get('comprehensive_narrative', '')}")
+                        if match_idx < len(exact_matches) - 1:
+                            st.divider()
+
+            # Target Executive Decision Maker Card
+            with st.container(border=True):
+                st.markdown("### Target Executive Decision Maker & Commercial Positioning")
+                c_dec1, c_dec2 = st.columns([2, 3])
+                with c_dec1:
+                    st.info(f"**Target Persona:**\n\n{req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Infrastructure Engineering / Business Development'))}")
+                with c_dec2:
+                    st.write("**Commercial Positioning Angle:** Position data deliverables as a high-margin commercial accelerator that eliminates infrastructure capacity blind spots, tracks utility grid interconnection queue milestones, and delivers proprietary sales leads 6–9 months ahead of public market auctions.")
 
         # Tab 2: Matched Offerings & Top K Leaderboard
         with tab_offer:

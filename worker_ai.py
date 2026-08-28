@@ -227,19 +227,21 @@ class WorkerAI:
                 inq_low = inq_term.lower()
                 
                 if "solar" in inq_low or "pv" in inq_low or "renewable" in inq_low or "clean energy" in inq_low:
-                    growth_mandate = f"Accelerate commercial deployment, grid interconnection readiness, and capital project pipeline visibility across Solar Photovoltaic (PV) power developments and manufacturing expansions."
+                    growth_mandate = f"Accelerate commercial deployment, grid interconnection readiness, and capital project pipeline visibility across Solar Photovoltaic (PV) power developments, cell/module manufacturing expansions, and circular lifecycle infrastructure."
                     asset_needs = f"Utility grid interconnection queues (MW capacity), stage-gate environmental review (EIS) filings, high-voltage power conditioning equipment specifications, and battery energy storage system (BESS) co-location assets."
-                    diligence_needs = f"Continuous market intelligence tracking active solar developers, EPC contractors, utility substation filings, and corporate PPA award milestones."
-                    regulatory_needs = f"FERC/RTO interconnection queue compliance, local municipal zoning approvals, NEPA/EIS dockets, and circular lifecycle recycling certifications."
-                    bottleneck = f"Grid interconnection queue backlogs, long-lead power transformation equipment procurement, and lack of pre-RFP capital project pipeline visibility."
+                    diligence_needs = f"Continuous market intelligence tracking active solar developers, EPC contractors, utility substation filings, and corporate PPA award milestones across target regional ISO/RTO territories."
+                    regulatory_needs = f"FERC/RTO interconnection queue compliance, local municipal zoning approvals, NEPA/EIS environmental dockets, and circular lifecycle recycling certifications."
+                    bottleneck = f"Grid interconnection queue backlogs (24–48 month lead times), long-lead power transformation equipment procurement, and lack of pre-RFP capital project pipeline visibility."
+                    mitigation = f"Deploy continuous stage-gate utility queue tracking to engage developers and EPCs 6–9 months ahead of formal RFP issuance, securing preferred vendor positioning for power conversion and critical infrastructure hardware."
                     decision_maker = f"VP of Renewable Infrastructure, VP of Business Development, or Chief Commercial Officer at {clean_name}"
-                    exec_summary = f"{clean_name} is evaluating and scaling its market footprint in {inq_term}. The mandate requires early-stage visibility into multi-megawatt capital project pipelines, utility interconnection queues, and equipment procurement cycles to secure competitive commercial positioning."
+                    exec_summary = f"{clean_name} is actively evaluating and expanding its commercial and technical infrastructure footprint across {inq_term} developments. As an established {archetype}, {clean_name}'s strategic objective centers on capturing early-stage capital project pipelines, tracking multi-megawatt utility substation queue filings, and supplying critical power delivery and conditioning equipment to utility-scale solar developers and industrial assembly facilities."
                 elif "data center" in inq_low or "compute" in inq_low or "ai" in inq_low:
-                    growth_mandate = f"Scale high-density compute infrastructure, power delivery reliability, and thermal management systems across hyperscale and enterprise data center builds."
+                    growth_mandate = f"Scale high-density compute infrastructure, power delivery reliability, and direct-to-chip liquid thermal management systems across hyperscale and enterprise data center builds."
                     asset_needs = f"High-capacity power substation feeds (100MW+), direct-to-chip liquid cooling manifolds, backup UPS topologies, and prefabricated modular data center enclosures."
                     diligence_needs = f"Visibility into hyperscale site selection filings, utility queue milestone approvals, colocation capacity expansions, and EPC contractor tenders."
                     regulatory_needs = f"Grid interconnect stability filings, municipal water usage & environmental compliance dockets, and PUE energy efficiency standards."
                     bottleneck = f"Substation power availability delays, long equipment lead times, and thermal management constraints under 1MW/rack high-density compute."
+                    mitigation = f"Surveillance of high-voltage power allocation filings and modular infrastructure dockets to pre-qualify power train and liquid cooling topologies during early site design."
                     decision_maker = f"VP of Infrastructure Engineering, Chief Technology Officer, or Facilities Director at {clean_name}"
                     exec_summary = f"{clean_name} is advancing high-density compute and power delivery infrastructure. The mandate focuses on tracking multi-megawatt substation interconnection queues, cooling innovations, and capital buildout schedules."
                 else:
@@ -248,6 +250,7 @@ class WorkerAI:
                     diligence_needs = f"Continuous intelligence feeds on project developers, general contractors, utility queue milestones, and key asset owners across {inq_term}."
                     regulatory_needs = f"Compliance with municipal zoning dockets, environmental permits, and state regulatory licensing requirements."
                     bottleneck = f"Managing project lead times, permitting backlogs, and securing early visibility into pre-RFP capital buildout pipelines."
+                    mitigation = f"Implement proactive stage-gate intelligence tracking to surface upcoming project milestones before public auction releases."
                     decision_maker = f"VP of Business Development, Head of Capital Projects, or Facilities Director at {clean_name}"
                     exec_summary = f"{clean_name} has initiated a targeted inquiry into {inq_term}. The objective is to identify active development pipelines, permitting milestones, and procurement cycles to accelerate commercial execution."
             else:
@@ -256,6 +259,7 @@ class WorkerAI:
                 diligence_needs = f"Continuous tracking of facility construction pipelines, utility interconnection filings, and key asset owner networks."
                 regulatory_needs = f"Compliance with industry safety standards, environmental review dockets, and local zoning approvals."
                 bottleneck = f"Supply chain lead times, capacity scaling hurdles, and infrastructure interconnection queues."
+                mitigation = f"Track early infrastructure expansion filings and municipal dockets to secure early positioning in capital buildouts."
                 decision_maker = f"VP of Infrastructure Engineering, Chief Technology Officer, or Facilities Director at {clean_name}"
                 exec_summary = f"{clean_name} is a leading {archetype} active in {industry_focus}. Grounded in verified operational evidence, its core operational requirements center on tracking stage-gate construction milestones, power delivery dockets, and equipment procurement cycles."
 
@@ -273,6 +277,7 @@ class WorkerAI:
                     "market_diligence_and_deal_sourcing_needs": diligence_needs,
                     "regulatory_permitting_and_esg_needs": regulatory_needs,
                     "primary_operational_bottleneck": bottleneck,
+                    "risk_mitigation_strategy": mitigation if "mitigation" in locals() else "Proactive intelligence pipeline tracking.",
                     "target_decision_maker": decision_maker
                 },
                 "delivered_historical_projects": [],
