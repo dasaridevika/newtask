@@ -279,15 +279,7 @@ if run_btn:
                         st.markdown(f"- **{t_label} (`{c_id}`) — {o_name}**")
                         st.markdown(f"  *{v_driver}*")
 
-            # 4. Target Executive Decision Maker & Commercial Strategy
-            with st.container(border=True):
-                st.markdown("### Target Executive Decision Maker & Commercial Angle")
-                dec_col1, dec_col2 = st.columns([2, 3])
-                with dec_col1:
-                    target_person = req_summary.get('target_decision_maker', company_details.get('buying_role_hypothesis', 'VP of Infrastructure / Business Development'))
-                    st.info(f"**Target Persona:**\n\n{target_person}")
-                with dec_col2:
-                    st.markdown("**Commercial Angle:** Position data deliverables to eliminate infrastructure capacity blind spots, track multi-megawatt substation interconnection filings, and secure proprietary vendor positioning prior to formal RFP issuance.")
+
 
         # Tab 2: Matched Offerings & Top K Leaderboard
         with tab_offer:
