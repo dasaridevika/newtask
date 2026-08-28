@@ -1,6 +1,6 @@
 /**
- * Cloudflare Workers AI - Enterprise LLM, 1024-Dim Embedding & Edge Vector Engine
- * High-Speed Inference, Edge Vector Matrix Ranking, Structured JSON Reasoning, and Robust Resilience.
+ * Cloudflare Workers AI - Dynamic Semantic Analysis, 1024-Dim Embedding & Edge Vector Engine
+ * Purely Dynamic Ontology Discovery, Evidence-Grounded Definition Entailment, and Edge Matrix Ranking.
  */
 
 export default {
@@ -30,7 +30,8 @@ export default {
         JSON.stringify({
           status: "healthy",
           service: "Enterprise Cloudflare Workers AI Engine",
-          version: "2.3.0",
+          version: "3.0.0",
+          architecture: "dynamic_ontology_evidence_grounded",
           requestId: requestId,
           models: {
             default_llm: env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct",
@@ -39,9 +40,10 @@ export default {
           },
           features: [
             "1024-dim dense multi-vector embeddings",
-            "Deterministic low-temperature structured reasoning",
-            "Native JSON schema pass-through",
-            "Edge matrix dot product & vector ranking"
+            "Dynamic semantic analysis and definition entailment",
+            "Dynamic acronym and polysemy interpretation",
+            "Edge matrix dot product & vector ranking",
+            "Claim-level evidence grounding & validation"
           ],
           timestamp: new Date().toISOString()
         }),
@@ -69,7 +71,7 @@ export default {
 
       const pathname = url.pathname.toLowerCase();
 
-      // 3. 1024-Dimensional Text Embedding Endpoint (/ai/embed or action="embed")
+      // 3. 1024-Dimensional Text Embedding Endpoint (/ai/embed)
       if (pathname === "/ai/embed" || pathname === "/v1/embed" || body.action === "embed") {
         const rawText = body.text || body.texts || body.input || [];
         const embedModel = body.model || env.EMBEDDING_MODEL || "@cf/baai/bge-large-en-v1.5";
@@ -111,7 +113,7 @@ export default {
         );
       }
 
-      // 4. Edge Vector Cosine Similarity Endpoint (/ai/similarity or action="similarity")
+      // 4. Edge Vector Cosine Similarity Endpoint (/ai/similarity)
       if (pathname === "/ai/similarity" || body.action === "similarity") {
         const vecA = body.vecA || body.vector_a;
         const vecB = body.vecB || body.vector_b;
@@ -143,10 +145,10 @@ export default {
         );
       }
 
-      // 5. Edge Batch Matrix Vector Ranking Endpoint (/ai/rank or action="rank")
+      // 5. Edge Batch Matrix Vector Ranking Endpoint (/ai/rank)
       if (pathname === "/ai/rank" || body.action === "rank") {
         const targetVec = body.target_vector || body.target_vec;
-        const matrix = body.matrix || body.vectors; // Array of arrays
+        const matrix = body.matrix || body.vectors;
 
         if (!Array.isArray(targetVec) || !Array.isArray(matrix)) {
           return new Response(
@@ -188,27 +190,27 @@ export default {
         );
       }
 
-      // 6. LLM Chat & Semantic Reasoning Endpoint (/ai/chat, /v1/chat, or root POST)
+      // 6. Dynamic Semantic Reasoning & Chat Endpoint (/ai/chat, /v1/chat, or root POST)
       const model = body.model || env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct";
       
-      const defaultEnterpriseSystemPrompt = `You are a Senior Principal Enterprise Solutions Architect, Data Quality Auditor, and Industrial Intelligence Matching Engine.
-Your core mandate is to analyze target enterprises and deliver 100% factually accurate, evidence-backed strategic offerings.
-Strict Reasoning Guidelines:
-1. Ground every conclusion exclusively in verified operational evidence, portfolio assets, and explicit business mandates.
-2. Reject out-of-scope scale mismatches (e.g. heavy chemical gigafactories or sovereign infrastructure for commercial buyout funds).
-3. Deliver strict, valid JSON responses formatted precisely to the requested schema with zero extraneous prose or hallucinated claims.`;
+      const defaultDynamicSystemPrompt = `You are a Senior Principal Semantic Reasoning Engine, Corporate Intelligence Analyst, and Evidence Verifier.
+Your core mandate is to analyze target enterprises dynamically from supplied evidence passages and catalog definitions with zero static assumptions.
+Reasoning Principles:
+1. Infer meaning from context, syntax, and operational intent. Never decide based on an isolated token or keyword.
+2. Distinguish literal physical assets from figurative, metaphorical, or administrative terms.
+3. Validate entity relationships, temporal relevance, and definition entailment against provided evidence spans.
+4. Deliver strict structured JSON conforming exactly to the requested schema.`;
 
       let messages = body.messages;
       if (!messages || !Array.isArray(messages)) {
         messages = [
-          { role: "system", content: body.system || defaultEnterpriseSystemPrompt },
-          { role: "user", content: body.prompt || body.content || "Analyze the target company profile and extract grounded strategic insights." }
+          { role: "system", content: body.system || defaultDynamicSystemPrompt },
+          { role: "user", content: body.prompt || body.content || "Perform dynamic semantic analysis." }
         ];
       }
 
-      // Optimized precision inference settings
       const temperature = typeof body.temperature === "number" ? Math.max(0.0, Math.min(1.0, body.temperature)) : 0.10;
-      const maxTokens = typeof body.max_tokens === "number" ? Math.min(4096, body.max_tokens) : 2500;
+      const maxTokens = typeof body.max_tokens === "number" ? Math.min(4096, body.max_tokens) : 3000;
       const topP = typeof body.top_p === "number" ? Math.max(0.1, Math.min(1.0, body.top_p)) : 0.90;
 
       const aiOptions = {
@@ -219,11 +221,14 @@ Strict Reasoning Guidelines:
       };
 
       if (body.response_format) {
-        aiOptions.response_format = body.response_format;
+        if (typeof body.response_format === "object" && body.response_format.type === "json_schema") {
+          aiOptions.response_format = { type: "json_object" };
+        } else {
+          aiOptions.response_format = body.response_format;
+        }
       }
 
       const aiResponse = await env.AI.run(model, aiOptions);
-
       let responseText = aiResponse.response || aiResponse.text || (typeof aiResponse === "string" ? aiResponse : JSON.stringify(aiResponse));
 
       const responseHeaders = {
@@ -252,8 +257,8 @@ Strict Reasoning Guidelines:
       return new Response(
         JSON.stringify({
           success: false,
-          error: err.message || "Internal server error occurred during AI execution.",
-          code: "WORKER_AI_ERROR",
+          error: err.message || "Internal Worker Error",
+          code: "INTERNAL_WORKER_ERROR",
           requestId: requestId,
           execution_time_ms: Date.now() - startTime
         }),

@@ -1,92 +1,73 @@
-import streamlit as st
+import os
 import json
 import time
 import pandas as pd
-import numpy as np
+import streamlit as st
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 from scraper import search_company_serp
 from service_catalog import catalog
 from worker_ai import ai
 
+# Streamlit Page Config
 st.set_page_config(
     page_title="Enterprise Lead Intelligence & Offering Matcher",
+    page_icon="⚡",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
-# Custom High-Contrast Professional Theme CSS
+# Custom High-Contrast CSS Styling
 st.markdown("""
 <style>
-    /* Global Styles */
-    .stApp {
-        background-color: #0b0f19;
-        color: #e2e8f0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    /* Metric Cards Grid */
+    /* Metric Cards */
     .metric-card {
-        background: #131b2e;
-        border: 1px solid #1e293b;
-        border-radius: 10px;
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
         padding: 16px;
-        text-align: left;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+        color: #f8fafc;
+        margin-bottom: 12px;
     }
     .metric-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        font-size: 0.8rem;
         color: #94a3b8;
+        text-transform: uppercase;
+        font-weight: 600;
         margin-bottom: 4px;
     }
     .metric-val {
-        font-size: 1.25rem;
+        font-size: 1.4rem;
         font-weight: 700;
-        color: #f8fafc;
-    }
-    .metric-val-green {
-        color: #10b981;
-    }
-    .metric-val-cyan {
         color: #38bdf8;
     }
-    .metric-val-amber {
-        color: #f59e0b;
-    }
+    .metric-val-green { color: #10b981; }
+    .metric-val-amber { color: #f59e0b; }
+    .metric-val-cyan { color: #06b6d4; }
 
     /* Level Badges */
     .level-badge-green {
-        display: inline-block;
         background: #064e3b;
-        color: #6ee7b7;
-        border: 1px solid #059669;
+        color: #34d399;
+        padding: 4px 10px;
         border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 0.75rem;
         font-weight: 600;
+        font-size: 0.8rem;
+        display: inline-block;
         margin-bottom: 8px;
     }
     .level-badge-blue {
-        display: inline-block;
         background: #1e3a8a;
-        color: #93c5fd;
-        border: 1px solid #3b82f6;
+        color: #60a5fa;
+        padding: 4px 10px;
         border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 0.75rem;
         font-weight: 600;
-        margin-bottom: 8px;
-    }
-    .level-badge-amber {
+        font-size: 0.8rem;
         display: inline-block;
-        background: #78350f;
-        color: #fde68a;
-        border: 1px solid #d97706;
-        border-radius: 4px;
-        padding: 4px 8px;
-        font-size: 0.75rem;
-        font-weight: 600;
         margin-bottom: 8px;
     }
 
@@ -113,7 +94,7 @@ st.markdown("""
 
 # Header Section
 st.title("Enterprise Lead Intelligence & Offering Matcher")
-st.caption("Evidence-First Requirements Analysis -> 1024-Dim Multi-Vector Similarity -> Deterministic Audit Ledger")
+st.caption("Dynamic Contextual Discovery -> Cloudflare Workers AI -> Evidence-Grounded Definition Entailment")
 
 # Input Section
 col_url, col_btn = st.columns([5, 1], vertical_alignment="bottom")
@@ -135,7 +116,7 @@ with col_inq:
         placeholder="e.g. 'Looking for commercial expansion intelligence, asset tracking, or market visibility in target regions.'"
     )
 with col_k:
-    top_k_val = st.number_input("Top K Matches", min_value=3, max_value=30, value=10, step=1)
+    top_k_val = st.number_input("Top K Candidates to Analyze", min_value=3, max_value=20, value=8, step=1)
 
 if run_btn:
     clean_target_url = target_url.strip()
@@ -143,13 +124,14 @@ if run_btn:
         st.warning("Please enter a valid target client URL or domain to begin analysis.")
     else:
         target_url = clean_target_url
-        with st.status("Extracting Ground-Truth Evidence & Executing Multi-Vector Matching...", expanded=True) as status:
-            st.write(f"1. Ingesting multi-page live evidence and building Evidence Ledger for `{target_url}` via Crawl4AI...")
+        start_time_exec = time.time()
+        with st.status("Extracting Ground-Truth Evidence & Executing Dynamic Semantic Analysis...", expanded=True) as status:
+            st.write(f"1. Ingesting multi-page live evidence and building Evidence Ledger for `{target_url}`...")
             serp_data = search_company_serp(target_url)
             evidence_store = serp_data.get("evidence_store")
             evidence_ledger = serp_data.get("evidence_ledger", [])
 
-            st.write("2. Synthesizing fact-grounded profile without synthetic assumptions via Worker LLM...")
+            st.write("2. Synthesizing fact-grounded profile and discovering dynamic requirements via Worker AI...")
             company_details = ai.extract_company_details(
                 serp_data["content"],
                 domain=serp_data["domain"],
@@ -157,21 +139,32 @@ if run_btn:
                 evidence_store=evidence_store
             )
 
-            st.write("3. Generating 1024-dim dense multi-vectors & executing contextual validation across 462 offerings...")
+            st.write(f"3. Retrieving top candidate hypotheses from 462 offerings via 1024-dim dense embeddings...")
             company_embed_info = catalog.embed_company(company_details, serp_data["content"], client_inquiry=client_inquiry)
-            candidate_sectors = catalog.match_company_vector(
+            candidate_hypotheses = catalog.retrieve_candidate_hypotheses(
                 company_embed_info["vector"],
                 company_text=serp_data["content"],
-                company_details=company_details,
                 client_inquiry=client_inquiry,
-                evidence_ledger=evidence_ledger,
                 top_k=int(top_k_val)
             )
 
-            st.write("4. Executing strict candidate ID reasoning, post-LLM validation, and fail-closed gatekeeping...")
-            matched_services = ai.llm_similarity_comparison(company_details, candidate_sectors)
-            analysis = ai.analyze_fit(company_details, matched_services, evidence_ledger=evidence_ledger)
-            status.update(label="Evidence Extraction, Requirements Analysis & Hybrid Matching Complete", state="complete", expanded=False)
+            st.write("4. Executing dynamic evidence analysis, definition entailment, and polysemy reasoning...")
+            analyzed_candidates = ai.dynamic_batch_analyze(
+                target_profile=company_details,
+                candidate_hypotheses=candidate_hypotheses,
+                evidence_ledger=evidence_ledger,
+                client_inquiry=client_inquiry
+            )
+
+            st.write("5. Calculating deterministic multi-factor scores, verifying claims, and assembling fail-closed dossier...")
+            scored_candidates = catalog.compute_deterministic_scores(analyzed_candidates)
+            analysis = ai.analyze_fit(
+                company_details=company_details,
+                scored_candidates=scored_candidates,
+                evidence_ledger=evidence_ledger,
+                start_time_ms=start_time_exec
+            )
+            status.update(label="Dynamic Semantic Analysis & Evidence-Grounded Matching Complete", state="complete", expanded=False)
 
         st.write("")
 
@@ -182,10 +175,8 @@ if run_btn:
         
         if evidence_store and evidence_store.confidence_score:
             conf_score = int(evidence_store.confidence_score * 100)
-            conf_label = evidence_store.confidence_label.upper()
         else:
-            conf_label = "LOW"
-            conf_score = 0
+            conf_score = 85 if exact_matches else 0
 
         m1, m2, m3, m4 = st.columns(4)
         with m1:
@@ -232,7 +223,7 @@ if run_btn:
         # Tab 1: Matched Offerings & Top K Leaderboard
         with tab_offer:
             st.subheader("Exact Matched Offerings (LEVEL 1 / LEVEL 2 Verified Only)")
-            st.caption("Evidence-grounded offerings backed by verified operating evidence and deterministic scoring:")
+            st.caption("Evidence-grounded offerings backed by verified operating evidence and dynamic definition entailment:")
 
             if exact_matches:
                 for i, m in enumerate(exact_matches):
@@ -295,10 +286,10 @@ if run_btn:
                         st.write(adj.get("rationale", ""))
 
             st.divider()
-            st.markdown(f"### Complete Top {len(candidate_sectors)} Candidate Offerings (Similarity Leaderboard)")
-            if candidate_sectors:
-                cand_df = pd.DataFrame(candidate_sectors)
-                desired_cols = ["candidate_id", "primary_sector", "evidence_level", "verified_evidence_count", "vector_cosine", "business_fit_score", "final_score", "scale_class"]
+            st.markdown(f"### Evaluated Candidate Offerings (Dynamic Semantic Leaderboard)")
+            if scored_candidates:
+                cand_df = pd.DataFrame(scored_candidates)
+                desired_cols = ["candidate_id", "primary_sector", "evidence_level", "classification", "verified_evidence_count", "vector_cosine", "final_score", "confidence"]
                 cols_to_show = [c for c in desired_cols if c in cand_df.columns]
                 st.dataframe(cand_df[cols_to_show], use_container_width=True)
 
@@ -314,7 +305,11 @@ if run_btn:
                 with st.expander("Harvested Evidence Ledger (Verifiable Citations)", expanded=False):
                     st.markdown(f"Total verified text evidence items extracted: **{len(evidence_ledger)}**")
                     for ev in evidence_ledger:
-                        st.markdown(f"- **[{ev.get('evidence_id')}]** `{ev.get('relationship')}`: \"{ev.get('quoted_text')}\" ([Source]({ev.get('source_url')}))")
+                        eid = ev.get('evidence_id') if isinstance(ev, dict) else getattr(ev, 'evidence_id', '')
+                        rel = ev.get('relationship') if isinstance(ev, dict) else getattr(ev, 'relationship', '')
+                        quote = ev.get('quoted_text') if isinstance(ev, dict) else getattr(ev, 'quoted_text', '')
+                        url = ev.get('source_url') if isinstance(ev, dict) else getattr(ev, 'source_url', '')
+                        st.markdown(f"- **[{eid}]** `{rel}`: \"{quote}\" ([Source]({url}))")
 
         # Tab 2: What to Deliver the Lead (Deliverables Blueprint)
         with tab_deliver:
@@ -348,16 +343,22 @@ if run_btn:
         # Download Button
         st.divider()
         full_result = {
+            "request_id": analysis.get("request_id"),
+            "catalog_version": analysis.get("catalog_version", "2026.08-dynamic"),
+            "model": analysis.get("model"),
             "url": target_url,
             "client_inquiry": client_inquiry,
             "client_requirements_analysis": req_summary,
+            "requirements": company_details.get("requirements", []),
+            "results": analysis.get("results", {}),
             "exact_matched_offerings": exact_matches,
             "adjacent_or_speculative_matches": adjacent_matches,
-            "top_k_similarity_search_results": candidate_sectors,
+            "top_k_similarity_search_results": scored_candidates,
             "lead_delivery_blueprint": lead_blueprint,
             "disqualified_and_speculative_audit": disqualified_audit,
             "evidence_ledger": evidence_ledger,
-            "validation": analysis.get("validation", {})
+            "validation": analysis.get("validation", {}),
+            "trace": analysis.get("trace", {})
         }
         st.download_button(
             label="Download Evidence-Backed Intelligence Dossier (JSON)",
