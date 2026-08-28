@@ -174,21 +174,40 @@ class ServiceCatalog:
         dense_sims = np.dot(self.vectors, company_vector)
 
         # 2. Generic TF-IDF Lexical Similarity
-        company_query = (company_text + " " + client_inquiry).strip()
+        company_query = company_text.strip()
         if self.tfidf_vectorizer and self.tfidf_matrix is not None and len(company_query) > 5:
             tfidf_vec = self.tfidf_vectorizer.transform([company_query])
             tfidf_sims = (self.tfidf_matrix * tfidf_vec.T).toarray().flatten()
         else:
             tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
 
-        # Combined initial retrieval score (0.75 dense + 0.25 lexical)
+        # 3. Explicit Client Inquiry Retrieval (Dedicated pass to prevent dilution by large company text)
+        inquiry_indices = []
+        if client_inquiry and len(client_inquiry.strip()) > 2 and self.tfidf_vectorizer and self.tfidf_matrix is not None:
+            inq_vec_tfidf = self.tfidf_vectorizer.transform([client_inquiry.strip()])
+            inq_tfidf_sims = (self.tfidf_matrix * inq_vec_tfidf.T).toarray().flatten()
+            # Retrieve top candidates scoring above baseline for inquiry
+            sorted_inq = np.argsort(-inq_tfidf_sims)
+            for idx in sorted_inq:
+                if inq_tfidf_sims[idx] > 0.04 and len(inquiry_indices) < max(5, top_k // 2):
+                    inquiry_indices.append(int(idx))
+
+        # Combined baseline company score (0.75 dense + 0.25 lexical)
         retrieval_scores = 0.75 * dense_sims + 0.25 * tfidf_sims
 
-        # Top candidate indices
-        top_indices = np.argsort(-retrieval_scores)[:top_k]
+        # Top company profile indices
+        top_comp_indices = [int(i) for i in np.argsort(-retrieval_scores)]
+
+        # Ordered deduplication: Inquiry candidates FIRST, followed by company profile candidates
+        merged_indices = []
+        for idx in inquiry_indices + top_comp_indices:
+            if idx not in merged_indices:
+                merged_indices.append(idx)
+            if len(merged_indices) >= top_k:
+                break
 
         candidates = []
-        for idx in top_indices:
+        for idx in merged_indices:
             candidates.append({
                 "candidate_id": self.candidate_ids[idx],
                 "primary_sector": self.sectors[idx],
