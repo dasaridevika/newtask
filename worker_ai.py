@@ -617,6 +617,7 @@ class WorkerAI:
                     })
 
             offering_name = f"{title} Intelligence Platform"
+            blueprint = get_domain_deliverable_blueprint(title)
             t_low = title.lower()
             facility_term = "Developments" if any(w in t_low for w in ("plant", "facility", "hub", "unit", "center", "line")) else "Facilities"
             
