@@ -56,48 +56,51 @@ st.markdown("""
 
     /* Hero Banner */
     .hero-container {
-        background: linear-gradient(135deg, #080D22 0%, #0F1A40 60%, #172554 100%);
-        border: 1px solid #1e3a8a;
-        border-radius: 16px;
-        padding: 28px 36px;
-        margin-bottom: 24px;
-        box-shadow: 0 8px 30px rgba(8, 13, 34, 0.25);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        overflow: hidden;
-        position: relative;
+        background: linear-gradient(135deg, #080D22 0%, #0F1A40 60%, #172554 100%) !important;
+        border: 1px solid #1e3a8a !important;
+        border-radius: 16px !important;
+        padding: 28px 36px !important;
+        margin-bottom: 24px !important;
+        box-shadow: 0 8px 30px rgba(8, 13, 34, 0.25) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        overflow: hidden !important;
+        position: relative !important;
     }
     .hero-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: rgba(59, 130, 246, 0.2);
-        border: 1px solid rgba(96, 165, 250, 0.4);
-        color: #93c5fd;
-        border-radius: 9999px;
-        padding: 4px 14px;
-        font-size: 0.72rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        margin-bottom: 10px;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        background: rgba(59, 130, 246, 0.2) !important;
+        border: 1px solid rgba(96, 165, 250, 0.4) !important;
+        color: #93c5fd !important;
+        -webkit-text-fill-color: #93c5fd !important;
+        border-radius: 9999px !important;
+        padding: 4px 14px !important;
+        font-size: 0.72rem !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.08em !important;
+        text-transform: uppercase !important;
+        margin-bottom: 10px !important;
     }
-    .hero-title {
-        font-size: 2.1rem;
-        font-weight: 800;
-        letter-spacing: -0.03em;
-        color: #ffffff;
-        margin: 0 0 6px 0;
-        line-height: 1.15;
+    .hero-title, h1.hero-title, .hero-container h1, .hero-container .hero-title {
+        font-size: 2.15rem !important;
+        font-weight: 800 !important;
+        letter-spacing: -0.03em !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        margin: 0 0 6px 0 !important;
+        line-height: 1.15 !important;
     }
-    .hero-subtitle {
-        font-size: 0.90rem;
-        color: #cbd5e1;
-        margin: 0;
-        line-height: 1.5;
-        font-weight: 400;
-        max-width: 640px;
+    .hero-subtitle, p.hero-subtitle, .hero-container p, .hero-container .hero-subtitle {
+        font-size: 0.90rem !important;
+        color: #e2e8f0 !important;
+        -webkit-text-fill-color: #e2e8f0 !important;
+        margin: 0 !important;
+        line-height: 1.5 !important;
+        font-weight: 400 !important;
+        max-width: 640px !important;
     }
 
     /* Form Container */
@@ -348,11 +351,11 @@ st.markdown("""
 
 # 2-Column Hero Section
 st.markdown("""
-<div class="hero-container">
+<div class="hero-container" style="background: linear-gradient(135deg, #080D22 0%, #0F1A40 60%, #172554 100%) !important; border: 1px solid #1e3a8a !important; border-radius: 16px !important; padding: 28px 36px !important; margin-bottom: 24px !important; box-shadow: 0 8px 30px rgba(8, 13, 34, 0.25) !important; display: flex !important; align-items: center !important; justify-content: space-between !important;">
     <div style="flex: 1; padding-right: 24px;">
-        <div class="hero-badge">⚡ ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
-        <h1 class="hero-title">Lead Research</h1>
-        <p class="hero-subtitle">Evidence-grounded corporate research, 462-catalog semantic matching, and deterministic strategic intelligence synthesis.</p>
+        <div class="hero-badge" style="display: inline-flex !important; align-items: center !important; gap: 6px !important; background: rgba(59, 130, 246, 0.2) !important; border: 1px solid rgba(96, 165, 250, 0.4) !important; color: #93c5fd !important; -webkit-text-fill-color: #93c5fd !important; border-radius: 9999px !important; padding: 4px 14px !important; font-size: 0.72rem !important; font-weight: 700 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; margin-bottom: 10px !important;">⚡ ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
+        <h1 class="hero-title" style="font-size: 2.15rem !important; font-weight: 800 !important; letter-spacing: -0.03em !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; margin: 0 0 6px 0 !important; line-height: 1.15 !important;">Lead Research</h1>
+        <p class="hero-subtitle" style="font-size: 0.90rem !important; color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0 !important; margin: 0 !important; line-height: 1.5 !important; font-weight: 400 !important; max-width: 640px !important;">Evidence-grounded corporate research, 462-catalog semantic matching, and deterministic strategic intelligence synthesis.</p>
     </div>
     <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
         <svg width="170" height="100" viewBox="0 0 180 110" fill="none" xmlns="http://www.w3.org/2000/svg">
