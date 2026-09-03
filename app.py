@@ -27,9 +27,12 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
     /* Global Typography & SaaS Theme */
-    html, body, [class*="css"], .stMarkdown, p, span, label, div {
+    body, [data-testid="stAppViewContainer"], .main {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
         color: #0f172a;
+    }
+    p, span, label {
+        font-family: 'Inter', sans-serif !important;
     }
     code, pre {
         font-family: 'JetBrains Mono', monospace !important;
@@ -68,12 +71,20 @@ st.markdown("""
         overflow: hidden !important;
         position: relative !important;
     }
+    .hero-container,
+    .hero-container *,
+    .hero-container h1,
+    .hero-container .hero-title,
+    .hero-title {
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+    }
     .hero-badge {
         display: inline-flex !important;
         align-items: center !important;
         gap: 6px !important;
-        background: rgba(59, 130, 246, 0.2) !important;
-        border: 1px solid rgba(96, 165, 250, 0.4) !important;
+        background: rgba(59, 130, 246, 0.25) !important;
+        border: 1px solid rgba(96, 165, 250, 0.5) !important;
         color: #93c5fd !important;
         -webkit-text-fill-color: #93c5fd !important;
         border-radius: 9999px !important;
@@ -85,7 +96,7 @@ st.markdown("""
         margin-bottom: 10px !important;
     }
     .hero-title, h1.hero-title, .hero-container h1, .hero-container .hero-title {
-        font-size: 2.15rem !important;
+        font-size: 2.2rem !important;
         font-weight: 800 !important;
         letter-spacing: -0.03em !important;
         color: #ffffff !important;
@@ -94,9 +105,9 @@ st.markdown("""
         line-height: 1.15 !important;
     }
     .hero-subtitle, p.hero-subtitle, .hero-container p, .hero-container .hero-subtitle {
-        font-size: 0.90rem !important;
-        color: #e2e8f0 !important;
-        -webkit-text-fill-color: #e2e8f0 !important;
+        font-size: 0.92rem !important;
+        color: #cbd5e1 !important;
+        -webkit-text-fill-color: #cbd5e1 !important;
         margin: 0 !important;
         line-height: 1.5 !important;
         font-weight: 400 !important;
@@ -353,9 +364,9 @@ st.markdown("""
 st.markdown("""
 <div class="hero-container" style="background: linear-gradient(135deg, #080D22 0%, #0F1A40 60%, #172554 100%) !important; border: 1px solid #1e3a8a !important; border-radius: 16px !important; padding: 28px 36px !important; margin-bottom: 24px !important; box-shadow: 0 8px 30px rgba(8, 13, 34, 0.25) !important; display: flex !important; align-items: center !important; justify-content: space-between !important;">
     <div style="flex: 1; padding-right: 24px;">
-        <div class="hero-badge" style="display: inline-flex !important; align-items: center !important; gap: 6px !important; background: rgba(59, 130, 246, 0.2) !important; border: 1px solid rgba(96, 165, 250, 0.4) !important; color: #93c5fd !important; -webkit-text-fill-color: #93c5fd !important; border-radius: 9999px !important; padding: 4px 14px !important; font-size: 0.72rem !important; font-weight: 700 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; margin-bottom: 10px !important;">⚡ ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
-        <h1 class="hero-title" style="font-size: 2.15rem !important; font-weight: 800 !important; letter-spacing: -0.03em !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; margin: 0 0 6px 0 !important; line-height: 1.15 !important;">Lead Research</h1>
-        <p class="hero-subtitle" style="font-size: 0.90rem !important; color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0 !important; margin: 0 !important; line-height: 1.5 !important; font-weight: 400 !important; max-width: 640px !important;">Evidence-grounded corporate research, 462-catalog semantic matching, and deterministic strategic intelligence synthesis.</p>
+        <div class="hero-badge" style="display: inline-flex !important; align-items: center !important; gap: 6px !important; background: rgba(59, 130, 246, 0.25) !important; border: 1px solid rgba(96, 165, 250, 0.5) !important; color: #93c5fd !important; -webkit-text-fill-color: #93c5fd !important; border-radius: 9999px !important; padding: 4px 14px !important; font-size: 0.72rem !important; font-weight: 700 !important; letter-spacing: 0.08em !important; text-transform: uppercase !important; margin-bottom: 10px !important;">⚡ ENTERPRISE INTELLIGENCE & DEFINITION ENTAILMENT</div>
+        <h1 class="hero-title" style="font-size: 2.2rem !important; font-weight: 800 !important; letter-spacing: -0.03em !important; color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; margin: 0 0 6px 0 !important; line-height: 1.15 !important;"><span style="color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; font-weight: 800;">Lead Research</span></h1>
+        <p class="hero-subtitle" style="font-size: 0.92rem !important; color: #cbd5e1 !important; -webkit-text-fill-color: #cbd5e1 !important; margin: 0 !important; line-height: 1.5 !important; font-weight: 400 !important; max-width: 640px !important;"><span style="color: #cbd5e1 !important; -webkit-text-fill-color: #cbd5e1 !important;">Evidence-grounded corporate research, 462-catalog semantic matching, and deterministic strategic intelligence synthesis.</span></p>
     </div>
     <div style="flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
         <svg width="170" height="100" viewBox="0 0 180 110" fill="none" xmlns="http://www.w3.org/2000/svg">
