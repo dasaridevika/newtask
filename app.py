@@ -389,7 +389,7 @@ with st.form("lead_matcher_form", clear_on_submit=False):
         target_url = st.text_input(
             "Target Client Domain / Website URL",
             value="",
-            placeholder="https://www.vertiv.com/ or https://example.com"
+            placeholder="https://example.com"
         )
     with col_k:
         top_k_val = st.number_input("Top K Candidates to Analyze", min_value=3, max_value=20, value=8, step=1)
@@ -397,7 +397,7 @@ with st.form("lead_matcher_form", clear_on_submit=False):
     client_inquiry = st.text_input(
         "Client's Specific Message / Inquiry / Stated Requirement (Optional)",
         value="",
-        placeholder="e.g. solar pv project, grid modernization, or datacenter cooling"
+        placeholder="Enter required service, expansion area, or project keyword..."
     )
     
     st.write("")

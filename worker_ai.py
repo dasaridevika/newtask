@@ -287,39 +287,35 @@ Respond ONLY with a valid JSON object matching this exact schema:
                     elif "case_study" in str(p_type).lower() or "project" in str(p_type).lower():
                         case_study_snips.extend([s for s in p_snips[:3] if not any(w in s.lower() for w in NOISE_PATTERNS)])
 
-            # Determine Company Real Archetype based on verified text features
-            if any(w in norm_lower for w in ("private equity", "buyout", "portfolio company", "sponsor", "growth capital", "investment firm", "assets under management")):
-                archetype = "Private Equity Sponsor & Investment Firm"
-                default_industry = "Private Equity & Capital Investments"
-                default_dm = f"Managing Director, Investment Committee, or Operating Partner at {clean_name}"
-            elif any(w in norm_lower for w in ("manufacturer", "cooling", "equipment", "hardware", "switchgear", "oem", "thermal solutions", "power systems", "ups systems", "enclosures")):
-                archetype = "Critical Infrastructure & Equipment OEM"
-                default_industry = "Critical Digital Infrastructure & Industrial Equipment"
-                default_dm = f"VP of Engineering, VP of Product Management, or Chief Commercial Officer at {clean_name}"
-            elif any(w in norm_lower for w in ("software", "saas", "platform", "cloud", "api", "analytics", "developer", "workflow", "billing", "fintech")):
-                archetype = "B2B SaaS & Digital Financial Platform"
-                default_industry = "Enterprise Software & Cloud Technology"
-                default_dm = f"Chief Technology Officer, Head of Product, or VP of Sales at {clean_name}"
-            elif any(w in norm_lower for w in ("utility", "power generation", "developer", "renewable energy", "solar", "wind", "grid operator", "clean energy")):
-                archetype = "Energy Developer & Utility Asset Operator"
-                default_industry = "Renewable Energy & Power Generation"
-                default_dm = f"VP of Renewable Infrastructure, Head of Development, or Chief Commercial Officer at {clean_name}"
-            elif any(w in norm_lower for w in ("contractor", "epc", "engineering", "procurement", "construction", "general contractor")):
-                archetype = "EPC & Infrastructure Contractor"
+            # Determine Company Archetype based on verified business model indicators
+            if any(w in norm_lower for w in ("private equity", "fund", "venture", "investment firm", "capital", "portfolio company")):
+                archetype = "Investment & Capital Platform"
+                default_industry = "Private Equity & Capital Markets"
+                default_dm = f"Managing Director or Partner at {clean_name}"
+            elif any(w in norm_lower for w in ("manufacturer", "oem", "hardware", "equipment", "industrial", "systems", "products")):
+                archetype = "Industrial Equipment & Infrastructure OEM"
+                default_industry = "Industrial Technology & Equipment Systems"
+                default_dm = f"VP of Engineering or Product Management at {clean_name}"
+            elif any(w in norm_lower for w in ("software", "saas", "platform", "cloud", "digital", "api", "analytics")):
+                archetype = "Digital Technology & Software Platform"
+                default_industry = "Enterprise Technology & Digital Solutions"
+                default_dm = f"Chief Technology Officer or VP of Product at {clean_name}"
+            elif any(w in norm_lower for w in ("utility", "operator", "energy", "power", "generation", "renewables")):
+                archetype = "Energy & Infrastructure Asset Operator"
+                default_industry = "Energy & Infrastructure Operations"
+                default_dm = f"VP of Infrastructure or Operations Director at {clean_name}"
+            elif any(w in norm_lower for w in ("contractor", "epc", "construction", "engineering")):
+                archetype = "Engineering, Procurement & Construction (EPC)"
                 default_industry = "Engineering & Infrastructure Construction"
-                default_dm = f"VP of Pre-Construction, Head of Estimating, or Project Director at {clean_name}"
-            elif any(w in norm_lower for w in ("healthcare", "hospital", "clinical", "medical", "patient")):
-                archetype = "Healthcare & Clinical Operations Provider"
-                default_industry = "Healthcare & Medical Services"
-                default_dm = f"Chief Medical Officer, VP of Clinical Operations, or Facilities Director at {clean_name}"
-            elif any(w in norm_lower for w in ("logistics", "freight", "warehouse", "supply chain", "shipping", "distribution")):
-                archetype = "Logistics & Supply Chain Solutions Provider"
-                default_industry = "Logistics, Warehousing & Transportation"
-                default_dm = f"VP of Supply Chain, Head of Logistics, or Operations Director at {clean_name}"
+                default_dm = f"Head of Engineering or Project Director at {clean_name}"
+            elif any(w in norm_lower for w in ("logistics", "freight", "supply chain", "distribution", "warehousing")):
+                archetype = "Logistics & Supply Chain Operations"
+                default_industry = "Logistics & Supply Chain Management"
+                default_dm = f"VP of Supply Chain or Operations Director at {clean_name}"
             else:
                 archetype = "Commercial Enterprise"
                 default_industry = "Commercial & Industrial Services"
-                default_dm = f"Chief Commercial Officer, VP of Business Development, or Operations Director at {clean_name}"
+                default_dm = f"Chief Commercial Officer or VP of Business Development at {clean_name}"
 
             # Extract 3-5 real observed factual statements from the pages
             facts = []
@@ -490,7 +486,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
             if _is_placeholder(req_analysis.get("core_growth_mandate", "")):
                 req_analysis["core_growth_mandate"] = f"Expand commercial visibility, secure early positioning in major capital buildout projects, and scale critical infrastructure delivery across {industry}."
             if _is_placeholder(req_analysis.get("infrastructure_and_asset_needs", "")):
-                req_analysis["infrastructure_and_asset_needs"] = f"High-reliability manufacturing capacity, component supply chain resiliency, and certified technical testing facilities across {industry}."
+                req_analysis["infrastructure_and_asset_needs"] = f"High-reliability operational capacity, component supply chain resiliency, and certified technical facilities across {industry}."
             if _is_placeholder(req_analysis.get("market_diligence_and_deal_sourcing_needs", "")):
                 req_analysis["market_diligence_and_deal_sourcing_needs"] = f"Stage-gate capital project permitting trackers, engineering equipment specifications, and EPC/developer tender notices across {industry}."
             if _is_placeholder(req_analysis.get("regulatory_permitting_and_esg_needs", "")):
@@ -665,27 +661,9 @@ Respond ONLY with a valid JSON object matching this exact schema:
             intent_align = "strong"
             reason_code = "EXPLICIT_CLIENT_INQUIRY"
             
-            s_low = sec_name.lower()
-            if "recycling" in s_low or "waste" in s_low or "decommission" in s_low:
-                reason = f"Explicit client mandate targeting circular economy, material recovery, and end-of-life lifecycle infrastructure in {sec_name}."
-                val_driver = f"Enables early positioning for environmental compliance dockets, material recovery partnerships, and decommissioning tenders."
-                req_solved = f"Decommissioning permits, circular supply chain partner directories, and material recovery throughput tracking."
-            elif "manufacturing" in s_low or "cell" in s_low or "module" in s_low or "assembly" in s_low or "fabrication" in s_low:
-                reason = f"Explicit client mandate targeting upstream production facilities, factory tooling, and assembly hubs across {sec_name}."
-                val_driver = f"Identifies early-stage manufacturing plant capex investments, factory floor expansion dockets, and equipment procurement cycles."
-                req_solved = f"Facility capex timelines, power distribution specifications, and tier-1 OEM equipment procurement feeds."
-            elif "solar" in s_low or "photovoltaic" in s_low:
-                reason = f"Explicit client mandate directly targeting utility-scale and distributed solar photovoltaic power generation facilities."
-                val_driver = f"Accelerates commercial pipeline visibility into multi-megawatt interconnect queues, compresses engineering cycle times, and surfaces proprietary project filings prior to RFP issuance."
-                req_solved = f"Utility interconnection stage-gate filings (MW capacity), environmental review dockets, and developer/EPC networks."
-            elif "data center" in s_low or "compute" in s_low or "colocation" in s_low or "cooling" in s_low:
-                reason = f"Explicit client mandate targeting high-density compute facilities, thermal management, and power infrastructure."
-                val_driver = f"Secures real-time visibility into substation capacity filings, direct-to-chip cooling designs, and hyperscale buildout pipelines."
-                req_solved = f"Substation queue dockets (MW load), cooling specifications, and facility engineering tenders."
-            else:
-                reason = f"Explicit stated client requirement in inquiry targeting '{sec_name}'."
-                val_driver = f"Accelerates commercial execution, verifies project pipeline dockets, and secures proprietary visibility across {sec_name} assets."
-                req_solved = f"Direct client requirement and operational pipeline intelligence in {sec_name}."
+            reason = f"Explicit client requirement directly targeting {sec_name} assets and operations."
+            val_driver = f"Accelerates commercial pipeline visibility into project stage-gates, verifies regulatory permitting dockets, and secures early procurement feeds across {sec_name}."
+            req_solved = f"Utility interconnection dockets, stage-gate permitting trackers, and EPC/developer directories in {sec_name}."
             ev_ids = ["inquiry_stated"] + verified_quotes
         elif is_target_focus and len(verified_quotes) >= 1:
             classification = "exact"
