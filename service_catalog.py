@@ -357,7 +357,7 @@ class ServiceCatalog:
             arch_score = 1.0 if arch_align in ("strong", "partial", "unknown") else 0.0
             sec_name = cand.get("primary_sector", "")
             is_catch_all = sec_name.lower().startswith("other ") or "unclassified" in sec_name.lower() or sec_name.lower().startswith("general ")
-            is_inquiry_match = (dec.get("reason_code") == "EXPLICIT_CLIENT_INQUIRY") or (inq_lex > 0.06)
+            is_inquiry_match = (dec.get("reason_code") == "EXPLICIT_CLIENT_INQUIRY") and (classification == "exact")
 
             # Inquiry Priority Boost & Catch-All Demotion
             inquiry_priority_boost = 0.25 if is_inquiry_match else 0.0

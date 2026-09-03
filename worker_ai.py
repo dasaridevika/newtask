@@ -582,21 +582,30 @@ Respond ONLY with a valid JSON object matching this exact schema:
         sec_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
         sec_tokens.update(acronyms)
         sec_tokens.discard("plant")
-        sec_tokens.discard("facility")
-        sec_tokens.discard("system")
-        sec_tokens.discard("production")
+        GENERIC_SECTOR_WORDS = {
+            "center", "centre", "facilities", "facility", "plant", "station", "park", "hub",
+            "unit", "building", "buildings", "services", "solutions", "infrastructure",
+            "system", "systems", "complex", "zone", "house", "other", "general", "group",
+            "holdings", "company", "corporation", "project", "projects", "line", "area"
+        }
 
         is_inquiry_match = False
         if inq_lower and len(inq_lower) >= 2:
             inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are", "project", "projects", "facility", "plant")]
+            distinctive_inq = [t for t in inq_tokens if t not in GENERIC_SECTOR_WORDS]
             sec_all_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
             sec_all_tokens.update(acronyms)
             
             if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
+            elif distinctive_inq:
+                # Require ALL distinctive non-generic tokens from inquiry to match the candidate sector
+                matched_distinctive = [t for t in distinctive_inq if t in sec_all_tokens]
+                if len(matched_distinctive) == len(distinctive_inq):
+                    is_inquiry_match = True
             elif inq_tokens:
                 matched_inq = [t for t in inq_tokens if t in sec_all_tokens]
-                if len(matched_inq) == len(inq_tokens) or (len(inq_tokens) >= 2 and len(matched_inq) / len(inq_tokens) >= 0.5):
+                if len(matched_inq) == len(inq_tokens):
                     is_inquiry_match = True
 
         # Check Target Profile Targets
