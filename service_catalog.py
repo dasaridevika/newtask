@@ -321,6 +321,7 @@ class ServiceCatalog:
             
             raw_vec = cand.get("vector_cosine", 0.60)
             raw_lex = cand.get("lexical_score", 0.0)
+            inq_lex = cand.get("inquiry_lexical_score", 0.0)
             ev_level = dec.get("evidence_level", "LEVEL_4")
             classification = dec.get("classification", "reject")
             conf = dec.get("confidence", "low")
@@ -354,7 +355,13 @@ class ServiceCatalog:
             arch_align = sem.get("archetype_alignment", "strong")
             scale_score = 1.0 if scale_align in ("strong", "partial", "unknown") else 0.0
             arch_score = 1.0 if arch_align in ("strong", "partial", "unknown") else 0.0
-            inquiry_priority_boost = 0.08 if dec.get("reason_code") == "EXPLICIT_CLIENT_INQUIRY" else 0.0
+            sec_name = cand.get("primary_sector", "")
+            is_catch_all = sec_name.lower().startswith("other ") or "unclassified" in sec_name.lower() or sec_name.lower().startswith("general ")
+            is_inquiry_match = (dec.get("reason_code") == "EXPLICIT_CLIENT_INQUIRY") or (inq_lex > 0.06)
+
+            # Inquiry Priority Boost & Catch-All Demotion
+            inquiry_priority_boost = 0.25 if is_inquiry_match else 0.0
+            catch_all_penalty = 0.35 if is_catch_all else 0.0
 
             # Deterministic multi-factor scoring formula (Explicit Inquiry > Passive Web Mentions)
             final_score = (
@@ -362,11 +369,13 @@ class ServiceCatalog:
                 0.20 * intent_score +
                 0.15 * func_score +
                 0.15 * entail_score +
-                inquiry_priority_boost +
+                inquiry_priority_boost -
+                catch_all_penalty +
                 0.10 * (raw_vec * arch_score) +
                 0.05 * scale_score +
                 0.05 * min(1.0, raw_lex * 2.0)
             )
+            final_score = max(0.0, min(1.0, final_score))
 
             # Human-readable evidence level
             if ev_level == "LEVEL_1":
@@ -380,6 +389,8 @@ class ServiceCatalog:
 
             cand_out = {
                 **cand,
+                "is_inquiry_match": is_inquiry_match,
+                "is_catch_all": is_catch_all,
                 "evidence_level": ev_level_display,
                 "raw_evidence_level": ev_level,
                 "classification": classification,
@@ -393,7 +404,7 @@ class ServiceCatalog:
                 "business_model_score": round(raw_vec * arch_score, 4),
                 "facility_score": round(scale_score, 4),
                 "lexical_score": round(raw_lex, 4),
-                "final_score": round(max(0.0, min(1.0, final_score)), 4),
+                "final_score": round(final_score, 4),
                 "similarity": round(raw_vec, 4),
                 "business_fit_score": round(final_score, 4)
             }
@@ -410,12 +421,16 @@ class ServiceCatalog:
             return 1
 
         # Section K Deterministic Ranking Hierarchy:
-        # 1. evidence_priority descending
-        # 2. final_score descending
-        # 3. intent_score descending
-        # 4. definition_score descending
-        # 5. candidate_id ascending (tie-breaker)
+        # 1. is_inquiry_match descending (explicit user mandate always takes top tier)
+        # 2. not is_catch_all (demote catch-all generic buckets)
+        # 3. evidence_priority descending
+        # 4. final_score descending
+        # 5. intent_score descending
+        # 6. definition_score descending
+        # 7. candidate_id ascending (tie-breaker)
         scored_candidates.sort(key=lambda x: (
+            -int(x.get("is_inquiry_match", False)),
+            int(x.get("is_catch_all", False)),
             -_evidence_priority(x),
             -x["final_score"],
             -x["intent_score"],

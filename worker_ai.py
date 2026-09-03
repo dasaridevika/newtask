@@ -540,19 +540,16 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         is_inquiry_match = False
         if inq_lower and len(inq_lower) >= 2:
-            from service_catalog import catalog
+            inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are", "project", "projects", "facility", "plant")]
+            sec_all_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
+            sec_all_tokens.update(acronyms)
+            
             if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
-            else:
-                inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{3,}\b", inq_lower) if catalog.get_term_specificity(t) >= 3.0]
-                sec_substantive = set(re.findall(r"\b[a-zA-Z0-9]{3,}\b", clean_sec))
-                if inq_tokens and sec_substantive:
-                    matched_inq = [t for t in inq_tokens if t in sec_substantive]
-                    inq_total_wt = sum(catalog.get_term_specificity(t) for t in inq_tokens)
-                    inq_match_wt = sum(catalog.get_term_specificity(t) for t in matched_inq)
-                    inq_ratio = inq_match_wt / (inq_total_wt if inq_total_wt > 0 else 1.0)
-                    if inq_ratio >= 0.50:
-                        is_inquiry_match = True
+            elif inq_tokens:
+                matched_inq = [t for t in inq_tokens if t in sec_all_tokens]
+                if len(matched_inq) == len(inq_tokens) or (len(inq_tokens) >= 2 and len(matched_inq) / len(inq_tokens) >= 0.5):
+                    is_inquiry_match = True
 
         # Check Target Profile Targets
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
@@ -569,6 +566,16 @@ Respond ONLY with a valid JSON object matching this exact schema:
         defn_tokens.discard("system")
         defn_tokens.discard("infrastructure")
 
+        GENERIC_SECTOR_WORDS = {
+            "center", "centre", "facilities", "facility", "plant", "station", "park", "hub",
+            "unit", "building", "buildings", "services", "solutions", "infrastructure",
+            "system", "systems", "complex", "zone", "house", "other", "general", "group",
+            "holdings", "company", "corporation", "project", "projects"
+        }
+        distinctive_cand_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{3,}\b", clean_sec) if t.lower() not in GENERIC_SECTOR_WORDS]
+        if not distinctive_cand_tokens:
+            distinctive_cand_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec)]
+
         for ev in evidence_items:
             quote = ev.get("quoted_text", "") if isinstance(ev, dict) else getattr(ev, "quoted_text", "")
             q_lower = quote.lower().strip()
@@ -584,22 +591,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 verified_quotes.append(ev_id)
                 continue
 
-            # 2. Dynamic Mathematical Specificity Entailment (from corpus IDF, zero hardcoded word lists)
-            from service_catalog import catalog
-            cand_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec)]
-            if not cand_tokens:
-                continue
-
-            total_cand_weight = sum(catalog.get_term_specificity(t) for t in cand_tokens)
-            matched_weight = sum(
-                catalog.get_term_specificity(t)
-                for t in cand_tokens
-                if re.search(r"\b" + re.escape(t) + r"\b", q_lower)
-            )
-
-            entailment_ratio = matched_weight / (total_cand_weight if total_cand_weight > 0 else 1.0)
-            if entailment_ratio >= 0.50:
-                verified_quotes.append(ev_id)
+            # 2. Strict Distinctive Non-Generic Token Entailment
+            if distinctive_cand_tokens and not sec_lower.startswith("other "):
+                matched_distinctive = [t for t in distinctive_cand_tokens if re.search(r"\b" + re.escape(t) + r"\b", q_lower)]
+                # Require all distinctive tokens to match in the same evidence passage
+                if len(matched_distinctive) == len(distinctive_cand_tokens):
+                    verified_quotes.append(ev_id)
 
         # Formulate Dynamic Decision
         if is_inquiry_match:
