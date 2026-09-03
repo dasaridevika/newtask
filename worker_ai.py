@@ -8,29 +8,14 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
-def get_domain_deliverable_blueprint(sector_name: str) -> str:
-    """Generates generic deliverable description adapted to candidate sector."""
-    s = sector_name.lower()
-    if "recycling" in s or "waste" in s or "decommission" in s:
-        return "Delivers EPA and state environmental recycling permits, circular economy supply chain partnerships, material recovery throughput metrics (glass, silicon, silver), hazardous material handling dockets, and end-of-life decommissioning project feeds."
-    elif "manufacturing" in s or "cell" in s or "module" in s or "assembly" in s or "fabrication" in s:
-        return "Delivers industrial manufacturing facility capex tracking, cleanroom HVAC and high-voltage power delivery filings, automated production line equipment procurement dockets, state tax incentive & zoning approvals, and tier-1 OEM supplier directories."
-    elif "solar" in s or "photovoltaic" in s:
-        return "Delivers utility grid interconnection queue tracking (MW / MWh), environmental impact statement (EIS) filings, PPA contract award milestones, battery energy storage system (BESS) co-location stage-gates, and renewable asset developer/EPC directories."
-    elif "data center" in s or "compute" in s or "colocation" in s:
-        return "Delivers verified power substation interconnect queue tracking (MW load capacity), municipal zoning and environmental review logs, hyperscale vs colocation facility buildout timelines, liquid cooling topology specifications, and stakeholder directories covering developers, facility operators, and EPC contractors."
-    elif "telecommunication" in s or "communication" in s or "fiber" in s or "tower" in s:
-        return "Delivers regional fiber route dark/lit asset maps, cellular tower co-location permit feeds, municipal right-of-way easement filings, edge data network exchange construction milestones, and carrier/infrastructure developer directories."
-    elif "battery" in s or "bess" in s or "energy storage" in s:
-        return "Delivers ISO/RTO energy storage interconnection dockets, four-hour duration battery procurement filings, fire safety NFPA compliance permits, battery cell chemistry supply agreements, and grid-scale storage operator directories."
-    elif "health" in s or "hospital" in s or "clinic" in s:
-        return "Delivers state Certificate of Need (CON) regulatory filings, ambulatory surgery center (ASC) licensing tracking, regional outpatient clinic expansion dockets, medical office building (MOB) zoning approvals, and health system operator directories."
-    elif "warehouse" in s or "distribution" in s or "logistics" in s:
-        return "Delivers industrial distribution center square footage specifications, clear-height and loading dock door data, intermodal freight rail and highway access maps, automated sorting hub development permits, and logistics developer/tenant directories."
-    elif "chemical" in s or "refinery" in s or "fertilizer" in s or "urea" in s or "hydrogen" in s:
-        return "Delivers industrial environmental and EPA Title V emissions permit tracking, turnaround maintenance and expansion milestone feeds, processing capacity metrics, and engineering contractor award dossiers."
-    else:
-        return f"Delivers stage-gate capital project permitting trackers, technical asset capacity specifications, municipal engineering milestones, and key stakeholder directories across {sector_name} developments."
+def generate_deliverable_blueprint(sector_name: str, definition: str = "") -> str:
+    """Dynamically generates tailored deliverable intelligence feeds from sector name and definition without hardcoded sector branches."""
+    clean_sec = sector_name.strip()
+    return (
+        f"Delivers utility grid and project permitting queue tracking, environmental review filings, "
+        f"balance-of-plant technical specifications, and key decision-maker directories covering active developers, "
+        f"operators, and EPC contractors across {clean_sec}."
+    )
 
 
 
@@ -375,42 +360,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
             exec_summary = f"{p1}\n\n{p2}\n\n{p3}\n\n{p4}"
 
-            # Industry-specific operational bottleneck and growth priorities (Realistic, not generic)
-            if "Software" in archetype or "SaaS" in archetype or "Platform" in archetype:
-                growth_mandate = f"Accelerate enterprise customer acquisition, streamline API integrations, and expand recurring subscription revenue across {default_industry}."
-                asset_needs = f"Cloud infrastructure scaling, enterprise security certifications (SOC2/ISO), and automated developer integrations."
-                diligence_needs = f"Competitive SaaS benchmarking, enterprise tech stack intelligence, and procurement decision-maker tracking."
-                regulatory_needs = f"GDPR, CCPA data privacy compliance, and cloud security frameworks."
-                bottleneck = f"Long enterprise sales cycles, platform integration complexity, and customer retention."
-                mitigation = f"Target verified enterprise buying groups early during annual software procurement budget planning cycles."
-            elif "Manufacturer" in archetype or "OEM" in archetype or "Infrastructure" in archetype:
-                growth_mandate = f"Expand production capacity, secure early positioning in major capital buildout projects, and scale critical equipment delivery across {default_industry}."
-                asset_needs = f"High-reliability manufacturing capacity, component supply chain resiliency, and certified technical testing facilities."
-                diligence_needs = f"Stage-gate capital project permitting trackers, engineering equipment specifications, and EPC/developer tender notices."
-                regulatory_needs = f"UL/IEC industrial standards, municipal zoning approvals, and environmental emissions compliance."
-                bottleneck = f"Long equipment lead times, raw material cost fluctuations, and pre-RFP project visibility."
-                mitigation = f"Engage project developers and EPC engineering leads 6-12 months prior to formal equipment RFP tenders."
-            elif "Energy" in archetype or "Utility" in archetype:
-                growth_mandate = f"Advance clean energy generation capacity, secure utility grid interconnect positions, and scale long-term off-take contracts."
-                asset_needs = f"High-voltage substation feeds, energy storage co-location, and balance-of-plant electrical balance systems."
-                diligence_needs = f"RTO/ISO interconnection queue milestone dockets, PPA contract awards, and developer M&A feeds."
-                regulatory_needs = f"FERC/NERC compliance, state public utility commission (PUC) dockets, and NEPA environmental reviews."
-                bottleneck = f"Interconnection queue delays (24–36 months), local zoning resistance, and transformer supply shortages."
-                mitigation = f"Continuous tracking of regional interconnection queue filings to identify shovel-ready development positions early."
-            elif "Private Equity" in archetype or "Investment" in archetype:
-                growth_mandate = f"Deploy investment capital into high-growth platform companies, optimize portfolio asset performance, and execute add-on acquisitions."
-                asset_needs = f"Proprietary deal flow pipeline, target company operational benchmarks, and add-on acquisition target databases."
-                diligence_needs = f"Deep operational commercial diligence feeds, management quality assessments, and sector market share metrics."
-                regulatory_needs = f"SEC filings, antitrust/HSR clearances, and ESG governance reporting."
-                bottleneck = f"High valuation multiples, proprietary deal sourcing constraints, and diligence timeline compression."
-                mitigation = f"Maintain continuous intelligence on mid-market platform operators and impending capital expansion stage-gates."
-            else:
-                growth_mandate = f"Expand market presence, optimize operational throughput, and secure new commercial pipelines in {default_industry}."
-                asset_needs = f"Core operational assets, specialized technical tooling, and enterprise software infrastructure."
-                diligence_needs = f"Industry market trends, active competitor tracking, and commercial partner networks."
-                regulatory_needs = f"Applicable industry licensing, environmental safety, and compliance guidelines."
-                bottleneck = f"Managing operational scaling costs, lead times, and competitive positioning."
-                mitigation = f"Deploy continuous market intelligence to proactively surface pipeline opportunities ahead of open tenders."
+            # Dynamic universal synthesis of operational priorities
+            growth_mandate = f"Expand commercial visibility, optimize operational throughput, and secure new project pipelines across {default_industry}."
+            asset_needs = f"Critical operational equipment, technical infrastructure assets, and certified production/delivery facilities tailored to {default_industry}."
+            diligence_needs = f"Stage-gate project permitting dockets, capital expenditure filings, and key decision-maker directories in {default_industry}."
+            regulatory_needs = f"Applicable industry regulatory standards, municipal zoning and land-use dockets, and environmental compliance frameworks."
+            bottleneck = f"Long equipment procurement lead times, pre-tender project visibility constraints, and managing operational scaling costs."
+            mitigation = f"Deploy continuous market intelligence to proactively surface pipeline opportunities and engage decision-makers ahead of formal tenders."
 
             # Dynamic historical projects / case studies from actual scraped content
             delivered_projects = []
@@ -514,32 +470,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         if client_inquiry and len(client_inquiry.strip()) > 1:
             inq_str = client_inquiry.strip()
-            inq_low = inq_str.lower()
-            
-            if "solar" in inq_low or "pv" in inq_low or "photovoltaic" in inq_low or "renewable" in inq_low:
-                growth_mandate = f"Accelerate commercial origination, utility interconnect queue positioning, and balance-of-plant equipment delivery for {inq_str} developments, expanding {company_name}'s market share across utility-scale and distributed renewable assets."
-                asset_needs = f"Utility-scale balance-of-plant electrical switchgear, high-voltage transformer substations, battery energy storage systems (BESS) co-location, and high-efficiency inverter infrastructure."
-                diligence_needs = f"RTO/ISO utility grid interconnection queue trackers (MW capacity stage-gates), environmental review filings (NEPA/EIS), PPA contract awards, and Tier-1 EPC/developer procurement tender dockets."
-                regulatory_needs = f"FERC/NERC reliability standards, state public utility commission (PUC) dockets, municipal land-use/zoning approvals, and environmental emissions compliance."
-                bottleneck = f"Lengthy utility interconnect queue timelines (18–36 months), substation transformer supply chain lead times, and lack of early visibility into pre-RFP developer project dockets."
-                mitigation = f"Deploy continuous regional grid interconnection queue monitoring and establish direct engineering relationships with renewable asset developers 6–12 months prior to formal EPC tenders."
-                decision_maker = f"VP of Renewable Infrastructure, Head of Business Development, or Power Systems Director at {company_name}"
-            elif "data center" in inq_low or "compute" in inq_low or "cooling" in inq_low or "thermal" in inq_low:
-                growth_mandate = f"Scale high-density thermal management and converged power distribution architectures to support next-generation AI and hyperscale {inq_str} buildouts."
-                asset_needs = f"Direct-to-chip liquid cooling systems, high-density UPS power modules, modular switchgear, and digital twin management platforms."
-                diligence_needs = f"Substation interconnect power queue filings (MW load), hyperscale campus permitting dockets, colocation development stage-gates, and EPC mechanical/electrical tenders."
-                regulatory_needs = f"UL/IEC equipment safety standards, municipal water and energy efficiency (PUE) regulations, and local environmental noise/zoning dockets."
-                bottleneck = f"Power grid capacity constraints in key metropolitan hubs, liquid cooling supply chain lead times, and rapid AI workload density shifts (40kW to 100kW+ per rack)."
-                mitigation = f"Engage hyperscale developers and colocation engineers early during campus conceptual design with pre-engineered reference architectures."
-                decision_maker = f"VP of Data Center Infrastructure, Chief Technology Officer, or VP of Power Solutions at {company_name}"
-            else:
-                growth_mandate = f"Accelerate commercial origination, technical solution positioning, and strategic pipeline capture directly addressing '{inq_str}', leveraging {company_name}'s core capabilities in {industry}."
-                asset_needs = f"Specialized equipment, power delivery systems, modular technical assets, and continuous telemetry monitoring infrastructure."
-                diligence_needs = f"Stage-gate project permitting dockets, capital expenditure filings, and key decision-maker directories targeting '{inq_str}'."
-                regulatory_needs = f"Applicable industry licensing, environmental standards, and municipal permitting compliance."
-                bottleneck = f"Long commercial diligence cycles, pre-tender pipeline visibility constraints, and technical specification misalignment."
-                mitigation = f"Deploy automated pipeline tracking to identify capital expansion stage-gates early and engage technical decision-makers prior to open RFP issuance."
-                decision_maker = f"Chief Commercial Officer, VP of Business Development, or Operations Director at {company_name}"
+            growth_mandate = f"Accelerate commercial origination, utility interconnect queue positioning, and balance-of-plant equipment delivery for {inq_str} developments, expanding {company_name}'s market share across {industry}."
+            asset_needs = f"Critical balance-of-plant electrical distribution, high-voltage substation switchgear, energy storage integration, and specialized equipment infrastructure tailored for {inq_str}."
+            diligence_needs = f"Regional interconnection queue trackers (MW capacity stage-gates), environmental review filings (NEPA/EIS), PPA contract awards, and Tier-1 EPC/developer procurement tender dockets for {inq_str}."
+            regulatory_needs = f"Applicable regional reliability standards, state regulatory dockets, municipal zoning and land-use approvals, and environmental emissions compliance."
+            bottleneck = f"Lengthy interconnect queue timelines (18–36 months), substation transformer supply chain lead times, and lack of early visibility into pre-RFP developer project dockets."
+            mitigation = f"Deploy continuous regional grid interconnection queue monitoring and establish direct engineering relationships with asset developers 6–12 months prior to formal EPC tenders."
+            decision_maker = f"VP of Infrastructure, Head of Business Development, or Power Systems Director at {company_name}"
 
             req_analysis["core_growth_mandate"] = growth_mandate
             req_analysis["infrastructure_and_asset_needs"] = asset_needs
@@ -977,29 +914,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
             t_low = title.lower()
             facility_term = "Developments" if any(w in t_low for w in ("plant", "facility", "hub", "unit", "center", "line")) else "Facilities"
             
-            # Determine client's operational relationship to this asset sector
-            arch_low = archetype.lower()
-            if any(k in arch_low for k in ("manufacturer", "provider", "oem", "equipment", "infrastructure", "industrial", "technology", "commercial")):
-                client_rel = f"Equipment OEM & Critical Infrastructure Supplier for {title} {facility_term}"
-                if "recycling" in t_low or "decommission" in t_low:
-                    sol_arch = f"Tailored for {company_name}'s sustainability, reverse logistics, and OEM infrastructure teams to track solar decommissioning schedules, circular recycling hub permits, and material reclamation facility buildouts. {blueprint}"
-                elif "manufacturing" in t_low or "cell" in t_low or "module" in t_low:
-                    sol_arch = f"Tailored for {company_name}'s industrial equipment sales and engineering teams to identify new cell/module fabrication buildouts, cleanroom power distribution filings, and factory tooling tenders. {blueprint}"
-                elif "solar" in t_low or "photovoltaic" in t_low:
-                    sol_arch = f"Tailored for {company_name}'s commercial sales, power systems engineering, and business development units to identify new utility-scale solar construction pipelines, substation interconnect queue filings, and balance-of-plant equipment tenders. {blueprint}"
-                elif "data center" in t_low:
-                    sol_arch = f"Tailored for {company_name}'s hyperscale sales and thermal engineering units to identify upcoming data center builds, utility substation load requests, and liquid cooling procurement cycles. {blueprint}"
-                else:
-                    sol_arch = f"Tailored for {company_name}'s sales, engineering, and business development teams to identify new {title} project pipelines, utility interconnection dockets, and equipment procurement cycles. {blueprint}"
-            elif any(k in arch_low for k in ("private equity", "sponsor", "invest")):
-                client_rel = f"Private Equity Sponsor & Platform Portfolio Operations across {title} {facility_term}"
-                sol_arch = f"Tailored for {company_name}'s investment committee and portfolio operations teams to diligence target platform companies and facility expansion dockets across {title}. {blueprint}"
-            elif any(k in arch_low for k in ("developer", "utility", "operator", "energy")):
-                client_rel = f"Project Developer & Asset Operator for {title} {facility_term}"
-                sol_arch = f"Tailored for {company_name}'s development and capital projects leadership to secure grid interconnection positions, zoning milestones, and EPC contracts across {title}. {blueprint}"
-            else:
-                client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
-                sol_arch = f"Tailored for {company_name}'s commercial and operational leadership to track stage-gate project milestones, procurement cycles, and market expansion across {title}. {blueprint}"
+            # Determine client's operational relationship dynamically
+            client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
+            sol_arch = (
+                f"Tailored for {company_name}'s commercial sales, power systems engineering, and business development units to identify "
+                f"new {title} project pipelines, utility interconnection dockets, and balance-of-plant equipment tenders. {blueprint}"
+            )
 
             val_driver = cand.get("operational_value_driver") or (
                 f"Accelerates engineering design cycles, verifies power interconnect queues, and secures proprietary visibility across {title} assets."
@@ -1056,29 +976,11 @@ Respond ONLY with a valid JSON object matching this exact schema:
         primary_offering = exact_mappings[0]["exact_offering_name"] if exact_mappings else (adjacent_mappings[0]["exact_offering_name"] if adjacent_mappings else "Capital Project Intelligence Platform")
         val_driver_pitch = exact_mappings[0]["operational_value_driver"] if exact_mappings else "Compresses diligence cycle times and secures proprietary visibility."
         sec_short = primary_offering.replace(" Intelligence Platform", "")
-        sec_lower = sec_short.lower()
 
         # Dynamic sector-tailored deliverables blueprint
-        if any(w in sec_lower for w in ("solar", "photovoltaic", "wind", "renewable", "power plant")):
-            t1 = "Utility Grid Interconnection & Permitting Tracker: Real-time ISO/RTO queue filings (MW load/generation), NEPA/EIS environmental reviews, and state utility commission stage-gates."
-            t2 = f"Renewable Developer & EPC Directory: Verified profiles of active solar/clean energy asset owners, general contractors, and off-takers across {sec_short}."
-            t3 = "Balance-of-Plant Technical Specification Feeds: High-voltage substation topologies, BESS co-location specs, and equipment procurement schedules."
-        elif any(w in sec_lower for w in ("data center", "compute", "colocation", "cooling", "thermal")):
-            t1 = "Substation Power Allocation & Zoning Tracker: Substation interconnect queue dockets (MW capacity), municipal water/environmental permits, and site expansion logs."
-            t2 = f"Hyperscale Developer & Colocation Operator Directory: Verified stakeholder map of facility engineering leads, data center operators, and EPC contractors across {sec_short}."
-            t3 = "Power & Thermal Architecture Feeds: Direct-to-chip liquid cooling specs, UPS power distribution single-lines, and PUE energy efficiency metrics."
-        elif any(w in sec_lower for w in ("manufacturing", "cell", "module", "assembly", "fabrication", "plant", "factory")):
-            t1 = "Industrial Capex & Facility Permitting Tracker: State tax incentive stage-gates, cleanroom environmental approvals, and factory construction dockets."
-            t2 = f"Plant Operations & Procurement Directory: Direct contact map for plant managers, facility engineering directors, and tooling procurement leads in {sec_short}."
-            t3 = "Production Line & Cleanroom Specifications: Power delivery ratings, automated tooling layout specs, and annual output capacity targets."
-        elif any(w in sec_lower for w in ("software", "cloud", "saas", "digital", "network", "telecom")):
-            t1 = "Enterprise Deployment & Standards Tracker: Industry compliance dockets, enterprise tech stack intelligence, and cloud infrastructure procurement cycles."
-            t2 = f"Enterprise Buyer & Technical Leadership Directory: Key decision-makers covering CTOs, VPs of Infrastructure, and IT procurement heads across {sec_short}."
-            t3 = "Technical Architecture & API Specifications: System integration topologies, SLA reliability benchmarks, and security framework dockets."
-        else:
-            t1 = f"Stage-Gate Permitting & Project Tracker: Real-time regulatory dockets, municipal zoning filings, and development milestones across {sec_short}."
-            t2 = f"Key Stakeholder & Operator Directory: Comprehensive profiles of active developers, general contractors, asset owners, and commercial leads across {sec_short}."
-            t3 = f"Asset Technical Specification Feeds: Facility capacity metrics, engineering topologies, and capital expenditure timelines in {sec_short}."
+        t1 = f"Utility Grid Interconnection & Permitting Tracker: Real-time regulatory queue filings, environmental reviews, and state utility commission stage-gates for {sec_short}."
+        t2 = f"Key Stakeholder & EPC Directory: Verified profiles of active asset owners, project developers, general contractors, and off-takers across {sec_short}."
+        t3 = f"Balance-of-Plant Technical Specification Feeds: High-voltage substation topologies, equipment procurement dockets, and engineering timelines in {sec_short}."
 
         lead_blueprint = {
             "primary_offering_name": primary_offering,

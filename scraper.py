@@ -418,10 +418,8 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
         pass
 
     queries = [
-        f'"{company_name}" operations products technology overview',
-        f'"{company_name}" facilities business model scale',
-        f'"{company_name}" power cooling telecom energy storage solutions',
-        f'"{company_name}" solar hybrid renewable infrastructure'
+        f'"{company_name}" corporate overview business model products operations',
+        f'"{company_name}" commercial enterprise capabilities and market footprint'
     ]
 
     for q in queries:
