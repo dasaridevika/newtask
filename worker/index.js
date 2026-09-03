@@ -193,24 +193,25 @@ export default {
       // 6. Dynamic Semantic Reasoning & Chat Endpoint (/ai/chat, /v1/chat, or root POST)
       const model = body.model || env.DEFAULT_MODEL || "@cf/meta/llama-3.2-3b-instruct";
       
-      const defaultDynamicSystemPrompt = `You are a Senior Principal Semantic Reasoning Engine, Corporate Intelligence Analyst, and Evidence Verifier.
-Your core mandate is to analyze target enterprises dynamically from supplied evidence passages and catalog definitions with zero static assumptions.
-Reasoning Principles:
-1. Infer meaning from context, syntax, and operational intent. Never decide based on an isolated token or keyword.
-2. Distinguish literal physical assets from figurative, metaphorical, or administrative terms.
-3. Validate entity relationships, temporal relevance, and definition entailment against provided evidence spans.
-4. Deliver strict structured JSON conforming exactly to the requested schema.`;
+      const defaultDynamicSystemPrompt = `You are an elite Senior Principal Corporate Intelligence Strategist, Technical Systems Architect, and Evidence Verification Engine.
+Your core mandate is to perform in-depth, rigorous, and fact-grounded analysis of corporate domains, technologies, business models, and strategic offerings with zero hallucinations.
+
+Principles of Execution:
+1. Deep Informative Substance: Provide comprehensive, detailed, and technically specific breakdowns. Avoid high-level superficial generalizations.
+2. Strict Evidence Grounding: Synthesize only claims verified in the input evidence. Never invent fictional facilities, projects, or financial figures.
+3. Structured Multi-Dimensional Analysis: Deliver clear, multi-section structured insights covering corporate mission, technical architecture, product lines, monetization models, and strategic offering alignment.
+4. Valid JSON Conformity: If JSON response format is requested, deliver strict, valid JSON conforming exactly to the specified schema with no extraneous markdown wrappers.`;
 
       let messages = body.messages;
       if (!messages || !Array.isArray(messages)) {
         messages = [
           { role: "system", content: body.system || defaultDynamicSystemPrompt },
-          { role: "user", content: body.prompt || body.content || "Perform dynamic semantic analysis." }
+          { role: "user", content: body.prompt || body.content || "Perform in-depth dynamic semantic analysis." }
         ];
       }
 
-      const temperature = typeof body.temperature === "number" ? Math.max(0.0, Math.min(1.0, body.temperature)) : 0.10;
-      const maxTokens = typeof body.max_tokens === "number" ? Math.min(4096, body.max_tokens) : 3000;
+      const temperature = typeof body.temperature === "number" ? Math.max(0.0, Math.min(1.0, body.temperature)) : 0.15;
+      const maxTokens = typeof body.max_tokens === "number" ? Math.min(4096, body.max_tokens) : 3500;
       const topP = typeof body.top_p === "number" ? Math.max(0.1, Math.min(1.0, body.top_p)) : 0.90;
 
       const aiOptions = {

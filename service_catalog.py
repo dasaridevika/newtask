@@ -201,6 +201,14 @@ class ServiceCatalog:
             "model_name": self.model_name
         }
 
+    def get_top_candidates(self, query_text: str, client_inquiry: str = "", top_k: int = 15) -> List[Dict[str, Any]]:
+        """Convenience helper to retrieve candidate hypotheses from freeform query text."""
+        vec = self._get_worker_embedding(query_text)
+        dim = self.vectors.shape[1] if self.vectors is not None else 1024
+        if vec is None:
+            vec = np.zeros(dim, dtype=np.float32)
+        return self.retrieve_candidate_hypotheses(vec, company_text=query_text, client_inquiry=client_inquiry, top_k=top_k)
+
     def retrieve_candidate_hypotheses(
         self,
         company_vector: np.ndarray,

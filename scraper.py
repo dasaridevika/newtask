@@ -78,6 +78,7 @@ class PageEvidence:
     credibility_weight: float
     timestamp: str
     status_code: int = 200
+    meta_description: str = ""
 
 @dataclass
 class BusinessSignal:
@@ -92,6 +93,10 @@ class EvidenceStore:
     domain: str
     company_name: str
     base_url: str
+    meta_description: str = ""
+    about_text: str = ""
+    product_offerings: List[str] = field(default_factory=list)
+    solution_offerings: List[str] = field(default_factory=list)
     pages: List[PageEvidence] = field(default_factory=list)
     signals: List[BusinessSignal] = field(default_factory=list)
     evidence_ledger: List[Evidence] = field(default_factory=list)
@@ -150,29 +155,33 @@ class EvidenceStore:
         self.evidence_ledger.append(ev)
         return ev
 
-    def get_aggregated_text(self, max_chars: int = 12000) -> str:
+    def get_aggregated_text(self, max_chars: int = 14000) -> str:
         """Assembles structured text strictly from harvested evidence."""
         if not self.pages and not self.evidence_ledger:
             return ""
 
         sections = []
+        if self.meta_description:
+            sections.append(f"=== OFFICIAL META DESCRIPTION ===\n{self.meta_description}\n")
+
+        # Group by page type priority
         sorted_pages = sorted(self.pages, key=lambda p: p.credibility_weight, reverse=True)
         for page in sorted_pages:
-            headings_str = " | ".join(page.headings[:5]) if page.headings else "N/A"
+            headings_str = " | ".join(page.headings[:6]) if page.headings else "N/A"
             sections.append(
                 f"=== [{page.page_type.upper()}] {page.title} ({page.url}) ===\n"
                 f"Headings: {headings_str}\n"
                 f"Content Summary: {page.clean_text[:2500]}\n"
-                f"Key Snippets: {' // '.join(page.canonical_snippets[:4])}\n"
+                f"Key Snippets: {' // '.join(page.canonical_snippets[:5])}\n"
             )
         if self.search_insights:
-            sections.append("=== THIRD-PARTY VERIFIED PUBLIC KNOWLEDGE & SEARCH INSIGHTS ===\n" + "\n".join(self.search_insights))
+            sections.append("=== THIRD-PARTY VERIFIED PUBLIC KNOWLEDGE & SEARCH INSIGHTS ===\n" + "\n".join(self.search_insights[:10]))
         
         # Add Evidence Ledger Summary
         if self.evidence_ledger:
             ledger_lines = [
                 f"[{ev.evidence_id}] ({ev.relationship}) \"{ev.quoted_text}\" (Source: {ev.source_url})"
-                for ev in self.evidence_ledger[:30]
+                for ev in self.evidence_ledger[:35]
             ]
             sections.append("=== STRUCTURED EVIDENCE LEDGER ===\n" + "\n".join(ledger_lines))
 
@@ -250,7 +259,8 @@ def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
         "title": title,
         "headings": headings[:8],
         "clean_text": clean_text,
-        "canonical_snippets": canonical_snippets
+        "canonical_snippets": canonical_snippets,
+        "meta_description": ""
     }
 
 def clean_html(raw_html: str) -> dict:
@@ -259,12 +269,37 @@ def clean_html(raw_html: str) -> dict:
     title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else "Enterprise Page"
     title = title.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
 
+    meta_desc = ""
+    m = re.search(r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\'](.*?)["\']', raw_html, re.I)
+    if not m:
+        m = re.search(r'<meta\s+content=["\'](.*?)["\']\s+(?:name|property)=["\'](?:description|og:description)["\']', raw_html, re.I)
+    if m:
+        meta_desc = re.sub(r"\s+", " ", m.group(1)).strip()
+        meta_desc = meta_desc.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
+
     headings = []
     for h in re.findall(r"<h[1-3][^>]*>(.*?)</h[1-3]>", raw_html, re.I | re.DOTALL):
         clean_h = re.sub(r"<[^>]+>", "", h).strip()
         clean_h = re.sub(r"\s+", " ", clean_h)
         if 4 < len(clean_h) < 120 and clean_h not in headings:
             headings.append(clean_h)
+
+    # Extract clean list items (products/solutions bullet points)
+    NOISE_PATTERNS = [
+        "restricted to access", "partner support", "save portals", "apply now", "open search",
+        "please contact", "all rights reserved", "terms of use", "privacy policy", "cookie",
+        "forgot password", "create account", "available 9:", "need help", "sign in", "login",
+        "enable javascript", "menu !", "modal", "support:", "salescloud"
+    ]
+
+    list_items = []
+    for li in re.findall(r"<li[^>]*>(.*?)</li>", raw_html, re.I | re.DOTALL):
+        clean_li = re.sub(r"<[^>]+>", "", li).strip()
+        clean_li = re.sub(r"\s+", " ", clean_li)
+        clean_li = clean_li.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
+        li_low = clean_li.lower()
+        if 15 < len(clean_li) < 140 and clean_li not in list_items and not any(p in li_low for p in NOISE_PATTERNS):
+            list_items.append(clean_li)
 
     text = re.sub(r"<(script|style|nav|header|footer|svg|noscript|iframe)[^>]*>.*?</\1>", " ", raw_html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -274,9 +309,14 @@ def clean_html(raw_html: str) -> dict:
     sentences = re.split(r"(?<=[.!?])\s+", text)
     canonical_snippets = []
 
+    # If meta description exists, include it as top snippet
+    if meta_desc and len(meta_desc) > 25 and not any(p in meta_desc.lower() for p in NOISE_PATTERNS):
+        canonical_snippets.append(meta_desc)
+
     for sent in sentences:
         clean_s = sent.strip()
-        if 35 < len(clean_s) < 320:
+        s_low = clean_s.lower()
+        if 35 < len(clean_s) < 320 and not any(p in s_low for p in NOISE_PATTERNS):
             if clean_s not in canonical_snippets:
                 canonical_snippets.append(clean_s)
                 if len(canonical_snippets) >= 12:
@@ -286,7 +326,9 @@ def clean_html(raw_html: str) -> dict:
         "title": title,
         "headings": headings[:8],
         "clean_text": text,
-        "canonical_snippets": canonical_snippets
+        "canonical_snippets": canonical_snippets,
+        "meta_description": meta_desc,
+        "list_items": list_items[:10]
     }
 
 def extract_links(raw_html: str, base_url: str) -> List[str]:
@@ -534,6 +576,14 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
             extracted = clean_html(home_html)
             p_type, weight = classify_page(url, extracted["title"], extracted["headings"], extracted["clean_text"])
             
+            if extracted.get("meta_description"):
+                store.meta_description = extracted["meta_description"]
+
+            if extracted.get("list_items"):
+                for item in extracted["list_items"]:
+                    if item not in store.product_offerings and len(store.product_offerings) < 15:
+                        store.product_offerings.append(item)
+
             home_evidence = PageEvidence(
                 url=url,
                 title=extracted["title"],
@@ -544,7 +594,8 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                 extracted_keywords=[],
                 credibility_weight=weight,
                 timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                status_code=status_code
+                status_code=status_code,
+                meta_description=extracted.get("meta_description", "")
             )
             store.pages.append(home_evidence)
             store.signals.extend(extract_universal_signals(extracted["clean_text"], url))
@@ -569,6 +620,13 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                         if sub_html and sub_status == 200:
                             sub_ext = clean_html(sub_html)
                             sub_type, sub_weight = classify_page(sub_url, sub_ext["title"], sub_ext["headings"], sub_ext["clean_text"])
+                            
+                            if sub_ext.get("list_items"):
+                                for item in sub_ext["list_items"]:
+                                    if sub_type in (PageType.PRODUCTS_SERVICES, PageType.SOLUTIONS):
+                                        if item not in store.product_offerings and len(store.product_offerings) < 20:
+                                            store.product_offerings.append(item)
+
                             if len(sub_ext["clean_text"]) > 100:
                                 evidence = PageEvidence(
                                     url=sub_url,
@@ -580,7 +638,8 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                                     extracted_keywords=[],
                                     credibility_weight=sub_weight,
                                     timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                                    status_code=sub_status
+                                    status_code=sub_status,
+                                    meta_description=sub_ext.get("meta_description", "")
                                 )
                                 store.pages.append(evidence)
                                 store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
@@ -643,3 +702,9 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
         "source_links": [p.url for p in store.pages] if store.pages else ([f"https://{domain}"] if domain else []),
         "status": store.status
     }
+
+def scrape_company_evidence(target_site: str) -> EvidenceStore:
+    """Scrapes company evidence and returns the populated EvidenceStore directly."""
+    res = search_company_serp(target_site)
+    return res.get("evidence_store")
+

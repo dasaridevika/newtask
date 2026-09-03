@@ -1,7 +1,10 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.db
+*.sqlite3
+*.pdf
 .env
-output/
-worker/.wrangler/
-.DS_Store
+.venv
+env/
+venv/
