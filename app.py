@@ -453,17 +453,39 @@ if run_btn:
             )
             status.update(label="Dynamic Semantic Analysis & Evidence-Grounded Matching Complete", state="complete", expanded=False)
 
-        st.write("")
+        st.session_state["active_result"] = {
+            "analysis": analysis,
+            "company_details": company_details,
+            "evidence_store": evidence_store,
+            "evidence_ledger": evidence_ledger,
+            "serp_data": serp_data,
+            "scored_candidates": scored_candidates,
+            "target_url": target_url,
+            "client_inquiry": client_inquiry
+        }
 
-        # Results Summary (4 Premium Metric Cards)
-        exact_matches = analysis.get("exact_product_mappings", [])
-        adjacent_matches = analysis.get("adjacent_or_speculative_matches", [])
-        top_name = exact_matches[0]["exact_offering_name"] if exact_matches else (adjacent_matches[0]["exact_offering_name"] if adjacent_matches else "No Exact Match (Evidence Gap)")
-        
-        if evidence_store and evidence_store.confidence_score:
-            conf_score = int(evidence_store.confidence_score * 100)
-        else:
-            conf_score = 85 if exact_matches else 0
+if "active_result" in st.session_state and st.session_state["active_result"]:
+    active_data = st.session_state["active_result"]
+    analysis = active_data["analysis"]
+    company_details = active_data["company_details"]
+    evidence_store = active_data["evidence_store"]
+    evidence_ledger = active_data["evidence_ledger"]
+    serp_data = active_data["serp_data"]
+    scored_candidates = active_data["scored_candidates"]
+    target_url = active_data["target_url"]
+    client_inquiry = active_data["client_inquiry"]
+
+    st.write("")
+
+    # Results Summary (4 Premium Metric Cards)
+    exact_matches = analysis.get("exact_product_mappings", [])
+    adjacent_matches = analysis.get("adjacent_or_speculative_matches", [])
+    top_name = exact_matches[0]["exact_offering_name"] if exact_matches else (adjacent_matches[0]["exact_offering_name"] if adjacent_matches else "No Exact Match (Evidence Gap)")
+    
+    if evidence_store and evidence_store.confidence_score:
+        conf_score = int(evidence_store.confidence_score * 100)
+    else:
+        conf_score = 85 if exact_matches else 0
 
         m1, m2, m3, m4 = st.columns(4)
         with m1:
