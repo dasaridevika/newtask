@@ -413,7 +413,7 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
                 if extract and len(extract) > 40:
                     lines = [line.strip() for line in extract.split("\n") if len(line.strip()) > 35 and not line.strip().startswith("=")]
                     for l in lines[:40]:
-                        insights.append(f"Official Corporate Encyclopedia ({company_name}): {l}")
+                        insights.append(l)
     except Exception:
         pass
 
@@ -429,12 +429,11 @@ def fetch_search_insights(company_name: str, domain: str) -> List[str]:
             if resp.status_code == 200:
                 data = resp.json()
                 abstract = data.get("AbstractText", "")
-                heading = data.get("Heading", "")
                 if abstract and len(abstract) > 40:
-                    insights.append(f"Search Intelligence ({heading}): {abstract}")
+                    insights.append(abstract)
                 for topic in data.get("RelatedTopics", [])[:2]:
                     if isinstance(topic, dict) and topic.get("Text"):
-                        insights.append(f"Fact: {topic.get('Text')}")
+                        insights.append(topic.get("Text"))
         except Exception:
             pass
 

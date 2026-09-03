@@ -317,7 +317,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 default_industry = "Commercial & Industrial Services"
                 default_dm = f"Chief Commercial Officer or VP of Business Development at {clean_name}"
 
-            # Extract 3-5 real observed factual statements from the pages
+            # Extract real observed factual statements from the pages
             facts = []
             candidate_sentences = []
             if meta_desc and len(meta_desc) > 25 and not any(w in meta_desc.lower() for w in NOISE_PATTERNS):
@@ -326,25 +326,35 @@ Respond ONLY with a valid JSON object matching this exact schema:
             candidate_sentences.extend([s for s in product_snips if not any(w in s.lower() for w in NOISE_PATTERNS)])
             
             if not candidate_sentences:
-                candidate_sentences = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text_sample) if len(s.strip()) > 35 and len(s.strip()) < 250 and not any(w in s.lower() for w in NOISE_PATTERNS)]
+                raw_splits = re.split(r"(?<=[.!?])\s+", text_sample)
+                candidate_sentences = [s.strip() for s in raw_splits if len(s.strip()) > 35 and len(s.strip()) < 250 and not any(w in s.lower() for w in NOISE_PATTERNS)]
             
-            for s in candidate_sentences[:6]:
-                if s not in [f["statement"] for f in facts]:
-                    facts.append({"statement": s, "source_url": f"https://{domain}" if domain else "", "confidence": "high"})
+            for s in candidate_sentences[:10]:
+                # Clean any raw debug headers or prefixes
+                s_clean = re.sub(r"^===.*?===\s*", "", s).strip()
+                s_clean = re.sub(r"^(Official Corporate Encyclopedia|Search Intelligence|Fact)\s*(\([^)]*\))?:\s*", "", s_clean, flags=re.I).strip()
+                if len(s_clean) > 25 and s_clean not in [f["statement"] for f in facts]:
+                    facts.append({"statement": s_clean, "source_url": f"https://{domain}" if domain else "", "confidence": "high"})
 
             # Clean products list
             clean_prods = []
             for p in products_list[:8]:
                 p_clean = re.sub(r"\s+", " ", p).strip()
+                p_clean = re.sub(r"^===.*?===\s*", "", p_clean).strip()
                 if 3 < len(p_clean) < 70 and p_clean not in clean_prods and not any(w in p_clean.lower() for w in NOISE_PATTERNS):
                     clean_prods.append(p_clean)
 
-            # Build grounded multi-pillar narrative synthesis
-            overview_core = meta_desc if (meta_desc and len(meta_desc) > 30) else (" ".join([f["statement"] for f in facts[:2]]) if facts else f"{clean_name} is an active {archetype} operating in {default_industry}.")
+            # Build clean, natural executive brief
+            overview_core = meta_desc if (meta_desc and len(meta_desc) > 30) else (" ".join([f["statement"] for f in facts[:2]]) if facts else f"{clean_name} is an established {archetype} operating in {default_industry}.")
+            overview_core = re.sub(r"^===.*?===\s*", "", overview_core).strip()
+            overview_core = re.sub(r"^(Official Corporate Encyclopedia|Search Intelligence|Fact)\s*(\([^)]*\))?:\s*", "", overview_core, flags=re.I).strip()
 
-            p1 = f"**Executive Profile & Market Position:** {clean_name} operates as an established {archetype} focused on {default_industry}. {overview_core}"
+            p1 = f"**Executive Profile & Market Position:** {clean_name} operates as an established {archetype} in {default_industry}. {overview_core}"
             
-            p2 = f"**Core Offerings & Technical Capabilities:** Grounded in verified first-party catalog evidence, {clean_name}'s portfolio centers on {', '.join(clean_prods[:5]) if clean_prods else 'specialized commercial and industrial solutions'}. These capabilities are engineered to address mission-critical customer requirements across operational reliability, technical performance, and scalability."
+            if clean_prods:
+                p2 = f"**Core Offerings & Technical Capabilities:** {clean_name}'s core product and service portfolio includes {', '.join(clean_prods[:6])}. These offerings deliver specialized operational infrastructure, engineering reliability, and critical technical performance for enterprise clients."
+            else:
+                p2 = f"**Core Offerings & Technical Capabilities:** {clean_name}'s operational portfolio centers on critical infrastructure systems, engineered hardware/software solutions, and specialized technical services across {default_industry}."
             
             p3 = f"**Business Model & Revenue Architecture:** {clean_name} generates commercial value through direct solution deployments, enterprise equipment sales, recurring service support, and strategic customer integrations across {default_industry}."
             
