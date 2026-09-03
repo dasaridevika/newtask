@@ -266,6 +266,14 @@ Respond ONLY with a valid JSON object matching this exact schema:
             products_list = []
             signals_list = []
             
+            NOISE_PATTERNS = [
+                "restricted to access", "partner support", "save portals", "apply now", "open search",
+                "please contact", "all rights reserved", "terms of use", "privacy policy", "cookie",
+                "forgot password", "create account", "available 9:", "need help", "sign in", "login",
+                "enable javascript", "menu !", "modal", "support:", "salescloud", "activation status",
+                "news and events", "get sales and product support"
+            ]
+
             if evidence_store:
                 meta_desc = getattr(evidence_store, "meta_description", "") or ""
                 if hasattr(evidence_store, "product_offerings") and evidence_store.product_offerings:
@@ -280,14 +288,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
                     p_type = getattr(page, "page_type", "")
                     p_snips = getattr(page, "canonical_snippets", [])
                     p_headings = getattr(page, "headings", [])
-                    
-                    NOISE_PATTERNS = [
-                        "restricted to access", "partner support", "save portals", "apply now", "open search",
-                        "please contact", "all rights reserved", "terms of use", "privacy policy", "cookie",
-                        "forgot password", "create account", "available 9:", "need help", "sign in", "login",
-                        "enable javascript", "menu !", "modal", "support:", "salescloud", "activation status",
-                        "news and events", "get sales and product support"
-                    ]
 
                     if "about" in str(p_type).lower() or "who-we-are" in getattr(page, "url", "").lower():
                         about_snips.extend([s for s in p_snips[:4] if not any(w in s.lower() for w in NOISE_PATTERNS)])
