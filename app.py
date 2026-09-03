@@ -525,31 +525,54 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
 
         # Main Presentation Tabs
         tab_summary, tab_offer, tab_deliver, tab_history = st.tabs([
-            "1. Executive Intelligence & Strategy Summary",
-            "2. Matched Offerings & Evidence Dossier",
+            "1. Company Operational Profile (Current Functions & Services)",
+            "2. Strategic Offerings & Service Mapping",
             "3. Deliverables Blueprint",
             "4. Run History & Consistency Inspector"
         ])
 
-        # Tab 1: Executive Intelligence & Strategy Summary
+        # Tab 1: Company Operational Profile
         with tab_summary:
-            st.subheader(f"Executive Intelligence & Strategic Mandate: {company_details.get('company_name', 'Client Enterprise')}")
-            st.caption("Clean synthesized strategic profile, operational mandate, and verified offering alignment:")
+            st.subheader(f"Current Company Profile & Core Operations: {company_details.get('company_name', 'Client Enterprise')}")
+            st.caption("Factual breakdown of existing company operations, verified products/services, and operational footprint:")
 
             # 1. Executive Strategic Brief Card
             with st.container(border=True):
-                st.markdown("### Executive Strategic Brief")
+                st.markdown("### Executive Operations & Market Brief")
                 st.write(company_details.get("executive_profile_analysis", ""))
                 
                 col_meta1, col_meta2 = st.columns(2)
                 with col_meta1:
-                    st.markdown(f"**Business Model:** `{company_details.get('archetype', 'Industrial Infrastructure Provider')}`")
+                    st.markdown(f"**Business Model / Archetype:** `{company_details.get('archetype', 'Commercial Enterprise')}`")
                 with col_meta2:
                     if client_inquiry:
-                        st.markdown(f"**Inbound Mandate:** `{client_inquiry}`")
+                        st.markdown(f"**Required Service / Expansion Field:** `{client_inquiry}`")
 
-            # 2. Key Operational Pillars (2 Clean Columns)
-            st.markdown("### Strategic Requirements & Operational Context")
+            # 2. Verified Core Products & Existing Capabilities
+            prods = company_details.get("core_products_and_services", [])
+            diffs = company_details.get("key_differentiators", [])
+            if prods or diffs:
+                st.markdown("### Verified Products & Technical Capabilities")
+                c_p1, c_p2 = st.columns(2)
+                with c_p1:
+                    st.markdown("#### Core Products & Offerings")
+                    if prods:
+                        for p in prods[:6]:
+                            st.markdown(f"- **{p}**")
+                    else:
+                        st.write("Specialized commercial and industrial product lines.")
+                with c_p2:
+                    st.markdown("#### Operational Differentiators & Footprint")
+                    if diffs:
+                        for d in diffs[:4]:
+                            st.markdown(f"- {d}")
+                    scale_list = company_details.get("operational_scale_metrics", [])
+                    if scale_list:
+                        for s in scale_list[:3]:
+                            st.markdown(f"- 📈 *{s}*")
+
+            # 3. Key Operational Pillars & Growth Context
+            st.markdown("### Strategic Requirements & Operational Mandate")
             col_req1, col_req2 = st.columns(2)
             with col_req1:
                 st.markdown(f"""
@@ -571,10 +594,10 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
 
             st.write("")
 
-            # 3. Recommended Strategic Offerings (Polished Cards)
+            # 4. Recommended Strategic Offerings (Quick Preview)
             if exact_matches:
-                st.markdown("### Recommended Strategic Offerings")
-                st.caption("Evidence-grounded solutions aligned with the client's business model and active mandate:")
+                st.markdown("### Recommended Solution Mappings")
+                st.caption("Services we can provide tailored to their operations and stated requirements:")
                 for m_idx, m_item in enumerate(exact_matches):
                     t_label = m_item.get('tier_label', f'Strategic Solution {m_idx+1}')
                     c_id = m_item.get('candidate_id', '')

@@ -910,15 +910,17 @@ Respond ONLY with a valid JSON object matching this exact schema:
                     })
 
             offering_name = f"{title} Intelligence Platform"
-            blueprint = get_domain_deliverable_blueprint(title)
+            blueprint = generate_deliverable_blueprint(title, defn)
             t_low = title.lower()
             facility_term = "Developments" if any(w in t_low for w in ("plant", "facility", "hub", "unit", "center", "line")) else "Facilities"
             
-            # Determine client's operational relationship dynamically
+            # Determine client's operational relationship and cross-domain bridge dynamically
+            industry_baseline = company_details.get("industry_focus", "Core Enterprise Operations")
             client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
             sol_arch = (
-                f"Tailored for {company_name}'s commercial sales, power systems engineering, and business development units to identify "
-                f"new {title} project pipelines, utility interconnection dockets, and balance-of-plant equipment tenders. {blueprint}"
+                f"Tailored for {company_name}'s executive leadership and commercial teams to deliver solutions for {title}. "
+                f"Bridges {company_name}'s existing baseline in {industry_baseline} with {title} to track "
+                f"stage-gate project pipelines, utility interconnection dockets, and equipment procurement tenders. {blueprint}"
             )
 
             val_driver = cand.get("operational_value_driver") or (
