@@ -953,8 +953,20 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 }
             }
 
-            if (raw_ev_level in ("LEVEL_1", "LEVEL_2") or "LEVEL 1" in ev_level or "LEVEL 2" in ev_level) and classification == "exact" and len(exact_mappings) < 3:
-                exact_mappings.append(mapping_record)
+            if (raw_ev_level in ("LEVEL_1", "LEVEL_2") or "LEVEL 1" in ev_level or "LEVEL 2" in ev_level) and classification == "exact":
+                if len(exact_mappings) < 3:
+                    exact_mappings.append(mapping_record)
+                elif len(adjacent_mappings) < 3:
+                    mapping_record["tier_label"] = f"Supplementary Strategic Solution {len(adjacent_mappings) + 1}"
+                    adjacent_mappings.append(mapping_record)
+                else:
+                    rejection_reasons_tally["SUPPLEMENTARY_CAPACITY"] = rejection_reasons_tally.get("SUPPLEMENTARY_CAPACITY", 0) + 1
+                    disqualified_audit.append({
+                        "candidate_id": cid,
+                        "sector": title,
+                        "status": "SUPPLEMENTARY (CAPACITY_REACHED)",
+                        "rationale": f"Matching solution for '{title}' evaluated; top primary offerings prioritized."
+                    })
             elif (raw_ev_level == "LEVEL_3" or "LEVEL 3" in ev_level) and classification in ("adjacent", "exact") and len(adjacent_mappings) < 3:
                 adjacent_mappings.append(mapping_record)
             else:

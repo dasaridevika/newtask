@@ -425,17 +425,23 @@ class ServiceCatalog:
         # 2. not is_catch_all (demote catch-all generic buckets)
         # 3. evidence_priority descending
         # 4. final_score descending
-        # 5. intent_score descending
-        # 6. definition_score descending
-        # 7. candidate_id ascending (tie-breaker)
+        # 5. vector_cosine descending (most direct dense semantic fit)
+        # 6. inquiry_lexical_score descending (most direct textual match to user query)
+        # 7. retrieval_score descending
+        # 8. intent_score descending
+        # 9. definition_score descending
+        # 10. candidate_id ascending (deterministic tie-breaker)
         scored_candidates.sort(key=lambda x: (
             -int(x.get("is_inquiry_match", False)),
             int(x.get("is_catch_all", False)),
             -_evidence_priority(x),
-            -x["final_score"],
-            -x["intent_score"],
-            -x["definition_score"],
-            x["candidate_id"]
+            -x.get("final_score", 0.0),
+            -x.get("vector_cosine", 0.0),
+            -x.get("inquiry_lexical_score", 0.0),
+            -x.get("retrieval_score", 0.0),
+            -x.get("intent_score", 0.0),
+            -x.get("definition_score", 0.0),
+            x.get("candidate_id", "")
         ))
 
         return scored_candidates
