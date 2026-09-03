@@ -79,6 +79,8 @@ class WorkerAI:
             "model": self.model,
             "system": system_prompt,
             "prompt": prompt,
+            "temperature": 0.0,
+            "top_p": 0.9
         }
         if response_format:
             payload["response_format"] = response_format

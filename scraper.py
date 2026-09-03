@@ -490,8 +490,8 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                         if href not in internal_links:
                             internal_links.append(href)
 
-            # Sort subpages by depth
-            internal_links.sort(key=lambda u: len(urllib.parse.urlparse(u).path.strip("/").split("/")))
+            # Sort subpages deterministically by depth and alphabet
+            internal_links = sorted(list(set(internal_links)), key=lambda u: (len(urllib.parse.urlparse(u).path.strip("/").split("/")), u))
             for sub_url in internal_links[:12]:
                 try:
                     sub_res = await crawler.arun(url=sub_url)
@@ -611,12 +611,12 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                     is_first_party=True
                 )
 
-            sub_links = extract_links(home_html, base_url)
+            sub_links = sorted(list(set(extract_links(home_html, base_url))))
             if sub_links:
                 with ThreadPoolExecutor(max_workers=5) as executor:
-                    future_to_url = {executor.submit(fetch_page_content, u, 6): u for u in sub_links}
-                    for future in as_completed(future_to_url):
-                        sub_url, sub_html, sub_status = future.result()
+                    futures = [executor.submit(fetch_page_content, u, 6) for u in sub_links[:12]]
+                    results = [f.result() for f in futures]
+                    for sub_url, sub_html, sub_status in results:
                         if sub_html and sub_status == 200:
                             sub_ext = clean_html(sub_html)
                             sub_type, sub_weight = classify_page(sub_url, sub_ext["title"], sub_ext["headings"], sub_ext["clean_text"])
@@ -655,6 +655,10 @@ def search_company_serp(query_or_url: str, api_key: str = None) -> dict:
                                         evidence_type="subpage_fallback",
                                         is_first_party=True
                                     )
+
+        # Ensure evidence ledger IDs are deterministically ordered
+        for idx, ev in enumerate(store.evidence_ledger):
+            ev.evidence_id = f"ev_{idx+1:03d}"
 
     # 3. Third-party Search & Knowledge Insights
     if domain:

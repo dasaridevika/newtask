@@ -734,7 +734,7 @@ if run_btn:
             "primary_offering": exact_matches[0]["exact_offering_name"] if exact_matches else "None (Disqualified)",
             "primary_candidate_id": exact_matches[0]["candidate_id"] if exact_matches else "N/A",
             "match_count": len(exact_matches),
-            "matched_sectors": [m["primary_sector"] for m in exact_matches],
+            "matched_sectors": sorted([m["primary_sector"] for m in exact_matches]),
             "all_sectors_canonical": all(m["primary_sector"] in catalog.sectors for m in exact_matches) if catalog.sectors else True,
             "top_score": exact_matches[0]["score_breakdown"]["final_score"] if exact_matches else 0.0
         }
@@ -802,13 +802,15 @@ if run_btn:
                 run_b = all_history[sel_run_b]
 
                 same_input = (run_a.get("domain") == run_b.get("domain")) and (run_a.get("client_inquiry") == run_b.get("client_inquiry"))
-                same_output = (run_a.get("matched_sectors") == run_b.get("matched_sectors")) and (run_a.get("primary_candidate_id") == run_b.get("primary_candidate_id"))
+                set_a = set(run_a.get("matched_sectors", []))
+                set_b = set(run_b.get("matched_sectors", []))
+                same_output = (set_a == set_b) and (run_a.get("primary_candidate_id") == run_b.get("primary_candidate_id"))
                 
                 with st.container(border=True):
                     st.markdown("#### Consistency Analysis Result")
                     if same_input:
                         if same_output:
-                            st.success(f"100% Deterministic Consistency Verified: Identical input ('{run_a.get('domain')}' + '{run_a.get('client_inquiry')}') produced identical matched offerings ({', '.join(run_a.get('matched_sectors', []))}) with zero score drift.")
+                            st.success(f"100% Deterministic Consistency Verified: Identical input ('{run_a.get('domain')}' + '{run_a.get('client_inquiry')}') produced identical matched offerings ({', '.join(sorted(list(set_a)))}) with zero score drift.")
                         else:
                             st.error(f"Inconsistency Detected: Identical inputs produced different offering matches across runs.")
                     else:
