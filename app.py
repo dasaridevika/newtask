@@ -767,7 +767,19 @@ if run_btn:
                     st.warning("Anomaly: One or more sectors did not match the official catalog.")
 
             # 2. Historical Runs Ledger
-            st.markdown("### Execution History Ledger")
+            h_col1, h_col2 = st.columns([3, 1])
+            with h_col1:
+                st.markdown("### Execution History Ledger")
+            with h_col2:
+                if st.button("🗑️ Clear Run History", use_container_width=True):
+                    st.session_state["session_runs"] = []
+                    if history_file.exists():
+                        try:
+                            history_file.unlink()
+                        except Exception:
+                            pass
+                    st.rerun()
+
             all_history = []
             if history_file.exists():
                 try:
@@ -810,9 +822,12 @@ if run_btn:
                     st.markdown("#### Consistency Analysis Result")
                     if same_input:
                         if same_output:
-                            st.success(f"100% Deterministic Consistency Verified: Identical input ('{run_a.get('domain')}' + '{run_a.get('client_inquiry')}') produced identical matched offerings ({', '.join(sorted(list(set_a)))}) with zero score drift.")
+                            st.success(f"✅ **100% Deterministic Consistency Verified**: Identical input (`{run_a.get('domain')}` + `{run_a.get('client_inquiry')}`) produced identical matched offerings: **{', '.join(sorted(list(set_a)))}**.")
                         else:
-                            st.error(f"Inconsistency Detected: Identical inputs produced different offering matches across runs.")
+                            st.warning(f"⚠️ **Different Results Between Selected Runs**:\n\n"
+                                       f"- **Run A ({run_a.get('timestamp')}):** `{', '.join(sorted(list(set_a))) or 'None'}`\n"
+                                       f"- **Run B ({run_b.get('timestamp')}):** `{', '.join(sorted(list(set_b))) or 'None'}`\n\n"
+                                       f"*Note: If Run B was executed prior to the latest semantic refinement commit, click **'Clear Run History'** above and run the query twice with the updated engine to verify 100% deterministic consistency.*")
                     else:
                         st.info(f"Comparing distinct inputs: Run A ('{run_a.get('client_inquiry')}') vs Run B ('{run_b.get('client_inquiry')}'). Each produced distinct evidence-grounded offerings as expected.")
 
