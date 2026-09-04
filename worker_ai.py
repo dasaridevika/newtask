@@ -536,45 +536,35 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         inq_lower = client_inquiry.lower().strip() if client_inquiry else ""
         sec_lower = sec_name.lower().strip()
-        
         acronyms = [a.lower().strip() for a in re.findall(r"\((.*?)\)", sec_lower)]
         clean_sec = re.sub(r"\(.*?\)", "", sec_lower).strip()
-        sec_tokens = set(re.findall(r"[a-zA-Z0-9]{2,}", sec_lower))
+        sec_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
         sec_tokens.update(acronyms)
-        sec_tokens.discard("plant")
-        
-        GENERIC_SECTOR_WORDS = {
-            "center", "centre", "facilities", "facility", "plant", "station", "park", "hub",
-            "unit", "building", "buildings", "services", "solutions", "infrastructure",
-            "system", "systems", "complex", "zone", "house", "other", "general", "group",
-            "holdings", "company", "corporation", "project", "projects", "line", "area"
-        }
 
+        # Dynamic algorithmic inquiry matching using token overlap, phrase containment & vector cosine
         is_inquiry_match = False
         if inq_lower and len(inq_lower) >= 2:
-            inq_tokens = [t for t in re.findall(r"[a-zA-Z0-9]{2,}", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are", "project", "projects", "facility", "plant")]
-            distinctive_inq = [t for t in inq_tokens if t not in GENERIC_SECTOR_WORDS]
-            sec_all_tokens = set(re.findall(r"[a-zA-Z0-9]{2,}", sec_lower))
-            sec_all_tokens.update(acronyms)
-            
+            inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are")]
             if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
-            elif distinctive_inq:
-                matched_distinctive = [t for t in distinctive_inq if t in sec_all_tokens]
-                if len(matched_distinctive) == len(distinctive_inq):
-                    is_inquiry_match = True
             elif inq_tokens:
-                matched_inq = [t for t in inq_tokens if t in sec_all_tokens]
-                if len(matched_inq) == len(inq_tokens):
+                matched_tokens = [t for t in inq_tokens if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
+                token_overlap = len(matched_tokens) / len(inq_tokens) if inq_tokens else 0
+                vec_cos = candidate.get("vector_cosine", 0.0)
+                lex_sc = candidate.get("inquiry_lexical_score", 0.0)
+                if token_overlap >= 0.5:
+                    if len(inq_tokens) >= 2 and token_overlap < 1.0:
+                        is_inquiry_match = bool(vec_cos >= 0.65 or lex_sc >= 0.20)
+                    else:
+                        is_inquiry_match = True
+                elif vec_cos >= 0.70 and len(matched_tokens) >= 1:
                     is_inquiry_match = True
 
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
         is_target_focus = any(any(st in ts for st in sec_tokens if len(st) >= 3) for ts in target_secs) if sec_tokens else False
 
         verified_quotes = []
-        distinctive_cand_tokens = [t for t in re.findall(r"[a-zA-Z0-9]{3,}", clean_sec) if t.lower() not in GENERIC_SECTOR_WORDS]
-        if not distinctive_cand_tokens:
-            distinctive_cand_tokens = [t for t in re.findall(r"[a-zA-Z0-9]{2,}", clean_sec)]
+        sec_substantive_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{3,}\b", clean_sec)]
 
         for ev in evidence_items:
             quote = ev.get("quoted_text", "") if isinstance(ev, dict) else getattr(ev, "quoted_text", "")
@@ -590,9 +580,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 verified_quotes.append(ev_id)
                 continue
 
-            if distinctive_cand_tokens and not sec_lower.startswith("other "):
-                matched_distinctive = [t for t in distinctive_cand_tokens if re.search(r"" + re.escape(t) + r"", q_lower)]
-                if len(matched_distinctive) == len(distinctive_cand_tokens):
+            if sec_substantive_tokens and not sec_lower.startswith("other "):
+                if all(re.search(r"\b" + re.escape(t) + r"\b", q_lower) for t in sec_substantive_tokens):
                     verified_quotes.append(ev_id)
 
         if is_inquiry_match:
