@@ -11,9 +11,10 @@ from urllib3.util.retry import Retry
 def generate_deliverable_blueprint(sector_name: str, definition: str = "") -> str:
     """Dynamically generates tailored deliverable intelligence feeds from sector name and definition."""
     clean_sec = sector_name.strip()
+    defn_context = f" targeting {definition.rstrip('.')}" if definition else ""
     return (
-        f"Provides stage-gate project intelligence, regulatory and compliance queue tracking, "
-        f"technical capacity feeds, and verified EPC/developer directories across {clean_sec}."
+        f"Delivers continuous stage-gate project intelligence, capital expenditure and RFP tender tracking, "
+        f"interconnection queue and regulatory compliance dockets, and verified engineering decision-maker directories across {clean_sec}{defn_context}."
     )
 
 
@@ -130,6 +131,37 @@ class WorkerAI:
         inquiry_text = f'\nClient Specific Inbound Inquiry / Stated Requirement:\n"{client_inquiry}"\n' if client_inquiry else ""
 
         if not scraped_text or len(scraped_text.strip()) < 50:
+            from service_catalog import catalog
+            decomp = catalog.decompose_compound_words(client_inquiry.strip()) if (client_inquiry and hasattr(catalog, "decompose_compound_words")) else (client_inquiry.strip() if client_inquiry else "")
+            inq_label = decomp.title() if decomp.islower() else (client_inquiry.strip() if client_inquiry else "Commercial Operations")
+
+            req_analysis = {
+                "core_growth_mandate": f"Accelerate commercial origination, strategic deployment pipeline positioning, and solution delivery for {inq_label} developments, expanding {clean_name}'s market footprint.",
+                "infrastructure_and_asset_needs": f"High-reliability operational infrastructure assets, specialized engineering components, and technical deployment capacity tailored for {inq_label}.",
+                "market_diligence_and_deal_sourcing_needs": f"Stage-gate capital buildout filings, early procurement tenders, regulatory permitting dockets, and verified EPC/developer decision-maker directories across {inq_label}.",
+                "regulatory_permitting_and_esg_needs": f"Applicable grid interconnection queues, municipal zoning filings, environmental impact assessments, and technical compliance frameworks governing {inq_label}.",
+                "primary_operational_bottleneck": f"Extended equipment procurement lead times, stage-gate approval hurdles, and lack of pre-RFP commercial visibility into upcoming {inq_label} projects.",
+                "risk_mitigation_strategy": f"Deploy proprietary continuous market intelligence to identify active capital projects early and engage decision-makers 6–12 months prior to formal RFP tenders.",
+                "target_decision_maker": f"VP of Business Development, VP of Engineering, or Commercial Operations Director at {clean_name}"
+            }
+
+            clean_requirements = []
+            if client_inquiry and len(client_inquiry.strip()) > 1:
+                clean_requirements.append({
+                    "requirement_id": "req_001",
+                    "name": f"Strategic Project Intelligence & Pipeline Tracking ({inq_label})",
+                    "description": req_analysis["market_diligence_and_deal_sourcing_needs"],
+                    "type": "explicit",
+                    "confidence": "high"
+                })
+                clean_requirements.append({
+                    "requirement_id": "req_002",
+                    "name": "Stage-Gate Permitting & Interconnection Compliance Feed",
+                    "description": req_analysis["regulatory_permitting_and_esg_needs"],
+                    "type": "explicit",
+                    "confidence": "high"
+                })
+
             return {
                 "status": "insufficient_evidence",
                 "company_name": clean_name,
@@ -139,22 +171,22 @@ class WorkerAI:
                 "target_customers_and_markets": "",
                 "executive_profile_analysis": f"Insufficient verified web evidence was gathered for {clean_name} ({domain}).",
                 "business_model_and_revenue_drivers": "Enterprise operations",
-                "requirements": [],
-                "detailed_requirements_analysis": {},
+                "requirements": clean_requirements,
+                "detailed_requirements_analysis": req_analysis,
                 "delivered_historical_projects": [],
                 "current_active_operations": [],
                 "future_roadmaps_and_expansion": [],
-                "operational_friction_and_pain_points": "",
+                "operational_friction_and_pain_points": req_analysis["primary_operational_bottleneck"],
                 "portfolio_target_sectors": [],
                 "observed_facts": [],
                 "strategic_inferences": [],
-                "unknowns_and_gaps": ["Insufficient validated crawl evidence."],
+                "unknowns_and_gaps": ["Insufficient validated crawl evidence from target domain."],
                 "confidence_assessment": {
                     "level": "low",
                     "score": 0,
                     "rationale": "No validated claims were produced from the provided source."
                 },
-                "buying_role_hypothesis": f"Executive Leadership at {clean_name}"
+                "buying_role_hypothesis": req_analysis["target_decision_maker"]
             }
 
         # 1. Structure LLM extraction with strict fact-grounding instructions
@@ -434,13 +466,34 @@ Respond ONLY with a valid JSON object matching this exact schema:
             return any(p in val_low for p in PLACEHOLDER_SUBSTRINGS)
 
         if client_inquiry and len(client_inquiry.strip()) > 1:
-            inq_str = client_inquiry.strip()
-            growth_mandate = f"Accelerate commercial origination, strategic deployment pipeline positioning, and solution delivery for {inq_str} developments, expanding {company_name}'s market footprint across {industry}."
-            asset_needs = f"Critical technical specifications, operational infrastructure assets, and specialized equipment delivery tailored for {inq_str}."
-            diligence_needs = f"Stage-gate project permitting dockets, capital expenditure filings, RFP tender notices, and key decision-maker directories for {inq_str}."
-            regulatory_needs = f"Applicable industry standards, regional regulatory filings, municipal zoning and environmental compliance frameworks for {inq_str}."
-            bottleneck = f"Long procurement lead times, stage-gate approval delays, and lack of pre-RFP commercial visibility in {inq_str}."
-            mitigation = f"Deploy continuous market intelligence to proactively surface pipeline opportunities and engage project decision-makers 6–12 months prior to formal RFP tenders."
+            from service_catalog import catalog
+            decomp = catalog.decompose_compound_words(client_inquiry.strip()) if hasattr(catalog, "decompose_compound_words") else client_inquiry.strip()
+            inq_str = decomp.title() if decomp.islower() else client_inquiry.strip()
+
+            growth_mandate = (
+                f"Accelerate commercial origination, strategic deployment pipeline positioning, and solution delivery "
+                f"for {inq_str} developments, expanding {company_name}'s market footprint across {industry}."
+            )
+            asset_needs = (
+                f"High-reliability operational infrastructure assets, specialized engineering components, and critical "
+                f"technical deployment capacity tailored specifically for {inq_str}."
+            )
+            diligence_needs = (
+                f"Stage-gate capital buildout filings, early procurement tenders, regulatory permitting dockets, "
+                f"and verified EPC/developer decision-maker directories across {inq_str}."
+            )
+            regulatory_needs = (
+                f"Applicable grid interconnection queues, municipal zoning filings, environmental impact assessments, "
+                f"and technical compliance frameworks governing {inq_str}."
+            )
+            bottleneck = (
+                f"Extended equipment procurement lead times, stage-gate approval hurdles, and lack of pre-RFP commercial "
+                f"visibility into upcoming {inq_str} projects."
+            )
+            mitigation = (
+                f"Deploy proprietary continuous market intelligence to identify active capital projects, verify developer requirements, "
+                f"and position solutions 6–12 months prior to competitive RFP tenders."
+            )
             decision_maker = f"VP of Business Development, VP of Engineering, or Commercial Operations Director at {company_name}"
 
             req_analysis["core_growth_mandate"] = growth_mandate
@@ -471,9 +524,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         clean_requirements = []
         if client_inquiry and len(client_inquiry.strip()) > 1:
+            from service_catalog import catalog
+            decomp = catalog.decompose_compound_words(client_inquiry.strip()) if hasattr(catalog, "decompose_compound_words") else client_inquiry.strip()
+            inq_label = decomp.title() if decomp.islower() else client_inquiry.strip()
             clean_requirements.append({
                 "requirement_id": "req_001",
-                "name": f"Strategic Project Intelligence & Pipeline Tracking ({client_inquiry.strip()})",
+                "name": f"Strategic Project Intelligence & Pipeline Tracking ({inq_label})",
                 "description": req_analysis["market_diligence_and_deal_sourcing_needs"],
                 "type": "explicit",
                 "confidence": "high"
@@ -577,17 +633,15 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
             if inq_lower in acronyms or inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or decomp_inq == clean_sec:
                 is_inquiry_match = True
+            elif hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map and any(catalog.sectors[idx] == sec_name for idx in catalog.acronym_map[inq_lower]):
+                is_inquiry_match = True
             elif inq_tokens_to_eval:
-                matched_tokens = [t for t in expanded_inq_tokens if any(token_stem_match(t, s) for s in sec_tokens)]
-                token_overlap = len(matched_tokens) / len(expanded_inq_tokens) if expanded_inq_tokens else 0
-                vec_cos = candidate.get("vector_cosine", 0.0)
+                matched_tokens = [t for t in inq_tokens_to_eval if any(token_stem_match(t, s) for s in sec_tokens)]
+                token_overlap = len(matched_tokens) / len(inq_tokens_to_eval) if inq_tokens_to_eval else 0
                 lex_sc = candidate.get("inquiry_lexical_score", 0.0)
 
                 primary_domain_token = inq_tokens_to_eval[0]
-                has_primary = (
-                    any(token_stem_match(primary_domain_token, s) for s in sec_tokens)
-                    or (hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map and len(matched_tokens) >= 1)
-                )
+                has_primary = any(token_stem_match(primary_domain_token, s) for s in sec_tokens)
 
                 if has_primary and (token_overlap >= 0.50 or lex_sc >= 0.10):
                     is_inquiry_match = True
@@ -639,6 +693,22 @@ Respond ONLY with a valid JSON object matching this exact schema:
             val_driver = f"Accelerates commercial pipeline visibility into project stage-gates, verifies regulatory compliance filings, and secures early procurement feeds across {sec_name}."
             req_solved = f"Stage-gate project tracking, compliance dockets, and key decision-maker directories in {sec_name}."
             ev_ids = ["inquiry_stated"] + verified_quotes
+        elif client_inquiry and len(client_inquiry.strip()) > 1:
+            classification = "reject"
+            evidence_level = "LEVEL_4"
+            confidence = "low"
+            entailment = "none"
+            func_align = "none"
+            intent_align = "none"
+            if len(verified_quotes) >= 1:
+                reason_code = "NON_MATCHING_INQUIRY"
+                reason = f"Candidate '{sec_name}' identified in background operations ({len(verified_quotes)} citations), but does not match explicit inquiry '{client_inquiry}'."
+            else:
+                reason_code = "NO_VERIFIED_EVIDENCE"
+                reason = f"Sector '{sec_name}' has semantic similarity but lacks verified operational ground-truth evidence."
+            val_driver = ""
+            req_solved = ""
+            ev_ids = []
         elif is_target_focus and len(verified_quotes) >= 1:
             classification = "exact"
             evidence_level = "LEVEL_1"
@@ -872,9 +942,9 @@ Respond ONLY with a valid JSON object matching this exact schema:
             industry_baseline = company_details.get("industry_focus", "Core Enterprise Operations")
             client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
             sol_arch = (
-                f"Tailored for {company_name}'s executive leadership and commercial teams to capture strategic opportunities in {title}. "
-                f"Bridges {company_name}'s operational baseline in {industry_baseline} with {title} developments to track "
-                f"stage-gate capital buildouts, regulatory filings, and equipment procurement tenders. {blueprint}"
+                f"Tailored for {company_name}'s executive leadership and commercial development teams to capture strategic opportunities in {title}. "
+                f"Leverages {company_name}'s operational footprint in {industry_baseline} to track stage-gate capital buildouts, "
+                f"regulatory filings, and equipment procurement tenders across {title}. {blueprint}"
             )
 
             val_driver = cand.get("operational_value_driver") or (
@@ -907,11 +977,15 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 }
             }
 
-            has_verified_ev = len(supporting_citations) >= 1 or cand.get("is_inquiry_match", False) or "inquiry_stated" in ev_ids
-            if (raw_ev_level in ("LEVEL_1", "LEVEL_2") or "LEVEL 1" in ev_level or "LEVEL 2" in ev_level) and classification == "exact" and has_verified_ev:
+            has_inquiry = bool(client_inquiry and len(client_inquiry.strip()) > 1)
+            is_inq = cand.get("is_inquiry_match", False)
+            has_verified_ev = len(supporting_citations) >= 1 or is_inq or "inquiry_stated" in ev_ids
+            can_be_exact = (not has_inquiry) or is_inq
+
+            if (raw_ev_level in ("LEVEL_1", "LEVEL_2") or "LEVEL 1" in ev_level or "LEVEL 2" in ev_level) and classification == "exact" and has_verified_ev and can_be_exact:
                 if len(exact_mappings) < 3:
                     exact_mappings.append(mapping_record)
-                elif len(adjacent_mappings) < 3:
+                elif len(adjacent_mappings) < 3 and not has_inquiry:
                     mapping_record["tier_label"] = f"Supplementary Strategic Solution {len(adjacent_mappings) + 1}"
                     adjacent_mappings.append(mapping_record)
                 else:
@@ -922,10 +996,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         "status": "SUPPLEMENTARY (CAPACITY_REACHED)",
                         "rationale": f"Matching solution for '{title}' evaluated; top primary offerings prioritized."
                     })
-            elif (raw_ev_level == "LEVEL_3" or "LEVEL 3" in ev_level) and classification in ("adjacent", "exact") and has_verified_ev and len(adjacent_mappings) < 3:
+            elif (raw_ev_level == "LEVEL_3" or "LEVEL 3" in ev_level) and classification in ("adjacent", "exact") and has_verified_ev and not has_inquiry and len(adjacent_mappings) < 3:
                 adjacent_mappings.append(mapping_record)
             else:
                 reason_code = cand.get("decision", {}).get("reason_code", "NO_VERIFIED_EVIDENCE")
+                if has_inquiry and not is_inq and (len(supporting_citations) >= 1 or len(ev_ids) >= 1):
+                    reason_code = "NON_MATCHING_INQUIRY"
                 rejection_reasons_tally[reason_code] = rejection_reasons_tally.get(reason_code, 0) + 1
                 disqualified_audit.append({
                     "candidate_id": cid,
