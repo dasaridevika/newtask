@@ -3,7 +3,6 @@ import re
 import time
 import requests
 import numpy as np
-import pandas as pd
 from pathlib import Path
 from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Optional, Set, Tuple, Any
