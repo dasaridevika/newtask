@@ -258,17 +258,23 @@ class ServiceCatalog:
             inq_clean = client_inquiry.strip().lower()
             
             # Direct canonical acronym / synonym mapping
+            expanded_inq = inq_clean
             if hasattr(self, "acronym_map") and inq_clean in self.acronym_map:
                 for a_idx in self.acronym_map[inq_clean]:
                     if a_idx not in inquiry_indices:
                         inquiry_indices.append(a_idx)
+                # Expand acronym with canonical names for rich multi-offering discovery
+                expanded_inq = f"{inq_clean} {' '.join([self.sectors[a] for a in self.acronym_map[inq_clean]])}"
 
             if self.tfidf_vectorizer and self.tfidf_matrix is not None:
-                inq_vec_tfidf = self.tfidf_vectorizer.transform([inq_clean])
+                inq_vec_tfidf = self.tfidf_vectorizer.transform([expanded_inq])
                 inq_tfidf_sims = (self.tfidf_matrix * inq_vec_tfidf.T).toarray().flatten()
                 sorted_inq = np.argsort(-inq_tfidf_sims)
                 for idx in sorted_inq:
-                    if inq_tfidf_sims[idx] > 0.03 and len(inquiry_indices) < max(5, top_k // 2):
+                    s_name = self.sectors[idx].lower()
+                    if s_name.startswith("other ") or "unclassified" in s_name or s_name.startswith("general "):
+                        continue
+                    if inq_tfidf_sims[idx] > 0.03 and len(inquiry_indices) < max(6, top_k // 2):
                         if int(idx) not in inquiry_indices:
                             inquiry_indices.append(int(idx))
 
@@ -296,11 +302,24 @@ class ServiceCatalog:
 
         # Ordered deduplication: Inquiry candidates FIRST, followed by multi-facet candidates, followed by global profile candidates
         merged_indices = []
+        catch_all_overflow = []
         for idx in inquiry_indices + facet_indices + top_comp_indices:
             if idx not in merged_indices:
-                merged_indices.append(idx)
+                s_name = self.sectors[idx].lower()
+                if s_name.startswith("other ") or "unclassified" in s_name or s_name.startswith("general "):
+                    catch_all_overflow.append(idx)
+                else:
+                    merged_indices.append(idx)
             if len(merged_indices) >= top_k:
                 break
+        
+        # If slots remain, fill from non-duplicate overflow
+        if len(merged_indices) < top_k:
+            for idx in catch_all_overflow:
+                if idx not in merged_indices:
+                    merged_indices.append(idx)
+                if len(merged_indices) >= top_k:
+                    break
 
         candidates = []
         for idx in merged_indices:
@@ -463,8 +482,8 @@ class ServiceCatalog:
             int(x.get("is_catch_all", False)),
             -_evidence_priority(x),
             -x.get("final_score", 0.0),
-            -x.get("vector_cosine", 0.0),
             -x.get("inquiry_lexical_score", 0.0),
+            -x.get("vector_cosine", 0.0),
             -x.get("retrieval_score", 0.0),
             -x.get("intent_score", 0.0),
             -x.get("definition_score", 0.0),

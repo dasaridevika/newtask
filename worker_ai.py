@@ -11,11 +11,11 @@ from urllib3.util.retry import Retry
 def generate_deliverable_blueprint(sector_name: str, definition: str = "") -> str:
     """Dynamically generates tailored deliverable intelligence feeds from sector name and definition."""
     clean_sec = sector_name.strip()
-    def_clean = definition.strip() if definition else f"commercial operations and capital developments in {clean_sec}"
     return (
-        f"Delivers stage-gate project intelligence, regulatory and compliance queue tracking, "
-        f"technical specifications ({def_clean}), and verified decision-maker directories across {clean_sec}."
+        f"Provides stage-gate project intelligence, regulatory and compliance queue tracking, "
+        f"technical capacity feeds, and verified EPC/developer directories across {clean_sec}."
     )
+
 
 
 
@@ -545,20 +545,26 @@ Respond ONLY with a valid JSON object matching this exact schema:
             defn_lower = definition.lower() if definition else ""
 
             # 1. Full phrase containment or direct acronym equivalence
+            expanded_inq_tokens = list(inq_tokens_to_eval)
+            from service_catalog import catalog
+            if hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map:
+                for s_idx in catalog.acronym_map[inq_lower]:
+                    expanded_inq_tokens.extend([w for w in re.findall(r"\b[a-zA-Z0-9]{3,}\b", catalog.sectors[s_idx].lower()) if w not in ("the", "and", "for", "plant", "facilities")])
+
             if inq_lower in acronyms or inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or inq_lower in defn_lower:
                 is_inquiry_match = True
             elif inq_tokens_to_eval:
-                matched_tokens = [t for t in inq_tokens_to_eval if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
-                token_overlap = len(matched_tokens) / len(inq_tokens_to_eval) if inq_tokens_to_eval else 0
+                matched_tokens = [t for t in expanded_inq_tokens if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
+                token_overlap = len(matched_tokens) / len(expanded_inq_tokens) if expanded_inq_tokens else 0
                 vec_cos = candidate.get("vector_cosine", 0.0)
                 lex_sc = candidate.get("inquiry_lexical_score", 0.0)
 
                 primary_domain_token = inq_tokens_to_eval[0]
-                has_primary = (primary_domain_token in sec_tokens or any(primary_domain_token in s or s in primary_domain_token for s in sec_tokens) or primary_domain_token in defn_lower)
+                has_primary = (primary_domain_token in sec_tokens or any(primary_domain_token in s or s in primary_domain_token for s in sec_tokens) or primary_domain_token in defn_lower or (hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map and len(matched_tokens) >= 1))
 
-                if token_overlap == 1.0:
+                if token_overlap >= 0.5:
                     is_inquiry_match = True
-                elif has_primary and (token_overlap >= 0.33 or vec_cos >= 0.60 or lex_sc >= 0.05):
+                elif has_primary and (token_overlap >= 0.20 or vec_cos >= 0.60 or lex_sc >= 0.05):
                     is_inquiry_match = True
 
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
@@ -830,13 +836,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
             industry_baseline = company_details.get("industry_focus", "Core Enterprise Operations")
             client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
             sol_arch = (
-                f"Tailored for {company_name}'s executive leadership and commercial teams to deliver solutions for {title}. "
-                f"Bridges {company_name}'s existing baseline in {industry_baseline} with {title} to track "
-                f"stage-gate project pipelines, utility interconnection dockets, and equipment procurement tenders. {blueprint}"
+                f"Tailored for {company_name}'s executive leadership and commercial teams to capture strategic opportunities in {title}. "
+                f"Bridges {company_name}'s operational baseline in {industry_baseline} with {title} developments to track "
+                f"stage-gate capital buildouts, regulatory filings, and equipment procurement tenders. {blueprint}"
             )
 
             val_driver = cand.get("operational_value_driver") or (
-                f"Accelerates engineering design cycles, verifies power interconnect queues, and secures proprietary visibility across {title} assets."
+                f"Accelerates commercial pipeline visibility into project stage-gates, verifies regulatory compliance filings, and secures early procurement feeds across {title}."
             )
             val_driver = re.sub(r"^(?:Concrete qualitative operational value statement:\s*|Operational Value Driver:\s*)", "", val_driver, flags=re.I).strip()
 
@@ -852,8 +858,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 "verified_evidence_ids": verified_eids or ev_ids,
                 "verified_evidence_count": len(supporting_citations) if supporting_citations else len(ev_ids),
                 "supporting_citations": supporting_citations,
-                "matched_functionality": f"Market intelligence on {title} builds and equipment procurement",
-                "matched_intent": f"Strategic pipeline visibility in {title}",
+                "matched_functionality": f"Commercial intelligence on {title} capital projects, equipment procurement, and facility buildouts",
+                "matched_intent": f"Strategic pipeline visibility and deal sourcing in {title}",
                 "mapped_requirement": cand.get("requirement_solved") or f"Intelligence feed in {title}",
                 "rationale": cleaned_rationale,
                 "comprehensive_narrative": sol_arch,
