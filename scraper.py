@@ -286,21 +286,15 @@ def clean_html(raw_html: str) -> dict:
             headings.append(clean_h)
 
     # Extract clean list items (products/solutions bullet points)
-    NOISE_PATTERNS = [
-        "restricted to access", "partner support", "save portals", "apply now", "open search",
-        "please contact", "all rights reserved", "terms of use", "privacy policy", "cookie",
-        "forgot password", "create account", "available 9:", "need help", "sign in", "login",
-        "enable javascript", "menu !", "modal", "support:", "salescloud", "language & location",
-        "learn about", "product solutions", "verticals", "other topics", "site map", "worldwide"
-    ]
-
     list_items = []
     for li in re.findall(r"<li[^>]*>(.*?)</li>", raw_html, re.I | re.DOTALL):
         clean_li = re.sub(r"<[^>]+>", "", li).strip()
         clean_li = re.sub(r"\s+", " ", clean_li)
-        li_low = clean_li.lower()
-        if 15 < len(clean_li) < 140 and clean_li not in list_items and not any(p in li_low for p in NOISE_PATTERNS) and not li_low.endswith(":"):
-            list_items.append(clean_li)
+        words = clean_li.split()
+        if 8 < len(clean_li) < 100 and clean_li not in list_items:
+            if not clean_li.endswith((":", "?", ";")) and not any(c in clean_li for c in ("{", "}", "<", ">", "//")):
+                if len(words) >= 2 and any(w[0].isupper() or any(char.isdigit() for char in w) for w in words):
+                    list_items.append(clean_li)
 
     text = re.sub(r"<(script|style|nav|header|footer|svg|noscript|iframe)[^>]*>.*?</\1>", " ", raw_html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
@@ -310,17 +304,18 @@ def clean_html(raw_html: str) -> dict:
     canonical_snippets = []
 
     # If meta description exists, include it as top snippet
-    if meta_desc and len(meta_desc) > 25 and not any(p in meta_desc.lower() for p in NOISE_PATTERNS):
+    if meta_desc and 25 < len(meta_desc) < 350 and len(meta_desc.split()) >= 4:
         canonical_snippets.append(meta_desc)
 
     for sent in sentences:
         clean_s = sent.strip()
-        s_low = clean_s.lower()
-        if 35 < len(clean_s) < 320 and not any(p in s_low for p in NOISE_PATTERNS):
-            if clean_s not in canonical_snippets:
-                canonical_snippets.append(clean_s)
-                if len(canonical_snippets) >= 12:
-                    break
+        words = clean_s.split()
+        if 35 < len(clean_s) < 320 and len(words) >= 5:
+            if not any(c in clean_s for c in ("{", "}", "<", ">", "///", "==")):
+                if clean_s not in canonical_snippets:
+                    canonical_snippets.append(clean_s)
+                    if len(canonical_snippets) >= 12:
+                        break
 
     return {
         "title": title,

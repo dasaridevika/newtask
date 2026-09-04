@@ -243,14 +243,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
             case_study_snips = []
             products_list = []
             signals_list = []
-            
-            NOISE_PATTERNS = [
-                "restricted to access", "partner support", "save portals", "apply now", "open search",
-                "please contact", "all rights reserved", "terms of use", "privacy policy", "cookie",
-                "forgot password", "create account", "available 9:", "need help", "sign in", "login",
-                "enable javascript", "menu !", "modal", "support:", "salescloud", "activation status",
-                "news and events", "get sales and product support"
-            ]
 
             if evidence_store:
                 meta_desc = getattr(evidence_store, "meta_description", "") or ""
@@ -267,9 +259,9 @@ Respond ONLY with a valid JSON object matching this exact schema:
                     p_snips = getattr(page, "canonical_snippets", [])
 
                     if "about" in str(p_type).lower() or "who-we-are" in getattr(page, "url", "").lower():
-                        about_snips.extend([s for s in p_snips[:4] if not any(w in s.lower() for w in NOISE_PATTERNS)])
+                        about_snips.extend([s for s in p_snips[:4] if 35 <= len(s) <= 350 and len(s.split()) >= 5])
                     elif "case_study" in str(p_type).lower() or "project" in getattr(page, "url", "").lower():
-                        case_study_snips.extend([s for s in p_snips[:4] if not any(w in s.lower() for w in NOISE_PATTERNS)])
+                        case_study_snips.extend([s for s in p_snips[:4] if 35 <= len(s) <= 350 and len(s.split()) >= 5])
 
             # Extract archetype and industry from verified content dynamically
             if any(k in norm_lower for k in ["manufacturer", "manufacturing", "oem", "switchgear", "cooling", "thermal management", "hardware"]):
@@ -289,12 +281,12 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 default_industry = "Commercial & Industrial Systems"
                 default_dm = f"VP of Business Development, Chief Operating Officer, or Technical Director at {clean_name}"
 
-            # Extract facts from about and meta snippets
+            # Extract facts from about and meta snippets using structural sentence rules
             facts = []
             candidate_sentences = about_snips
             if not candidate_sentences:
                 raw_splits = re.split(r"(?<=[.!?])\s+", text_sample)
-                candidate_sentences = [s.strip() for s in raw_splits if len(s.strip()) > 35 and len(s.strip()) < 250 and not any(w in s.lower() for w in NOISE_PATTERNS)]
+                candidate_sentences = [s.strip() for s in raw_splits if 35 <= len(s.strip()) <= 320 and len(s.strip().split()) >= 5 and not any(c in s for c in ("{", "}", "<", ">", "//"))]
             
             for s in candidate_sentences[:10]:
                 s_clean = re.sub(r"^===.*?===\s*", "", s).strip()
@@ -302,22 +294,17 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 if len(s_clean) > 25 and s_clean not in [f["statement"] for f in facts]:
                     facts.append({"statement": s_clean, "source_url": f"https://{domain}" if domain else "", "confidence": "high"})
 
-            # Clean products list
-            NAV_WORDS = (
-                "language & location", "learn about", "product solutions", "verticals", "other topics",
-                "navigation", "quick links", "read more", "view all", "contact us", "overview",
-                "home", "search", "cookie policy", "terms of use", "privacy policy", "global sites",
-                "worldwide", "all categories", "site map", "back to top"
-            )
+            # Clean products list using structural item validation
             clean_prods = []
             for p in products_list:
                 p_clean = re.sub(r"\s+", " ", p).strip()
                 p_clean = re.sub(r"^===.*?===\s*", "", p_clean).strip()
-                p_clean = p_clean.replace("�", "")
-                p_low = p_clean.lower()
-                if 3 < len(p_clean) < 70 and p_clean not in clean_prods:
-                    if not any(w in p_low for w in NOISE_PATTERNS) and not any(nav in p_low for nav in NAV_WORDS) and not p_low.endswith(":"):
-                        clean_prods.append(p_clean)
+                p_clean = p_clean.replace("\ufffd", "")
+                p_words = p_clean.split()
+                if 4 <= len(p_clean) <= 75 and len(p_words) >= 2 and p_clean not in clean_prods:
+                    if not p_clean.endswith((":", "?", ";")) and not any(c in p_clean for c in ("{", "}", "<", ">", "//")):
+                        if any(w[0].isupper() or any(char.isdigit() for char in w) for w in p_words):
+                            clean_prods.append(p_clean)
 
             # Build clean, natural executive brief
             overview_core = meta_desc if (meta_desc and len(meta_desc) > 30) else (" ".join([f["statement"] for f in facts[:2]]) if facts else f"{clean_name} is an established {archetype} operating in {default_industry}.")
