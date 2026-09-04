@@ -78,6 +78,14 @@ class ServiceCatalog:
             if "photovoltaic" in d.lower() or "solar pv" in s_low:
                 self.acronym_map.setdefault("pv", []).append(i)
 
+        # Dynamically index all canonical catalog words for compound term decomposition
+        self.catalog_words: Set[str] = set()
+        for s, d in zip(self.sectors, self.definitions):
+            for w in re.findall(r"\b[a-zA-Z]{3,}\b", s.lower()):
+                self.catalog_words.add(w)
+            for w in re.findall(r"\b[a-zA-Z]{3,}\b", d.lower()):
+                self.catalog_words.add(w)
+
         # Build standard generic TF-IDF corpus with embedded acronyms
         corpus = []
         for i, (s, d) in enumerate(zip(self.sectors, self.definitions)):
@@ -93,6 +101,28 @@ class ServiceCatalog:
         )
         self.tfidf_matrix = self.tfidf_vectorizer.fit_transform(corpus)
         return len(self.sectors)
+
+    def decompose_compound_words(self, text: str) -> str:
+        """Dynamically decomposes concatenated compound terms (e.g. 'datacenter' -> 'data center', 'powerplant' -> 'power plant')."""
+        if not text:
+            return ""
+        tokens = re.findall(r"\b[a-zA-Z0-9]+\b", text.lower())
+        res = []
+        for t in tokens:
+            if len(t) >= 6 and hasattr(self, "catalog_words") and t not in self.catalog_words:
+                split_found = False
+                for i in range(3, len(t) - 2):
+                    w1, w2 = t[:i], t[i:]
+                    if w1 in self.catalog_words and w2 in self.catalog_words:
+                        res.append(w1)
+                        res.append(w2)
+                        split_found = True
+                        break
+                if not split_found:
+                    res.append(t)
+            else:
+                res.append(t)
+        return " ".join(res)
 
     def get_term_specificity(self, term: str) -> float:
         """Returns dynamically calculated mathematical corpus IDF specificity (zero hardcoded keywords)."""
@@ -254,27 +284,46 @@ class ServiceCatalog:
 
         # 3. Explicit Client Inquiry Retrieval (Dedicated pass to prevent dilution by large company text)
         inquiry_indices = []
+        inq_tfidf_sims = np.zeros(len(self.sectors), dtype=np.float32)
         if client_inquiry and len(client_inquiry.strip()) >= 2:
             inq_clean = client_inquiry.strip().lower()
+            inq_decomp = self.decompose_compound_words(inq_clean)
             
+            # Direct canonical sector name hit
+            for i, s in enumerate(self.sectors):
+                s_low = s.lower()
+                clean_s = re.sub(r"\(.*?\)", "", s_low).strip()
+                if inq_clean == s_low or inq_clean == clean_s or inq_decomp == s_low or inq_decomp == clean_s:
+                    if i not in inquiry_indices:
+                        inquiry_indices.append(i)
+
             # Direct canonical acronym / synonym mapping
-            expanded_inq = inq_clean
-            if hasattr(self, "acronym_map") and inq_clean in self.acronym_map:
-                for a_idx in self.acronym_map[inq_clean]:
-                    if a_idx not in inquiry_indices:
-                        inquiry_indices.append(a_idx)
-                # Expand acronym with canonical names for rich multi-offering discovery
-                expanded_inq = f"{inq_clean} {' '.join([self.sectors[a] for a in self.acronym_map[inq_clean]])}"
+            expanded_inq = f"{inq_clean} {inq_decomp}".strip()
+            if hasattr(self, "acronym_map"):
+                for key in (inq_clean, inq_decomp):
+                    if key in self.acronym_map:
+                        for a_idx in self.acronym_map[key]:
+                            if a_idx not in inquiry_indices:
+                                inquiry_indices.append(a_idx)
+                        expanded_inq = f"{expanded_inq} {' '.join([self.sectors[a] for a in self.acronym_map[key]])}"
 
             if self.tfidf_vectorizer and self.tfidf_matrix is not None:
                 inq_vec_tfidf = self.tfidf_vectorizer.transform([expanded_inq])
                 inq_tfidf_sims = (self.tfidf_matrix * inq_vec_tfidf.T).toarray().flatten()
                 sorted_inq = np.argsort(-inq_tfidf_sims)
+                top_inq_sim = float(inq_tfidf_sims[sorted_inq[0]]) if len(sorted_inq) > 0 else 0.0
+                
+                inq_substantive = [t for t in re.findall(r"\b[a-zA-Z0-9]{3,}\b", inq_decomp) if t not in ("the", "and", "for", "with", "market", "research", "tracking", "services", "solutions", "intelligence", "projects")]
+                prim_token = inq_substantive[0] if inq_substantive else ""
+
                 for idx in sorted_inq:
                     s_name = self.sectors[idx].lower()
                     if s_name.startswith("other ") or "unclassified" in s_name or s_name.startswith("general "):
                         continue
-                    if inq_tfidf_sims[idx] > 0.03 and len(inquiry_indices) < max(6, top_k // 2):
+                    sim_val = float(inq_tfidf_sims[idx])
+                    has_prim = prim_token in s_name if prim_token else True
+                    
+                    if (sim_val >= max(0.18, top_inq_sim * 0.45) or (has_prim and sim_val >= 0.08)) and len(inquiry_indices) < max(4, top_k // 2):
                         if int(idx) not in inquiry_indices:
                             inquiry_indices.append(int(idx))
 
@@ -284,26 +333,26 @@ class ServiceCatalog:
         # Top company profile indices
         top_comp_indices = [int(i) for i in np.argsort(-retrieval_scores)]
 
-        # 4. Multi-Facet Discovery: Extract distinctive capabilities from sub-sections
+        # 4. Multi-Facet Discovery: Extract distinctive capabilities from substantive sub-sections
         facet_indices = []
         if company_text and self.tfidf_vectorizer and self.tfidf_matrix is not None:
-            sub_sections = [s.strip() for s in company_text.split("===") if len(s.strip()) > 40]
+            sub_sections = [s.strip() for s in company_text.split("===") if len(s.strip()) > 80]
             if not sub_sections:
-                sub_sections = [s.strip() for s in company_text.split("\n\n") if len(s.strip()) > 40]
+                sub_sections = [s.strip() for s in company_text.split("\n\n") if len(s.strip()) > 80]
             for sec in sub_sections[:8]:
                 try:
                     s_vec = self.tfidf_vectorizer.transform([sec])
                     s_sims = (self.tfidf_matrix * s_vec.T).toarray().flatten()
-                    for s_idx in np.argsort(-s_sims)[:3]:
-                        if s_sims[s_idx] > 0.05 and int(s_idx) not in facet_indices:
+                    for s_idx in np.argsort(-s_sims)[:2]:
+                        if s_sims[s_idx] > 0.15 and int(s_idx) not in facet_indices:
                             facet_indices.append(int(s_idx))
                 except Exception:
                     pass
 
-        # Ordered deduplication: Inquiry candidates FIRST, followed by multi-facet candidates, followed by global profile candidates
+        # Ordered deduplication: Inquiry candidates FIRST, followed by global profile candidates, followed by multi-facet candidates
         merged_indices = []
         catch_all_overflow = []
-        for idx in inquiry_indices + facet_indices + top_comp_indices:
+        for idx in inquiry_indices + top_comp_indices + facet_indices:
             if idx not in merged_indices:
                 s_name = self.sectors[idx].lower()
                 if s_name.startswith("other ") or "unclassified" in s_name or s_name.startswith("general "):

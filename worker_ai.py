@@ -533,38 +533,57 @@ Respond ONLY with a valid JSON object matching this exact schema:
         sec_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
         sec_tokens.update(acronyms)
 
-        # Dynamic algorithmic inquiry matching using token overlap, phrase containment & vector cosine
+        # Dynamic algorithmic inquiry matching using token stem matching & primary domain differentiator alignment
         is_inquiry_match = False
         is_catch_all = sec_lower.startswith("other ") or "unclassified" in sec_lower or sec_lower.startswith("general ")
         if inq_lower and len(inq_lower) >= 2 and not is_catch_all:
+            from service_catalog import catalog
+            decomp_inq = catalog.decompose_compound_words(inq_lower) if hasattr(catalog, "decompose_compound_words") else inq_lower
+            
             meta_inq_terms = {"the", "and", "for", "with", "all", "our", "are", "market", "research", "tracking", "services", "solutions", "intelligence", "projects", "pipeline", "deals", "analysis", "expansion", "study", "report", "need", "looking", "want", "find"}
-            substantive_inq = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in meta_inq_terms]
-            all_inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are")]
+            substantive_inq = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", decomp_inq) if t not in meta_inq_terms]
+            all_inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", decomp_inq) if t not in ("the", "and", "for", "with", "all", "our", "are")]
             inq_tokens_to_eval = substantive_inq if substantive_inq else all_inq_tokens
 
             defn_lower = definition.lower() if definition else ""
 
-            # 1. Full phrase containment or direct acronym equivalence
+            # Acronym / synonym expansion
             expanded_inq_tokens = list(inq_tokens_to_eval)
-            from service_catalog import catalog
             if hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map:
                 for s_idx in catalog.acronym_map[inq_lower]:
                     expanded_inq_tokens.extend([w for w in re.findall(r"\b[a-zA-Z0-9]{3,}\b", catalog.sectors[s_idx].lower()) if w not in ("the", "and", "for", "plant", "facilities")])
 
-            if inq_lower in acronyms or inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or inq_lower in defn_lower:
+            def token_stem_match(t1: str, t2: str) -> bool:
+                if t1 == t2:
+                    return True
+                if len(t1) >= 4 and len(t2) >= 4:
+                    if t1.rstrip("s") == t2.rstrip("s"):
+                        return True
+                    if t1.endswith("ies") and t2.endswith("y") and t1[:-3] == t2[:-1]:
+                        return True
+                    if t2.endswith("ies") and t1.endswith("y") and t2[:-3] == t1[:-1]:
+                        return True
+                    if t1.endswith("ing") and t1[:-3] == t2:
+                        return True
+                    if t2.endswith("ing") and t2[:-3] == t1:
+                        return True
+                return False
+
+            if inq_lower in acronyms or inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or decomp_inq == clean_sec:
                 is_inquiry_match = True
             elif inq_tokens_to_eval:
-                matched_tokens = [t for t in expanded_inq_tokens if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
+                matched_tokens = [t for t in expanded_inq_tokens if any(token_stem_match(t, s) for s in sec_tokens)]
                 token_overlap = len(matched_tokens) / len(expanded_inq_tokens) if expanded_inq_tokens else 0
                 vec_cos = candidate.get("vector_cosine", 0.0)
                 lex_sc = candidate.get("inquiry_lexical_score", 0.0)
 
                 primary_domain_token = inq_tokens_to_eval[0]
-                has_primary = (primary_domain_token in sec_tokens or any(primary_domain_token in s or s in primary_domain_token for s in sec_tokens) or primary_domain_token in defn_lower or (hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map and len(matched_tokens) >= 1))
+                has_primary = (
+                    any(token_stem_match(primary_domain_token, s) for s in sec_tokens)
+                    or (hasattr(catalog, "acronym_map") and inq_lower in catalog.acronym_map and len(matched_tokens) >= 1)
+                )
 
-                if token_overlap >= 0.5:
-                    is_inquiry_match = True
-                elif has_primary and (token_overlap >= 0.20 or vec_cos >= 0.60 or lex_sc >= 0.05):
+                if has_primary and (token_overlap >= 0.50 or lex_sc >= 0.10):
                     is_inquiry_match = True
 
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
@@ -587,8 +606,19 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 verified_quotes.append(ev_id)
                 continue
 
+            # Check acronyms in quotes
+            if any(re.search(r"\b" + re.escape(acr) + r"\b", q_lower) for acr in acronyms if len(acr) >= 3):
+                verified_quotes.append(ev_id)
+                continue
+
             if sec_substantive_tokens and not sec_lower.startswith("other "):
-                if all(re.search(r"\b" + re.escape(t) + r"\b", q_lower) for t in sec_substantive_tokens):
+                # Require all distinguishing qualifier tokens (excluding generic industrial suffixes) to match
+                qualifier_tokens = [t for t in sec_substantive_tokens if t not in ("plant", "power", "facility", "facilities", "station", "building", "unit", "system")]
+                if not qualifier_tokens:
+                    qualifier_tokens = sec_substantive_tokens
+
+                matched_qualifiers = [t for t in qualifier_tokens if re.search(r"\b" + re.escape(t) + r"\b", q_lower)]
+                if len(matched_qualifiers) == len(qualifier_tokens):
                     verified_quotes.append(ev_id)
 
         if is_inquiry_match:
