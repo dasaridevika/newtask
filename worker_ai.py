@@ -11,11 +11,12 @@ from urllib3.util.retry import Retry
 def generate_deliverable_blueprint(sector_name: str, definition: str = "") -> str:
     """Dynamically generates tailored deliverable intelligence feeds from sector name and definition."""
     clean_sec = sector_name.strip()
+    def_clean = definition.strip() if definition else f"commercial operations and capital developments in {clean_sec}"
     return (
-        f"Delivers utility grid and project permitting queue tracking, environmental review filings, "
-        f"balance-of-plant technical specifications, and key decision-maker directories covering active developers, "
-        f"operators, and EPC contractors across {clean_sec}."
+        f"Delivers stage-gate project intelligence, regulatory and compliance queue tracking, "
+        f"technical specifications ({def_clean}), and verified decision-maker directories across {clean_sec}."
     )
+
 
 
 class WorkerAI:
@@ -179,7 +180,7 @@ CRAWLED WEBPAGE EVIDENCE & STRUCTURED SNIPPETS:
 Respond ONLY with a valid JSON object matching this exact schema:
 {{
   "company_name": "{clean_name}",
-  "archetype": "Exact business archetype (e.g. Critical Infrastructure & Power OEM, B2B SaaS Platform, Energy Developer & Asset Operator, Industrial Equipment Manufacturer, etc.)",
+  "archetype": "Exact business archetype and core operating model",
   "industry_focus": "Primary verified industry sector",
   "core_products_and_services": ["Specific verified products, technologies, or services directly extracted from text"],
   "key_differentiators": ["Verified competitive strengths or technical capabilities from text"],
@@ -227,7 +228,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
       "confidence": "high"
     }}
   ],
-  "buying_role_hypothesis": "VP of Business Development, CTO, Head of Infrastructure, or Facilities Director at {clean_name}"
+  "buying_role_hypothesis": "VP of Business Development, VP of Engineering, CTO, or Technical Director at {clean_name}"
 }}"""
 
         raw = self._call_llm(prompt, system_prompt, response_format={"type": "json_object"})
@@ -264,22 +265,22 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         case_study_snips.extend([s for s in p_snips[:4] if 35 <= len(s) <= 350 and len(s.split()) >= 5])
 
             # Extract archetype and industry from verified content dynamically
-            if any(k in norm_lower for k in ["manufacturer", "manufacturing", "oem", "switchgear", "cooling", "thermal management", "hardware"]):
-                archetype = "Industrial Equipment & Infrastructure OEM"
+            if any(k in norm_lower for k in ["manufacturer", "manufacturing", "oem", "equipment", "hardware", "production", "machinery"]):
+                archetype = "Industrial Equipment & Technology Manufacturer"
                 default_industry = "Industrial Technology & Equipment Systems"
-                default_dm = f"VP of Engineering, VP of Business Development, or Power Systems Director at {clean_name}"
-            elif any(k in norm_lower for k in ["developer", "utility", "renewable", "generation", "operator", "power plant", "pipeline"]):
-                archetype = "Energy Developer & Infrastructure Asset Operator"
-                default_industry = "Clean Energy & Utility Infrastructure"
-                default_dm = f"Head of Project Development, VP of Interconnection, or Chief Commercial Officer at {clean_name}"
-            elif any(k in norm_lower for k in ["software", "saas", "cloud", "ai", "platform", "analytics", "api"]):
+                default_dm = f"VP of Engineering, VP of Business Development, or Operations Director at {clean_name}"
+            elif any(k in norm_lower for k in ["developer", "utility", "renewable", "generation", "operator", "energy", "infrastructure", "pipeline"]):
+                archetype = "Infrastructure Developer & Asset Operator"
+                default_industry = "Energy & Infrastructure Operations"
+                default_dm = f"Head of Project Development, VP of Operations, or Commercial Director at {clean_name}"
+            elif any(k in norm_lower for k in ["software", "saas", "cloud", "ai", "platform", "analytics", "api", "digital"]):
                 archetype = "Enterprise Technology & Software Platform"
                 default_industry = "Digital Infrastructure & Enterprise Software"
                 default_dm = f"Chief Technology Officer, VP of Product, or Head of Infrastructure at {clean_name}"
             else:
-                archetype = "Commercial Enterprise & Technology Provider"
+                archetype = "Commercial Enterprise & Solution Provider"
                 default_industry = "Commercial & Industrial Systems"
-                default_dm = f"VP of Business Development, Chief Operating Officer, or Technical Director at {clean_name}"
+                default_dm = f"VP of Business Development, Chief Operating Officer, or Managing Director at {clean_name}"
 
             # Extract facts from about and meta snippets using structural sentence rules
             facts = []
@@ -434,13 +435,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         if client_inquiry and len(client_inquiry.strip()) > 1:
             inq_str = client_inquiry.strip()
-            growth_mandate = f"Accelerate commercial origination, utility interconnect queue positioning, and balance-of-plant equipment delivery for {inq_str} developments, expanding {company_name}'s market share across {industry}."
-            asset_needs = f"Critical balance-of-plant electrical distribution, high-voltage substation switchgear, energy storage integration, and specialized equipment infrastructure tailored for {inq_str}."
-            diligence_needs = f"Regional interconnection queue trackers (MW capacity stage-gates), environmental review filings (NEPA/EIS), PPA contract awards, and Tier-1 EPC/developer procurement tender dockets for {inq_str}."
-            regulatory_needs = f"Applicable regional reliability standards, state regulatory dockets, municipal zoning and land-use approvals, and environmental emissions compliance."
-            bottleneck = f"Lengthy interconnect queue timelines (18–36 months), substation transformer supply chain lead times, and lack of early visibility into pre-RFP developer project dockets."
-            mitigation = f"Deploy continuous regional grid interconnection queue monitoring and establish direct engineering relationships with asset developers 6–12 months prior to formal EPC tenders."
-            decision_maker = f"VP of Infrastructure, Head of Business Development, or Power Systems Director at {company_name}"
+            growth_mandate = f"Accelerate commercial origination, strategic deployment pipeline positioning, and solution delivery for {inq_str} developments, expanding {company_name}'s market footprint across {industry}."
+            asset_needs = f"Critical technical specifications, operational infrastructure assets, and specialized equipment delivery tailored for {inq_str}."
+            diligence_needs = f"Stage-gate project permitting dockets, capital expenditure filings, RFP tender notices, and key decision-maker directories for {inq_str}."
+            regulatory_needs = f"Applicable industry standards, regional regulatory filings, municipal zoning and environmental compliance frameworks for {inq_str}."
+            bottleneck = f"Long procurement lead times, stage-gate approval delays, and lack of pre-RFP commercial visibility in {inq_str}."
+            mitigation = f"Deploy continuous market intelligence to proactively surface pipeline opportunities and engage project decision-makers 6–12 months prior to formal RFP tenders."
+            decision_maker = f"VP of Business Development, VP of Engineering, or Commercial Operations Director at {company_name}"
 
             req_analysis["core_growth_mandate"] = growth_mandate
             req_analysis["infrastructure_and_asset_needs"] = asset_needs
@@ -451,17 +452,17 @@ Respond ONLY with a valid JSON object matching this exact schema:
             req_analysis["target_decision_maker"] = decision_maker
         else:
             if _is_placeholder(req_analysis.get("core_growth_mandate", "")):
-                req_analysis["core_growth_mandate"] = f"Expand commercial visibility, secure early positioning in major capital buildout projects, and scale critical infrastructure delivery across {industry}."
+                req_analysis["core_growth_mandate"] = f"Expand commercial visibility, secure early positioning in major capital buildout projects, and scale critical operational delivery across {industry}."
             if _is_placeholder(req_analysis.get("infrastructure_and_asset_needs", "")):
                 req_analysis["infrastructure_and_asset_needs"] = f"High-reliability operational capacity, component supply chain resiliency, and certified technical facilities across {industry}."
             if _is_placeholder(req_analysis.get("market_diligence_and_deal_sourcing_needs", "")):
-                req_analysis["market_diligence_and_deal_sourcing_needs"] = f"Stage-gate capital project permitting trackers, engineering equipment specifications, and EPC/developer tender notices across {industry}."
+                req_analysis["market_diligence_and_deal_sourcing_needs"] = f"Stage-gate capital project permitting trackers, engineering equipment specifications, and commercial tender notices across {industry}."
             if _is_placeholder(req_analysis.get("regulatory_permitting_and_esg_needs", "")):
-                req_analysis["regulatory_permitting_and_esg_needs"] = f"UL/IEC industrial standards, municipal zoning approvals, and environmental emissions compliance in {industry}."
+                req_analysis["regulatory_permitting_and_esg_needs"] = f"Applicable industry standards, municipal zoning approvals, and environmental compliance frameworks in {industry}."
             if _is_placeholder(req_analysis.get("primary_operational_bottleneck", "")):
                 req_analysis["primary_operational_bottleneck"] = f"Long equipment procurement lead times, supply chain fluctuations, and pre-RFP project visibility."
             if _is_placeholder(req_analysis.get("risk_mitigation_strategy", "")):
-                req_analysis["risk_mitigation_strategy"] = f"Engage project developers and EPC engineering leads 6–12 months prior to formal equipment RFP tenders."
+                req_analysis["risk_mitigation_strategy"] = f"Engage project developers and engineering leads 6–12 months prior to formal RFP tenders."
             if _is_placeholder(req_analysis.get("target_decision_maker", "")):
                 req_analysis["target_decision_maker"] = f"VP of Engineering, VP of Business Development, or Operations Director at {company_name}"
 
@@ -530,21 +531,25 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         # Dynamic algorithmic inquiry matching using token overlap, phrase containment & vector cosine
         is_inquiry_match = False
-        if inq_lower and len(inq_lower) >= 2:
-            inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are")]
+        is_catch_all = sec_lower.startswith("other ") or "unclassified" in sec_lower or sec_lower.startswith("general ")
+        if inq_lower and len(inq_lower) >= 2 and not is_catch_all:
+            meta_inq_terms = {"the", "and", "for", "with", "all", "our", "are", "market", "research", "tracking", "services", "solutions", "intelligence", "projects", "pipeline", "deals", "data", "analysis", "expansion", "study", "report", "need", "looking", "want", "find"}
+            substantive_inq = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in meta_inq_terms]
+            all_inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are")]
+            inq_tokens_to_eval = substantive_inq if substantive_inq else all_inq_tokens
+
             if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
-            elif inq_tokens:
-                matched_tokens = [t for t in inq_tokens if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
-                token_overlap = len(matched_tokens) / len(inq_tokens) if inq_tokens else 0
+            elif inq_tokens_to_eval:
+                matched_tokens = [t for t in inq_tokens_to_eval if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
+                token_overlap = len(matched_tokens) / len(inq_tokens_to_eval) if inq_tokens_to_eval else 0
                 vec_cos = candidate.get("vector_cosine", 0.0)
                 lex_sc = candidate.get("inquiry_lexical_score", 0.0)
-                if token_overlap >= 0.5:
-                    if len(inq_tokens) >= 2 and token_overlap < 1.0:
-                        is_inquiry_match = bool(vec_cos >= 0.65 or lex_sc >= 0.20)
-                    else:
+                
+                if token_overlap > 0:
+                    if token_overlap >= 0.33 or vec_cos >= 0.60 or lex_sc >= 0.05:
                         is_inquiry_match = True
-                elif vec_cos >= 0.70 and len(matched_tokens) >= 1:
+                elif vec_cos >= 0.70:
                     is_inquiry_match = True
 
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
@@ -580,8 +585,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
             intent_align = "strong"
             reason_code = "EXPLICIT_CLIENT_INQUIRY"
             reason = f"Explicit client requirement directly targeting {sec_name} assets and operations."
-            val_driver = f"Accelerates commercial pipeline visibility into project stage-gates, verifies regulatory permitting dockets, and secures early procurement feeds across {sec_name}."
-            req_solved = f"Utility interconnection dockets, stage-gate permitting trackers, and EPC/developer directories in {sec_name}."
+            val_driver = f"Accelerates commercial pipeline visibility into project stage-gates, verifies regulatory compliance filings, and secures early procurement feeds across {sec_name}."
+            req_solved = f"Stage-gate project tracking, compliance dockets, and key decision-maker directories in {sec_name}."
             ev_ids = ["inquiry_stated"] + verified_quotes
         elif is_target_focus and len(verified_quotes) >= 1:
             classification = "exact"
@@ -888,10 +893,10 @@ Respond ONLY with a valid JSON object matching this exact schema:
         primary_offering = exact_mappings[0]["exact_offering_name"] if exact_mappings else (adjacent_mappings[0]["exact_offering_name"] if adjacent_mappings else "Capital Project Intelligence Platform")
         val_driver_pitch = exact_mappings[0]["operational_value_driver"] if exact_mappings else "Compresses diligence cycle times and secures proprietary visibility."
         sec_short = primary_offering.replace(" Intelligence Platform", "")
+        t1 = f"Regulatory & Permitting Docket Tracker: Real-time compliance filings, municipal reviews, and stage-gate development milestones for {sec_short}."
+        t2 = f"Key Stakeholder & Procurement Directory: Verified profiles of active asset owners, commercial developers, and technical decision-makers across {sec_short}."
+        t3 = f"Technical Specification & Tender Feeds: Equipment procurement notices, engineering specifications, and project buildout timelines in {sec_short}."
 
-        t1 = f"Utility Grid Interconnection & Permitting Tracker: Real-time regulatory queue filings, environmental reviews, and state utility commission stage-gates for {sec_short}."
-        t2 = f"Key Stakeholder & EPC Directory: Verified profiles of active asset owners, project developers, general contractors, and off-takers across {sec_short}."
-        t3 = f"Balance-of-Plant Technical Specification Feeds: High-voltage substation topologies, equipment procurement dockets, and engineering timelines in {sec_short}."
 
         lead_blueprint = {
             "primary_offering_name": primary_offering,
