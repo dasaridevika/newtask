@@ -533,23 +533,28 @@ Respond ONLY with a valid JSON object matching this exact schema:
         is_inquiry_match = False
         is_catch_all = sec_lower.startswith("other ") or "unclassified" in sec_lower or sec_lower.startswith("general ")
         if inq_lower and len(inq_lower) >= 2 and not is_catch_all:
-            meta_inq_terms = {"the", "and", "for", "with", "all", "our", "are", "market", "research", "tracking", "services", "solutions", "intelligence", "projects", "pipeline", "deals", "data", "analysis", "expansion", "study", "report", "need", "looking", "want", "find"}
+            meta_inq_terms = {"the", "and", "for", "with", "all", "our", "are", "market", "research", "tracking", "services", "solutions", "intelligence", "projects", "pipeline", "deals", "analysis", "expansion", "study", "report", "need", "looking", "want", "find"}
             substantive_inq = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in meta_inq_terms]
             all_inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are")]
             inq_tokens_to_eval = substantive_inq if substantive_inq else all_inq_tokens
 
-            if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
+            defn_lower = definition.lower() if definition else ""
+
+            # 1. Full phrase containment in sector name or definition
+            if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or inq_lower in defn_lower:
                 is_inquiry_match = True
             elif inq_tokens_to_eval:
                 matched_tokens = [t for t in inq_tokens_to_eval if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]
                 token_overlap = len(matched_tokens) / len(inq_tokens_to_eval) if inq_tokens_to_eval else 0
                 vec_cos = candidate.get("vector_cosine", 0.0)
                 lex_sc = candidate.get("inquiry_lexical_score", 0.0)
-                
-                if token_overlap > 0:
-                    if token_overlap >= 0.33 or vec_cos >= 0.60 or lex_sc >= 0.05:
-                        is_inquiry_match = True
-                elif vec_cos >= 0.70:
+
+                primary_domain_token = inq_tokens_to_eval[0]
+                has_primary = (primary_domain_token in sec_tokens or any(primary_domain_token in s or s in primary_domain_token for s in sec_tokens) or primary_domain_token in defn_lower)
+
+                if token_overlap == 1.0:
+                    is_inquiry_match = True
+                elif has_primary and (token_overlap >= 0.33 or vec_cos >= 0.60 or lex_sc >= 0.05):
                     is_inquiry_match = True
 
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
