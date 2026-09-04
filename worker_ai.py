@@ -9,14 +9,13 @@ from urllib3.util.retry import Retry
 
 
 def generate_deliverable_blueprint(sector_name: str, definition: str = "") -> str:
-    """Dynamically generates tailored deliverable intelligence feeds from sector name and definition without hardcoded sector branches."""
+    """Dynamically generates tailored deliverable intelligence feeds from sector name and definition."""
     clean_sec = sector_name.strip()
     return (
         f"Delivers utility grid and project permitting queue tracking, environmental review filings, "
         f"balance-of-plant technical specifications, and key decision-maker directories covering active developers, "
         f"operators, and EPC contractors across {clean_sec}."
     )
-
 
 
 class WorkerAI:
@@ -70,7 +69,7 @@ class WorkerAI:
         if response_format:
             payload["response_format"] = response_format
 
-        for attempt in range(max_retries + 1):
+        for _ in range(max_retries + 1):
             try:
                 resp = self.session.post(self.worker_url, json=payload, timeout=20)
                 if resp.status_code == 200:
@@ -85,7 +84,6 @@ class WorkerAI:
                     return str(res_text).strip()
 
                 if resp.status_code == 500 and "allocation" in resp.text.lower():
-                    # Cloudflare daily neuron quota exhausted -> switch smoothly to dynamic local analyzer
                     return ""
             except Exception:
                 pass
@@ -107,7 +105,7 @@ class WorkerAI:
             match = re.search(r"(\[[\s\S]*\]|\{[\s\S]*\})", cleaned)
             if match:
                 json_str = match.group(0)
-                json_str = re.sub(r",\s*([\]\}])", r"\1", json_str)
+                json_str = re.sub(r",\s*([\]\}])", r"", json_str)
                 return json.loads(json_str)
         except Exception:
             pass
@@ -159,18 +157,18 @@ class WorkerAI:
             }
 
         # 1. Structure LLM extraction with strict fact-grounding instructions
-        system_prompt = """You are an elite Senior Principal Corporate Intelligence Strategist, Technical Systems Architect, and Evidence Verification Engine.
-Your task is to analyze crawled corporate webpage content and produce a deeply detailed, highly informative, and strictly truthful corporate intelligence profile.
+        system_prompt = """You are an elite Senior Principal Corporate Intelligence Strategist and Evidence Verification Engine.
+Analyze crawled corporate webpage content and produce a deeply detailed, highly informative, and strictly truthful corporate intelligence profile.
 
-CRITICAL FACT-GROUNDING & DEPTH RULES:
-1. Deep Technical Substance: Provide a thorough, comprehensive breakdown of the company's identity, verified product lines, business model, and operational footprint. Avoid brief or superficial one-liners.
-2. Strict Evidence Grounding: Synthesize ONLY claims directly backed by the provided crawled text. DO NOT invent fictitious projects, customers, or financial figures.
-3. Multi-Pillar Executive Summary: In `executive_profile_analysis`, generate a structured, multi-paragraph markdown analysis covering:
-   - **Executive Profile & Market Position**: Company identity, operational scale, and primary industry mission.
-   - **Core Offerings & Technical Capabilities**: Detailed breakdown of actual products, hardware/software specifications, and services mentioned in the text.
-   - **Business Model & Monetization Architecture**: Clear explanation of revenue drivers, customer segments, and go-to-market channels.
-   - **Strategic Alignment & Inbound Mandate Analysis**: Nuanced analysis linking their verified business capabilities to the stated inquiry or market growth opportunities.
-4. Return strict, valid JSON matching the required schema."""
+CRITICAL RULES:
+1. Deep Technical Substance: Breakdown the company's identity, verified product lines, business model, and operational footprint.
+2. Strict Evidence Grounding: Synthesize ONLY claims directly backed by the provided text.
+3. Multi-Pillar Executive Summary: In `executive_profile_analysis`, generate structured markdown covering:
+   - **Executive Profile & Market Position**
+   - **Core Offerings & Technical Capabilities**
+   - **Business Model & Monetization Architecture**
+   - **Strategic Alignment & Inbound Mandate Analysis**
+4. Return strict, valid JSON matching the schema."""
 
         prompt = f"""TARGET DOMAIN: {domain}
 TARGET COMPANY NAME: {clean_name}
@@ -181,28 +179,28 @@ CRAWLED WEBPAGE EVIDENCE & STRUCTURED SNIPPETS:
 Respond ONLY with a valid JSON object matching this exact schema:
 {{
   "company_name": "{clean_name}",
-  "archetype": "Exact business archetype (e.g. Critical Infrastructure & Power OEM, B2B SaaS Platform, Energy Developer & Asset Operator, Industrial Equipment Manufacturer, Private Equity Sponsor, etc.)",
+  "archetype": "Exact business archetype (e.g. Critical Infrastructure & Power OEM, B2B SaaS Platform, Energy Developer & Asset Operator, Industrial Equipment Manufacturer, etc.)",
   "industry_focus": "Primary verified industry sector",
-  "core_products_and_services": ["4 to 8 specific verified products, technologies, or services directly extracted from the text with brief descriptive context"],
-  "key_differentiators": ["2 to 4 verified competitive strengths, technical advantages, or proprietary capabilities from text"],
-  "target_customers_and_markets": "Detailed breakdown of target customer segments, buyer personas, enterprise verticals, and geographic presence",
-  "operational_scale_metrics": ["Verified scale signals such as facilities, global footprint, capacity, or partnerships mentioned in text"],
-  "executive_profile_analysis": "Comprehensive, multi-paragraph in-depth executive intelligence report covering: (1) Executive Profile & Market Position, (2) Core Offerings & Technical Capabilities, (3) Business Model & Monetization, and (4) Strategic Alignment & Mandate Analysis.",
-  "business_model_and_revenue_drivers": "Thorough, factual description of revenue streams, licensing models, product sales, and enterprise delivery channels",
+  "core_products_and_services": ["Specific verified products, technologies, or services directly extracted from text"],
+  "key_differentiators": ["Verified competitive strengths or technical capabilities from text"],
+  "target_customers_and_markets": "Target customer segments, enterprise verticals, and geographic presence",
+  "operational_scale_metrics": ["Verified scale signals such as facilities, global footprint, capacity, or partnerships"],
+  "executive_profile_analysis": "Comprehensive multi-paragraph executive intelligence report",
+  "business_model_and_revenue_drivers": "Description of revenue streams, licensing models, product sales, and delivery channels",
   "requirements": [
     {{
       "requirement_id": "req_001",
       "name": "Requirement or Strategic Priority Name",
-      "description": "Specific commercial growth priority, operational milestone, or intelligence feed need",
-      "type": "explicit" or "inferred",
-      "confidence": "high" or "medium"
+      "description": "Specific commercial growth priority or intelligence feed need",
+      "type": "explicit",
+      "confidence": "high"
     }}
   ],
   "detailed_requirements_analysis": {{
-    "core_growth_mandate": "Grounded strategic growth priority tailored specifically to their verified industry operations",
+    "core_growth_mandate": "Grounded strategic growth priority tailored specifically to their verified operations",
     "infrastructure_and_asset_needs": "Specific technical equipment, assets, digital platforms, or infrastructure needed",
     "market_diligence_and_deal_sourcing_needs": "Commercial intelligence feeds, permitting trackers, or project pipeline monitoring requirements",
-    "regulatory_permitting_and_esg_needs": "Applicable regulatory compliance frameworks, standards (e.g. UL, ISO, FERC, GDPR), or municipal zoning dockets",
+    "regulatory_permitting_and_esg_needs": "Applicable regulatory compliance frameworks, standards, or municipal zoning dockets",
     "primary_operational_bottleneck": "Realistic commercial, supply chain, or engineering bottleneck for their specific sector",
     "risk_mitigation_strategy": "Actionable strategic approach to solve this operational bottleneck",
     "target_decision_maker": "Exact title of target executive buyer or key stakeholder"
@@ -210,7 +208,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
   "delivered_historical_projects": [
     {{
       "project_name": "Project, Deployment, or Case Study Name",
-      "summary": "Verified description of deployment, customer, or milestone from text",
+      "summary": "Verified description of deployment from text",
       "client_or_region": "Customer or geographic region"
     }}
   ],
@@ -220,12 +218,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
       "detail": "Verified detail from text"
     }}
   ],
-  "future_roadmaps_and_expansion": [
-    {{
-      "initiative": "Active expansion or product roadmap item",
-      "strategic_objective": "Verified objective from text"
-    }}
-  ],
+  "future_roadmaps_and_expansion": [],
   "portfolio_target_sectors": ["List of matching canonical sector names from their real operations"],
   "observed_facts": [
     {{
@@ -240,15 +233,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
         raw = self._call_llm(prompt, system_prompt, response_format={"type": "json_object"})
         parsed = self._parse_json(raw)
 
-        # 2. Rich, Fact-Grounded Extractive Fallback Engine (Zero Hallucinated Canned Boilerplate)
+        # 2. Fact-Grounded Extractive Fallback Engine
         if not parsed or not isinstance(parsed, dict) or len(parsed.get("executive_profile_analysis", "")) < 40:
             text_sample = scraped_text[:7000]
             norm_lower = text_sample.lower()
             
-            # Extract meta description & high-priority snippets from evidence store
             meta_desc = ""
             about_snips = []
-            product_snips = []
             case_study_snips = []
             products_list = []
             signals_list = []
@@ -274,63 +265,38 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 for page in getattr(evidence_store, "pages", []):
                     p_type = getattr(page, "page_type", "")
                     p_snips = getattr(page, "canonical_snippets", [])
-                    p_headings = getattr(page, "headings", [])
 
                     if "about" in str(p_type).lower() or "who-we-are" in getattr(page, "url", "").lower():
                         about_snips.extend([s for s in p_snips[:4] if not any(w in s.lower() for w in NOISE_PATTERNS)])
-                    elif "product" in str(p_type).lower() or "solution" in str(p_type).lower() or "offering" in str(p_type).lower():
-                        product_snips.extend([s for s in p_snips[:4] if not any(w in s.lower() for w in NOISE_PATTERNS)])
-                        for h in p_headings:
-                            h_low = h.lower()
-                            if 4 < len(h) < 60 and h not in products_list and not any(w in h_low for w in NOISE_PATTERNS):
-                                products_list.append(h)
-                    elif "case_study" in str(p_type).lower() or "project" in str(p_type).lower():
-                        case_study_snips.extend([s for s in p_snips[:3] if not any(w in s.lower() for w in NOISE_PATTERNS)])
+                    elif "case_study" in str(p_type).lower() or "project" in getattr(page, "url", "").lower():
+                        case_study_snips.extend([s for s in p_snips[:4] if not any(w in s.lower() for w in NOISE_PATTERNS)])
 
-            # Determine Company Archetype based on verified business model indicators
-            if any(w in norm_lower for w in ("private equity", "fund", "venture", "investment firm", "capital", "portfolio company")):
-                archetype = "Investment & Capital Platform"
-                default_industry = "Private Equity & Capital Markets"
-                default_dm = f"Managing Director or Partner at {clean_name}"
-            elif any(w in norm_lower for w in ("manufacturer", "oem", "hardware", "equipment", "industrial", "systems", "products")):
+            # Extract archetype and industry from verified content dynamically
+            if any(k in norm_lower for k in ["manufacturer", "manufacturing", "oem", "switchgear", "cooling", "thermal management", "hardware"]):
                 archetype = "Industrial Equipment & Infrastructure OEM"
                 default_industry = "Industrial Technology & Equipment Systems"
-                default_dm = f"VP of Engineering or Product Management at {clean_name}"
-            elif any(w in norm_lower for w in ("software", "saas", "platform", "cloud", "digital", "api", "analytics")):
-                archetype = "Digital Technology & Software Platform"
-                default_industry = "Enterprise Technology & Digital Solutions"
-                default_dm = f"Chief Technology Officer or VP of Product at {clean_name}"
-            elif any(w in norm_lower for w in ("utility", "operator", "energy", "power", "generation", "renewables")):
-                archetype = "Energy & Infrastructure Asset Operator"
-                default_industry = "Energy & Infrastructure Operations"
-                default_dm = f"VP of Infrastructure or Operations Director at {clean_name}"
-            elif any(w in norm_lower for w in ("contractor", "epc", "construction", "engineering")):
-                archetype = "Engineering, Procurement & Construction (EPC)"
-                default_industry = "Engineering & Infrastructure Construction"
-                default_dm = f"Head of Engineering or Project Director at {clean_name}"
-            elif any(w in norm_lower for w in ("logistics", "freight", "supply chain", "distribution", "warehousing")):
-                archetype = "Logistics & Supply Chain Operations"
-                default_industry = "Logistics & Supply Chain Management"
-                default_dm = f"VP of Supply Chain or Operations Director at {clean_name}"
+                default_dm = f"VP of Engineering, VP of Business Development, or Power Systems Director at {clean_name}"
+            elif any(k in norm_lower for k in ["developer", "utility", "renewable", "generation", "operator", "power plant", "pipeline"]):
+                archetype = "Energy Developer & Infrastructure Asset Operator"
+                default_industry = "Clean Energy & Utility Infrastructure"
+                default_dm = f"Head of Project Development, VP of Interconnection, or Chief Commercial Officer at {clean_name}"
+            elif any(k in norm_lower for k in ["software", "saas", "cloud", "ai", "platform", "analytics", "api"]):
+                archetype = "Enterprise Technology & Software Platform"
+                default_industry = "Digital Infrastructure & Enterprise Software"
+                default_dm = f"Chief Technology Officer, VP of Product, or Head of Infrastructure at {clean_name}"
             else:
-                archetype = "Commercial Enterprise"
-                default_industry = "Commercial & Industrial Services"
-                default_dm = f"Chief Commercial Officer or VP of Business Development at {clean_name}"
+                archetype = "Commercial Enterprise & Technology Provider"
+                default_industry = "Commercial & Industrial Systems"
+                default_dm = f"VP of Business Development, Chief Operating Officer, or Technical Director at {clean_name}"
 
-            # Extract real observed factual statements from the pages
+            # Extract facts from about and meta snippets
             facts = []
-            candidate_sentences = []
-            if meta_desc and len(meta_desc) > 25 and not any(w in meta_desc.lower() for w in NOISE_PATTERNS):
-                candidate_sentences.append(meta_desc)
-            candidate_sentences.extend([s for s in about_snips if not any(w in s.lower() for w in NOISE_PATTERNS)])
-            candidate_sentences.extend([s for s in product_snips if not any(w in s.lower() for w in NOISE_PATTERNS)])
-            
+            candidate_sentences = about_snips
             if not candidate_sentences:
                 raw_splits = re.split(r"(?<=[.!?])\s+", text_sample)
                 candidate_sentences = [s.strip() for s in raw_splits if len(s.strip()) > 35 and len(s.strip()) < 250 and not any(w in s.lower() for w in NOISE_PATTERNS)]
             
             for s in candidate_sentences[:10]:
-                # Clean any raw debug headers or prefixes
                 s_clean = re.sub(r"^===.*?===\s*", "", s).strip()
                 s_clean = re.sub(r"^(Official Corporate Encyclopedia|Search Intelligence|Fact)\s*(\([^)]*\))?:\s*", "", s_clean, flags=re.I).strip()
                 if len(s_clean) > 25 and s_clean not in [f["statement"] for f in facts]:
@@ -347,7 +313,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
             for p in products_list:
                 p_clean = re.sub(r"\s+", " ", p).strip()
                 p_clean = re.sub(r"^===.*?===\s*", "", p_clean).strip()
-                p_clean = p_clean.replace("\ufffd", "")
+                p_clean = p_clean.replace("�", "")
                 p_low = p_clean.lower()
                 if 3 < len(p_clean) < 70 and p_clean not in clean_prods:
                     if not any(w in p_low for w in NOISE_PATTERNS) and not any(nav in p_low for nav in NAV_WORDS) and not p_low.endswith(":"):
@@ -383,7 +349,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
             bottleneck = f"Long equipment procurement lead times, pre-tender project visibility constraints, and managing operational scaling costs."
             mitigation = f"Deploy continuous market intelligence to proactively surface pipeline opportunities and engage decision-makers ahead of formal tenders."
 
-            # Dynamic historical projects / case studies from actual scraped content
             delivered_projects = []
             if case_study_snips:
                 for idx, cs in enumerate(case_study_snips[:3]):
@@ -399,7 +364,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
                     "client_or_region": "Primary Market"
                 })
 
-            # Extract catalog sector matches
             from service_catalog import catalog
             target_secs = []
             if catalog.sectors:
@@ -463,13 +427,11 @@ Respond ONLY with a valid JSON object matching this exact schema:
         raw_secs = parsed.get("portfolio_target_sectors", [])
         parsed["portfolio_target_sectors"] = catalog.validate_and_filter_sectors(raw_secs)
 
-        # 3. Post-Processing & Quality Enrichment Engine (Eliminates Prompt Scaffolding / Placeholders)
+        # 3. Post-Processing & Quality Enrichment Engine
         req_analysis = parsed.get("detailed_requirements_analysis") or {}
         company_name = parsed.get("company_name", clean_name)
-        archetype = parsed.get("archetype", "Enterprise")
         industry = parsed.get("industry_focus", "Industrial & Digital Infrastructure")
         
-        # Clean placeholder descriptions from LLM output
         PLACEHOLDER_SUBSTRINGS = [
             "commercial growth priority", "operational milestone", "intelligence feed need",
             "applicable regulatory compliance", "standards (e.g.", "commercial intelligence feeds, permitting trackers",
@@ -501,7 +463,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
             req_analysis["risk_mitigation_strategy"] = mitigation
             req_analysis["target_decision_maker"] = decision_maker
         else:
-            # Clean fallback for passive discovery
             if _is_placeholder(req_analysis.get("core_growth_mandate", "")):
                 req_analysis["core_growth_mandate"] = f"Expand commercial visibility, secure early positioning in major capital buildout projects, and scale critical infrastructure delivery across {industry}."
             if _is_placeholder(req_analysis.get("infrastructure_and_asset_needs", "")):
@@ -520,7 +481,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
         parsed["detailed_requirements_analysis"] = req_analysis
         parsed["buying_role_hypothesis"] = req_analysis["target_decision_maker"]
 
-        # Clean and enrich requirements list
         clean_requirements = []
         if client_inquiry and len(client_inquiry.strip()) > 1:
             clean_requirements.append({
@@ -553,7 +513,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 "confidence": "medium"
             })
         parsed["requirements"] = clean_requirements
-
         parsed["status"] = "verified" if len(parsed.get("observed_facts", [])) >= 1 or len(parsed.get("portfolio_target_sectors", [])) >= 1 else "partially_verified"
         return parsed
 
@@ -574,29 +533,16 @@ Respond ONLY with a valid JSON object matching this exact schema:
         sec_name = candidate.get("primary_sector", "")
         definition = candidate.get("definition", "")
         company_name = target_profile.get("company_name", "Target Company")
-        archetype = target_profile.get("archetype", "Enterprise")
 
-        evidence_payload = [
-            {
-                "evidence_id": ev.get("evidence_id", f"ev_{i+1:03d}"),
-                "source_url": ev.get("source_url", ""),
-                "quoted_text": ev.get("quoted_text", ""),
-                "relationship": ev.get("relationship", "current_operation")
-            }
-            for i, ev in enumerate(evidence_items[:15])
-        ]
-
-        # Check Explicit Stated Inquiry Intent
         inq_lower = client_inquiry.lower().strip() if client_inquiry else ""
         sec_lower = sec_name.lower().strip()
-        defn_lower = definition.lower().strip()
         
-        # Tokenize candidate sector and acronyms into substantive root concepts
         acronyms = [a.lower().strip() for a in re.findall(r"\((.*?)\)", sec_lower)]
         clean_sec = re.sub(r"\(.*?\)", "", sec_lower).strip()
-        sec_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
+        sec_tokens = set(re.findall(r"[a-zA-Z0-9]{2,}", sec_lower))
         sec_tokens.update(acronyms)
         sec_tokens.discard("plant")
+        
         GENERIC_SECTOR_WORDS = {
             "center", "centre", "facilities", "facility", "plant", "station", "park", "hub",
             "unit", "building", "buildings", "services", "solutions", "infrastructure",
@@ -606,15 +552,14 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         is_inquiry_match = False
         if inq_lower and len(inq_lower) >= 2:
-            inq_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are", "project", "projects", "facility", "plant")]
+            inq_tokens = [t for t in re.findall(r"[a-zA-Z0-9]{2,}", inq_lower) if t not in ("the", "and", "for", "with", "all", "our", "are", "project", "projects", "facility", "plant")]
             distinctive_inq = [t for t in inq_tokens if t not in GENERIC_SECTOR_WORDS]
-            sec_all_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
+            sec_all_tokens = set(re.findall(r"[a-zA-Z0-9]{2,}", sec_lower))
             sec_all_tokens.update(acronyms)
             
             if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec:
                 is_inquiry_match = True
             elif distinctive_inq:
-                # Require ALL distinctive non-generic tokens from inquiry to match the candidate sector
                 matched_distinctive = [t for t in distinctive_inq if t in sec_all_tokens]
                 if len(matched_distinctive) == len(distinctive_inq):
                     is_inquiry_match = True
@@ -623,30 +568,13 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 if len(matched_inq) == len(inq_tokens):
                     is_inquiry_match = True
 
-        # Check Target Profile Targets
         target_secs = [str(ts).lower() for ts in target_profile.get("portfolio_target_sectors", [])]
         is_target_focus = any(any(st in ts for st in sec_tokens if len(st) >= 3) for ts in target_secs) if sec_tokens else False
 
-        # Evaluate Evidence Passages for Verified Physical Operations
         verified_quotes = []
-        is_metaphorical = False
-        rejection_reason = ""
-
-        # Extract substantive definition tokens
-        defn_tokens = set(re.findall(r"\b[a-zA-Z]{4,}\b", defn_lower))
-        defn_tokens.discard("facility")
-        defn_tokens.discard("system")
-        defn_tokens.discard("infrastructure")
-
-        GENERIC_SECTOR_WORDS = {
-            "center", "centre", "facilities", "facility", "plant", "station", "park", "hub",
-            "unit", "building", "buildings", "services", "solutions", "infrastructure",
-            "system", "systems", "complex", "zone", "house", "other", "general", "group",
-            "holdings", "company", "corporation", "project", "projects"
-        }
-        distinctive_cand_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{3,}\b", clean_sec) if t.lower() not in GENERIC_SECTOR_WORDS]
+        distinctive_cand_tokens = [t for t in re.findall(r"[a-zA-Z0-9]{3,}", clean_sec) if t.lower() not in GENERIC_SECTOR_WORDS]
         if not distinctive_cand_tokens:
-            distinctive_cand_tokens = [t for t in re.findall(r"\b[a-zA-Z0-9]{2,}\b", clean_sec)]
+            distinctive_cand_tokens = [t for t in re.findall(r"[a-zA-Z0-9]{2,}", clean_sec)]
 
         for ev in evidence_items:
             quote = ev.get("quoted_text", "") if isinstance(ev, dict) else getattr(ev, "quoted_text", "")
@@ -658,19 +586,15 @@ Respond ONLY with a valid JSON object matching this exact schema:
             if not ev_id:
                 ev_id = f"ev_{len(verified_quotes)+1:03d}"
 
-            # 1. Exact canonical sector phrase match
             if clean_sec in q_lower or sec_lower in q_lower:
                 verified_quotes.append(ev_id)
                 continue
 
-            # 2. Strict Distinctive Non-Generic Token Entailment
             if distinctive_cand_tokens and not sec_lower.startswith("other "):
-                matched_distinctive = [t for t in distinctive_cand_tokens if re.search(r"\b" + re.escape(t) + r"\b", q_lower)]
-                # Require all distinctive tokens to match in the same evidence passage
+                matched_distinctive = [t for t in distinctive_cand_tokens if re.search(r"" + re.escape(t) + r"", q_lower)]
                 if len(matched_distinctive) == len(distinctive_cand_tokens):
                     verified_quotes.append(ev_id)
 
-        # Formulate Dynamic Decision
         if is_inquiry_match:
             classification = "exact"
             evidence_level = "LEVEL_1"
@@ -679,7 +603,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
             func_align = "strong"
             intent_align = "strong"
             reason_code = "EXPLICIT_CLIENT_INQUIRY"
-            
             reason = f"Explicit client requirement directly targeting {sec_name} assets and operations."
             val_driver = f"Accelerates commercial pipeline visibility into project stage-gates, verifies regulatory permitting dockets, and secures early procurement feeds across {sec_name}."
             req_solved = f"Utility interconnection dockets, stage-gate permitting trackers, and EPC/developer directories in {sec_name}."
@@ -715,8 +638,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
             entailment = "none"
             func_align = "none"
             intent_align = "none"
-            reason_code = "POLYSEMY_OR_METAPHOR" if is_metaphorical else "NO_VERIFIED_EVIDENCE"
-            reason = rejection_reason or f"Sector '{sec_name}' has semantic similarity but lacks verified operational ground-truth evidence."
+            reason_code = "NO_VERIFIED_EVIDENCE"
+            reason = f"Sector '{sec_name}' has semantic similarity but lacks verified operational ground-truth evidence."
             val_driver = ""
             req_solved = ""
             ev_ids = []
@@ -731,7 +654,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 "candidate_definition_meaning": definition,
                 "target_functionality_meaning": target_profile.get("industry_focus", ""),
                 "target_intent_meaning": client_inquiry or "Enterprise operations",
-                "literal_or_metaphorical": "metaphorical" if is_metaphorical else "literal",
+                "literal_or_metaphorical": "literal",
                 "term_interpretations": [
                     {"term": sec_name, "meaning_in_context": "Candidate offering", "candidate_relevance": "relevant" if classification == "exact" else "irrelevant", "reason": reason}
                 ],
@@ -778,6 +701,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
         client_inquiry: str = ""
     ) -> List[Dict[str, Any]]:
         analyzed_results = []
+        known_ids = {e.get("evidence_id") if isinstance(e, dict) else getattr(e, "evidence_id", "") for e in evidence_ledger}
+
         for cand in candidate_hypotheses:
             analysis = self.dynamic_analyze_candidate(
                 candidate=cand,
@@ -791,11 +716,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
             sem = analysis.get("semantic_analysis", {})
 
             raw_ev_ids = dec.get("verified_evidence_ids", [])
-            valid_ev_ids = []
-            known_ids = {e.get("evidence_id") if isinstance(e, dict) else getattr(e, "evidence_id", "") for e in evidence_ledger}
-            for eid in raw_ev_ids:
-                if eid in known_ids or eid in ("inquiry_stated", "profile_target_stated"):
-                    valid_ev_ids.append(eid)
+            valid_ev_ids = [eid for eid in raw_ev_ids if eid in known_ids or eid in ("inquiry_stated", "profile_target_stated")]
 
             analyzed_cand = {
                 **cand,
@@ -820,7 +741,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
         evidence_items: Optional[List[Any]] = None,
         client_inquiry: str = ""
     ) -> List[Dict[str, Any]]:
-        """Alias supporting standard argument order."""
+        """Alias supporting reverse argument order."""
         return self.dynamic_batch_analyze(
             target_profile=target_profile,
             candidate_hypotheses=candidate_hypotheses,
@@ -848,12 +769,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
             sent_clean = sent.strip()
             if not sent_clean:
                 continue
-            key_terms = [t for t in re.findall(r"\b[a-zA-Z]{4,}\b", sent_clean.lower()) if t not in ("this", "that", "with", "from", "they", "their", "have", "been", "will")]
-            if not key_terms:
-                supported_sentences.append(sent_clean)
-                continue
-            hits = [t for t in key_terms if t in combined_evidence]
-            if len(hits) >= 1 or len(combined_evidence) == 0:
+            key_terms = [t for t in re.findall(r"[a-zA-Z]{4,}", sent_clean.lower()) if t not in ("this", "that", "with", "from", "they", "their", "have", "been", "will")]
+            if not key_terms or any(t in combined_evidence for t in key_terms) or len(combined_evidence) == 0:
                 supported_sentences.append(sent_clean)
                 verified_eids.update(evidence_ids)
             elif "inquiry" in evidence_ids or "profile" in evidence_ids:
@@ -920,7 +837,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
             t_low = title.lower()
             facility_term = "Developments" if any(w in t_low for w in ("plant", "facility", "hub", "unit", "center", "line")) else "Facilities"
             
-            # Determine client's operational relationship and cross-domain bridge dynamically
             industry_baseline = company_details.get("industry_focus", "Core Enterprise Operations")
             client_rel = f"Equipment OEM & Strategic Solutions Partner for {title} {facility_term}"
             sol_arch = (
@@ -997,7 +913,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
         val_driver_pitch = exact_mappings[0]["operational_value_driver"] if exact_mappings else "Compresses diligence cycle times and secures proprietary visibility."
         sec_short = primary_offering.replace(" Intelligence Platform", "")
 
-        # Dynamic sector-tailored deliverables blueprint
         t1 = f"Utility Grid Interconnection & Permitting Tracker: Real-time regulatory queue filings, environmental reviews, and state utility commission stage-gates for {sec_short}."
         t2 = f"Key Stakeholder & EPC Directory: Verified profiles of active asset owners, project developers, general contractors, and off-takers across {sec_short}."
         t3 = f"Balance-of-Plant Technical Specification Feeds: High-voltage substation topologies, equipment procurement dockets, and engineering timelines in {sec_short}."
