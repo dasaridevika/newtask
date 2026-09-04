@@ -230,13 +230,26 @@ def classify_page(url: str, title: str, headings: List[str], text_sample: str) -
 def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
     """Extracts headings, clean text, and factual snippets from Crawl4AI markdown."""
     headings = []
+    list_items = []
     lines = markdown_text.splitlines()
     for line in lines:
         line_s = line.strip()
-        if line_s.startswith(("# ", "## ", "### ")):
+        if line_s.startswith(("# ", "## ", "### ", "#### ")):
             clean_h = re.sub(r"^#+\s*", "", line_s).strip()
+            clean_h = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", clean_h)
+            clean_h = re.sub(r"[#*_`~]", "", clean_h).strip()
             if 3 < len(clean_h) < 100 and clean_h not in headings:
                 headings.append(clean_h)
+        elif re.match(r"^[-*+]\s+", line_s):
+            clean_li = re.sub(r"^[-*+]\s+", "", line_s)
+            clean_li = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", clean_li)
+            clean_li = re.sub(r"[#*_`~]", "", clean_li).strip()
+            clean_li = re.sub(r"\s+", " ", clean_li)
+            words = clean_li.split()
+            if 4 <= len(clean_li) <= 80 and len(words) >= 2:
+                if not any(c in clean_li for c in ("{", "}", "<", ">", "//", "==")):
+                    if clean_li not in list_items:
+                        list_items.append(clean_li)
 
     # Clean markdown formatting for clean text
     clean_text = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", markdown_text)
@@ -257,10 +270,11 @@ def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
 
     return {
         "title": title,
-        "headings": headings[:8],
+        "headings": headings[:10],
         "clean_text": clean_text,
         "canonical_snippets": canonical_snippets,
-        "meta_description": ""
+        "meta_description": "",
+        "list_items": list_items[:15]
     }
 
 def clean_html(raw_html: str) -> dict:
@@ -473,17 +487,45 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                     is_first_party=True
                 )
 
+            if ext.get("list_items"):
+                for item in ext["list_items"]:
+                    if item not in store.product_offerings and len(store.product_offerings) < 20:
+                        store.product_offerings.append(item)
+
             internal_links = []
             if home_res.links and isinstance(home_res.links, dict):
                 internal = home_res.links.get("internal", [])
+                base_domain = urllib.parse.urlparse(base_url).netloc.replace("www.", "").lower()
                 for item in internal:
                     href = item.get("href") if isinstance(item, dict) else str(item)
-                    if href and href.startswith("http") and urllib.parse.urlparse(href).netloc == urllib.parse.urlparse(base_url).netloc and href != url:
-                        if href not in internal_links:
-                            internal_links.append(href)
+                    if href and href.startswith("http"):
+                        href_parsed = urllib.parse.urlparse(href)
+                        href_dom = href_parsed.netloc.replace("www.", "").lower()
+                        if href_dom == base_domain and href.rstrip("/") != url.rstrip("/"):
+                            path_lower = href_parsed.path.lower()
+                            if not any(junk in path_lower for junk in [
+                                "login", "signin", "sign-in", "auth", "password", "privacy", "terms", 
+                                "cookie", "create-account", "register", "cart", "checkout", "forgot-password"
+                            ]):
+                                if href not in internal_links:
+                                    internal_links.append(href)
 
-            # Sort subpages deterministically by depth and alphabet
-            internal_links = sorted(list(set(internal_links)), key=lambda u: (len(urllib.parse.urlparse(u).path.strip("/").split("/")), u))
+            # Sort subpages prioritizing products, solutions, catalog, about, case studies
+            def _subpage_sort_key(u: str) -> tuple:
+                u_low = u.lower()
+                prio = 10
+                if any(k in u_low for k in ["product", "offering", "service", "catalog"]):
+                    prio = 1
+                elif any(k in u_low for k in ["solution", "system", "technology", "capability"]):
+                    prio = 2
+                elif any(k in u_low for k in ["case-stud", "project", "customer", "success", "client"]):
+                    prio = 3
+                elif any(k in u_low for k in ["about", "company", "who-we-are", "overview"]):
+                    prio = 4
+                depth = len(urllib.parse.urlparse(u).path.strip("/").split("/"))
+                return (prio, depth, u)
+
+            internal_links.sort(key=_subpage_sort_key)
             for sub_url in internal_links[:12]:
                 try:
                     sub_res = await crawler.arun(url=sub_url)
@@ -505,13 +547,26 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
                         store.pages.append(evidence)
                         store.signals.extend(extract_universal_signals(sub_ext["clean_text"], sub_url))
 
+                        if sub_ext.get("list_items"):
+                            for item in sub_ext["list_items"]:
+                                if sub_type in (PageType.PRODUCTS_SERVICES, PageType.SOLUTIONS):
+                                    if item not in store.product_offerings and len(store.product_offerings) < 25:
+                                        store.product_offerings.append(item)
+
+                        if sub_type in (PageType.PRODUCTS_SERVICES, PageType.SOLUTIONS):
+                            for h in sub_ext["headings"]:
+                                if 5 <= len(h) <= 70 and not any(j in h.lower() for j in ["privacy", "terms", "cookie", "login", "contact", "about", "home", "search", "menu", "activation"]):
+                                    if h not in store.observed_products and len(store.observed_products) < 20:
+                                        store.observed_products.append(h)
+
+                        rel_type = "portfolio_company" if "portfolio" in sub_url.lower() or sub_type == PageType.CASE_STUDY else ("stated_focus" if sub_type == PageType.PRODUCTS_SERVICES else "current_operation")
                         for snip in sub_ext["canonical_snippets"]:
                             store.add_evidence(
                                 source_url=sub_url,
                                 source_title=sub_ext["title"],
                                 quoted_text=snip,
                                 entity=store.company_name,
-                                relationship="current_operation",
+                                relationship=rel_type,
                                 evidence_type="subpage_extract",
                                 is_first_party=True
                             )

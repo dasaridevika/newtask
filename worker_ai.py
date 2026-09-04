@@ -214,6 +214,66 @@ class WorkerAI:
                 "buying_role_hypothesis": req_analysis["target_decision_maker"]
             }
 
+        # Harvest clean verified products from evidence store upfront
+        junk_prod_terms = {
+            "login", "password", "privacy", "terms", "cookie", "partner", "investor", 
+            "consultant", "distributor", "etail", "apply now", "sign in", "register",
+            "create account", "forgot password", "contact", "about us", "who we are",
+            "careers", "tel:", "phone", "email", "feedback", "language", "location", 
+            "menu", "search", "activation", "what are", "why plan", "how to", "click here",
+            "read more", "learn more", "all rights", "copyright", "home page", "document",
+            "manuals", "manual", "guide", "operations manual", "user guide", "support",
+            "discontinued", "exclude", "availability", "save", "open search",
+            "products & services", "products and services", "services & products",
+            "language & location", "tell us your feedback", "tell us", "products", "services"
+        }
+        products_list = []
+        if evidence_store:
+            if hasattr(evidence_store, "product_offerings") and evidence_store.product_offerings:
+                products_list.extend(evidence_store.product_offerings)
+            if hasattr(evidence_store, "observed_products") and evidence_store.observed_products:
+                products_list.extend(evidence_store.observed_products)
+            if hasattr(evidence_store, "observed_technologies") and evidence_store.observed_technologies:
+                products_list.extend(evidence_store.observed_technologies)
+            for page in getattr(evidence_store, "pages", []):
+                p_type = getattr(page, "page_type", "")
+                p_headings = getattr(page, "headings", [])
+                if "product" in str(p_type).lower() or "solution" in str(p_type).lower():
+                    for h in p_headings:
+                        if 4 <= len(h) <= 70 and not any(j in h.lower() for j in ["privacy", "terms", "cookie", "login", "contact", "about", "home", "search", "menu", "activation"]):
+                            products_list.append(h)
+            for ev in getattr(evidence_store, "evidence_ledger", []):
+                qt = getattr(ev, "quoted_text", "")
+                for pattern in [r"(?:offerings|products|portfolio|solutions|capabilities)\s+include:?\s*([^.\n]+)", r"(?:manufactures|produces|delivers)\s+([^.\n]+)"]:
+                    for m in re.finditer(pattern, qt, flags=re.I):
+                        phrase = m.group(1).strip()
+                        parts = re.split(r",|\band\b|;", phrase)
+                        for part in parts:
+                            clean_p = part.strip()
+                            if 4 <= len(clean_p) <= 60 and len(clean_p.split()) >= 1:
+                                products_list.append(clean_p)
+
+        clean_prods = []
+        for p in products_list:
+            p_clean = clean_prose_text(p)
+            p_clean = re.sub(r"!\[[^\]]*\]\([^\)]*\)", "", p_clean)
+            p_clean = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", p_clean).strip()
+            p_clean = re.sub(r"^[-*•\s]+", "", p_clean)
+            p_clean = re.sub(r"\s+", " ", p_clean).strip()
+            if re.search(r"^\+?[\d\s\-\(\)\.]{5,}$", p_clean) or sum(c.isdigit() for c in p_clean) > len(p_clean) * 0.35:
+                continue
+            if re.match(r"^(?:why|how|what|when|where|who|prepare for|read|view|learn|discover|download)\b", p_clean, flags=re.I):
+                continue
+            if any(term in p_clean.lower() for term in ["most recent", "latest news", "prepare for", "recent articles", "press release", "white paper", "read the", "feedback"]):
+                continue
+            p_words = p_clean.split()
+            if 4 <= len(p_clean) <= 75 and len(p_words) >= 1:
+                if not any(jt in p_clean.lower() for jt in junk_prod_terms) and p_clean.lower() not in junk_prod_terms:
+                    if not p_clean.endswith((":", "?", ";")) and not any(c in p_clean for c in ("{", "}", "<", ">", "//", "http", "@")):
+                        if p_clean.lower() not in [x.lower() for x in clean_prods]:
+                            if any(w[0].isupper() or any(char.isdigit() for char in w) for w in p_words):
+                                clean_prods.append(p_clean)
+
         # 1. Structure LLM extraction with strict fact-grounding instructions
         system_prompt = """You are an elite Senior Principal Corporate Intelligence Strategist and Evidence Verification Engine.
 Analyze crawled corporate webpage content and produce a deeply detailed, highly informative, and strictly truthful corporate intelligence profile.
@@ -299,14 +359,10 @@ Respond ONLY with a valid JSON object matching this exact schema:
             meta_desc = ""
             about_snips = []
             case_study_snips = []
-            products_list = []
             signals_list = []
 
             if evidence_store:
                 meta_desc = getattr(evidence_store, "meta_description", "") or ""
-                if hasattr(evidence_store, "product_offerings") and evidence_store.product_offerings:
-                    products_list.extend(evidence_store.product_offerings[:10])
-                
                 for sig in getattr(evidence_store, "signals", []):
                     s_text = getattr(sig, "signal", "")
                     if s_text and s_text not in signals_list:
@@ -350,18 +406,6 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 s_clean = clean_prose_text(s)
                 if len(s_clean) > 30 and len(s_clean.split()) >= 6 and s_clean not in [f["statement"] for f in facts]:
                     facts.append({"statement": s_clean, "source_url": f"https://{domain}" if domain else "", "confidence": "high"})
-
-            # Clean products list using structural item validation
-            clean_prods = []
-            junk_prod_terms = {"login", "password", "privacy", "terms", "cookie", "partner", "investor", "consultant", "distributor", "etail", "apply now"}
-            for p in products_list:
-                p_clean = clean_prose_text(p)
-                p_words = p_clean.split()
-                if 4 <= len(p_clean) <= 75 and len(p_words) >= 2 and p_clean not in clean_prods:
-                    if not any(jt in p_clean.lower() for jt in junk_prod_terms):
-                        if not p_clean.endswith((":", "?", ";")) and not any(c in p_clean for c in ("{", "}", "<", ">", "//")):
-                            if any(w[0].isupper() or any(char.isdigit() for char in w) for w in p_words):
-                                clean_prods.append(p_clean)
 
             # Build clean, natural executive brief
             clean_facts = [
@@ -607,6 +651,45 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 "type": "inferred",
                 "confidence": "medium"
             })
+        # 4. Enrich & Clean Core Products & Services from Verified Evidence
+        existing_prods = parsed.get("core_products_and_services", [])
+        if not isinstance(existing_prods, list):
+            existing_prods = [existing_prods] if existing_prods else []
+        
+        all_candidate_prods = existing_prods + clean_prods
+        final_clean_prods = []
+        for p in all_candidate_prods:
+            if isinstance(p, str):
+                p_c = clean_prose_text(p)
+                p_c = re.sub(r"!\[[^\]]*\]\([^\)]*\)", "", p_c)
+                p_c = re.sub(r"\[([^\]]+)\]\([^\)]+\)", r"\1", p_c).strip()
+                p_c = re.sub(r"^[-*•\s]+", "", p_c)
+                p_c = re.sub(r"\s+", " ", p_c).strip()
+                if re.search(r"^\+?[\d\s\-\(\)\.]{5,}$", p_c) or sum(c.isdigit() for c in p_c) > len(p_c) * 0.35:
+                    continue
+                if re.match(r"^(?:why|how|what|when|where|who|prepare for|read|view|learn|discover|download)\b", p_c, flags=re.I):
+                    continue
+                if any(term in p_c.lower() for term in ["most recent", "latest news", "prepare for", "recent articles", "press release", "white paper", "read the", "feedback"]):
+                    continue
+                p_w = p_c.split()
+                if 4 <= len(p_c) <= 75 and len(p_w) >= 1:
+                    if not any(jt in p_c.lower() for jt in junk_prod_terms) and p_c.lower() not in junk_prod_terms:
+                        if not p_c.endswith((":", "?", ";")) and not any(c in p_c for c in ("{", "}", "<", ">", "//", "http", "@")):
+                            if p_c.lower() not in [x.lower() for x in final_clean_prods]:
+                                if any(w[0].isupper() or any(char.isdigit() for char in w) for w in p_w):
+                                    final_clean_prods.append(p_c)
+
+        if final_clean_prods:
+            parsed["core_products_and_services"] = final_clean_prods[:8]
+        else:
+            parsed["core_products_and_services"] = [f"Specialized {industry} Solutions & Systems"]
+
+        # Clean executive summary markdown
+        raw_exec = parsed.get("executive_profile_analysis", "")
+        if raw_exec:
+            raw_exec = re.split(r"\n\s*\*\*(?:Requirements|Delivered Historical|Current Active|Future Roadmaps|Portfolio Target|Observed Facts)", raw_exec, flags=re.I)[0]
+            parsed["executive_profile_analysis"] = raw_exec.strip()
+
         parsed["requirements"] = clean_requirements
         parsed["status"] = "verified" if len(parsed.get("observed_facts", [])) >= 1 or len(parsed.get("portfolio_target_sectors", [])) >= 1 else "partially_verified"
         return parsed
@@ -1057,6 +1140,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 disqualified_audit.append({
                     "candidate_id": cid,
                     "sector": title,
+                    "offering_name": offering_name,
+                    "rejection_reason": reason_code,
                     "status": f"DISQUALIFIED ({reason_code})",
                     "rationale": cand.get("reason") or f"Candidate '{title}' does not have verified definition-entailed evidence."
                 })
