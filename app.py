@@ -746,18 +746,22 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
             with st.container(border=True):
                 st.markdown(f"### Multi-Tier Data Deliverables Package for `{top_name}`")
                 
-                st.markdown("""
+                d1 = lead_blueprint.get("deliverables_tier_1_permits", "Tier 1: Stage-Gate Regulatory & Permitting Tracker")
+                d2 = lead_blueprint.get("deliverables_tier_2_stakeholders", "Tier 2: Key Stakeholder & Procurement Directory")
+                d3 = lead_blueprint.get("deliverables_tier_3_technical", "Tier 3: Technical Specification & Tender Feeds")
+
+                st.markdown(f"""
                 <div class="deliverable-card">
-                    <div class="deliverable-title">Tier 1: Stage-Gate Permitting & Utility Queue Tracker</div>
-                    <div class="deliverable-desc">Real-time municipal zoning filings, power substation interconnection queues (MW capacity), and environmental compliance review dockets.</div>
+                    <div class="deliverable-title">Tier 1: Permitting & Compliance Docket Tracker</div>
+                    <div class="deliverable-desc">{d1}</div>
                 </div>
                 <div class="deliverable-card">
-                    <div class="deliverable-title">Tier 2: Key Stakeholder & Operator Directory</div>
-                    <div class="deliverable-desc">Comprehensive profiles of active developers, general contractors, asset owners, and operator networks across target jurisdictions.</div>
+                    <div class="deliverable-title">Tier 2: Key Stakeholder & Procurement Directory</div>
+                    <div class="deliverable-desc">{d2}</div>
                 </div>
                 <div class="deliverable-card">
-                    <div class="deliverable-title">Tier 3: Asset-Level Technical Capacity & Specification Feeds</div>
-                    <div class="deliverable-desc">Square footage specifications, clear-height door data, power redundancy topologies, and capital expenditure timelines.</div>
+                    <div class="deliverable-title">Tier 3: Technical Specification & Tender Feeds</div>
+                    <div class="deliverable-desc">{d3}</div>
                 </div>
                 """, unsafe_allow_html=True)
 
