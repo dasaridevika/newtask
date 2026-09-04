@@ -11,7 +11,7 @@ load_dotenv()
 
 from scraper import search_company_serp
 from service_catalog import catalog
-from worker_ai import ai
+from worker_ai import ai, clean_prose_text
 
 # Streamlit Page Config
 st.set_page_config(
@@ -540,7 +540,7 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
             # 1. Executive Strategic Brief Card
             with st.container(border=True):
                 st.markdown("### Executive Operations & Market Brief")
-                st.write(company_details.get("executive_profile_analysis", ""))
+                st.markdown(clean_prose_text(company_details.get("executive_profile_analysis", "")))
                 
                 col_meta1, col_meta2 = st.columns(2)
                 with col_meta1:

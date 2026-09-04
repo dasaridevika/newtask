@@ -8,6 +8,31 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
+def clean_prose_text(text: str) -> str:
+    """Strips internal scaffold tags, navigation boilerplate, markdown headers, and metadata prefixes from prose text."""
+    if not text:
+        return ""
+    t = str(text)
+    t = re.sub(r"===[^=\n]*===", "", t)
+    t = re.sub(r"COMPANY:\s*[^(\n]*\([^)]*\)", "", t, flags=re.I)
+    t = re.sub(r"Domain:\s*[^\n]+", "", t, flags=re.I)
+    t = re.sub(r"Headings:\s*[^|\n]*(\|[^|\n]*)*", "", t, flags=re.I)
+    t = re.sub(r"(?:Content Summary|Key Snippets|Search Insights|Structured Evidence Ledger):\s*", "", t, flags=re.I)
+    t = re.sub(r"\[ev_\d+\]\s*(?:\([^)]*\))?", "", t)
+    t = re.sub(r"\(Source:\s*https?://[^\)]+\)", "", t, flags=re.I)
+    t = re.sub(r"^(?:Official Corporate Encyclopedia|Search Intelligence|Fact)\s*(\([^)]*\))?:\s*", "", t, flags=re.I)
+    nav_patterns = [
+        r"(?:Login|Sign in|Register|Apply now|Discover how|Contact us|Investors|Consultants|eTail Partner)[^\.\?!]*?(?:Password|Email address|Show password|Forgot your password\?)[^\.\?!]*[\.\?!]?",
+        r"(?:Login as [^.\n]+|Forgot your password\?|Show password|Email address|Password)",
+        r"(?:Cookie Settings|Privacy Policy|Terms of (?:Use|Service)|All rights reserved)",
+    ]
+    for np in nav_patterns:
+        t = re.sub(np, "", t, flags=re.I)
+    t = re.sub(r"\ufffd", "", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
+
+
 def generate_deliverable_blueprint(sector_name: str, definition: str = "") -> str:
     """Dynamically generates tailored deliverable intelligence feeds from sector name and definition."""
     clean_sec = sector_name.strip()
@@ -319,45 +344,66 @@ Respond ONLY with a valid JSON object matching this exact schema:
             candidate_sentences = about_snips
             if not candidate_sentences:
                 raw_splits = re.split(r"(?<=[.!?])\s+", text_sample)
-                candidate_sentences = [s.strip() for s in raw_splits if 35 <= len(s.strip()) <= 320 and len(s.strip().split()) >= 5 and not any(c in s for c in ("{", "}", "<", ">", "//"))]
+                candidate_sentences = [clean_prose_text(s) for s in raw_splits if 35 <= len(clean_prose_text(s)) <= 350 and not any(c in s for c in ("{", "}", "<", ">", "//"))]
             
-            for s in candidate_sentences[:10]:
-                s_clean = re.sub(r"^===.*?===\s*", "", s).strip()
-                s_clean = re.sub(r"^(Official Corporate Encyclopedia|Search Intelligence|Fact)\s*(\([^)]*\))?:\s*", "", s_clean, flags=re.I).strip()
-                if len(s_clean) > 25 and s_clean not in [f["statement"] for f in facts]:
+            for s in candidate_sentences[:15]:
+                s_clean = clean_prose_text(s)
+                if len(s_clean) > 30 and len(s_clean.split()) >= 6 and s_clean not in [f["statement"] for f in facts]:
                     facts.append({"statement": s_clean, "source_url": f"https://{domain}" if domain else "", "confidence": "high"})
 
             # Clean products list using structural item validation
             clean_prods = []
+            junk_prod_terms = {"login", "password", "privacy", "terms", "cookie", "partner", "investor", "consultant", "distributor", "etail", "apply now"}
             for p in products_list:
-                p_clean = re.sub(r"\s+", " ", p).strip()
-                p_clean = re.sub(r"^===.*?===\s*", "", p_clean).strip()
-                p_clean = p_clean.replace("\ufffd", "")
+                p_clean = clean_prose_text(p)
                 p_words = p_clean.split()
                 if 4 <= len(p_clean) <= 75 and len(p_words) >= 2 and p_clean not in clean_prods:
-                    if not p_clean.endswith((":", "?", ";")) and not any(c in p_clean for c in ("{", "}", "<", ">", "//")):
-                        if any(w[0].isupper() or any(char.isdigit() for char in w) for w in p_words):
-                            clean_prods.append(p_clean)
+                    if not any(jt in p_clean.lower() for jt in junk_prod_terms):
+                        if not p_clean.endswith((":", "?", ";")) and not any(c in p_clean for c in ("{", "}", "<", ">", "//")):
+                            if any(w[0].isupper() or any(char.isdigit() for char in w) for w in p_words):
+                                clean_prods.append(p_clean)
 
             # Build clean, natural executive brief
-            overview_core = meta_desc if (meta_desc and len(meta_desc) > 30) else (" ".join([f["statement"] for f in facts[:2]]) if facts else f"{clean_name} is an established {archetype} operating in {default_industry}.")
-            overview_core = re.sub(r"^===.*?===\s*", "", overview_core).strip()
-            overview_core = re.sub(r"^(Official Corporate Encyclopedia|Search Intelligence|Fact)\s*(\([^)]*\))?:\s*", "", overview_core, flags=re.I).strip()
+            clean_facts = [
+                clean_prose_text(f["statement"]) 
+                for f in facts 
+                if len(clean_prose_text(f["statement"])) > 35 
+                and not any(w in clean_prose_text(f["statement"]).lower() for w in ("login", "password", "sign in", "distributor", "email address", "apply now"))
+            ]
+            
+            clean_meta = clean_prose_text(meta_desc) if meta_desc else ""
+            if clean_meta and len(clean_meta) > 40 and not any(w in clean_meta.lower() for w in ("login", "password", "sign in", "email address", "apply now")):
+                overview_core = clean_meta
+            elif clean_facts:
+                overview_core = clean_facts[0]
+                if len(clean_facts) > 1 and len(overview_core) < 180:
+                    overview_core += " " + clean_facts[1]
+            else:
+                overview_core = f"{clean_name} is an established {archetype} delivering critical physical infrastructure and specialized engineering solutions across {default_industry}."
+            if re.match(r"^(?:is|are|operates|provides|delivers)\b", overview_core, flags=re.I):
+                overview_core = f"{clean_name} {overview_core}"
+            elif overview_core and overview_core[0].islower():
+                overview_core = f"{clean_name} {overview_core}"
 
-            p1 = f"**Executive Profile & Market Position:** {clean_name} operates as an established {archetype} in {default_industry}. {overview_core}"
+            if overview_core.lower().startswith(clean_name.lower()):
+                p1 = f"**Executive Profile & Market Position**\n{overview_core}"
+            else:
+                p1 = f"**Executive Profile & Market Position**\n{clean_name} operates as an established {archetype} in {default_industry}. {overview_core}"
             
             if clean_prods:
-                p2 = f"**Core Offerings & Technical Capabilities:** {clean_name}'s core product and service portfolio includes {', '.join(clean_prods[:6])}. These offerings deliver specialized operational infrastructure, engineering reliability, and critical technical performance for enterprise clients."
+                p2 = f"**Core Offerings & Technical Capabilities**\n{clean_name}'s core product and service portfolio includes {', '.join(clean_prods[:6])}. These offerings deliver specialized operational infrastructure, engineering reliability, and critical technical performance for enterprise clients."
             else:
-                p2 = f"**Core Offerings & Technical Capabilities:** {clean_name}'s operational portfolio centers on critical infrastructure systems, engineered hardware/software solutions, and specialized technical services across {default_industry}."
+                p2 = f"**Core Offerings & Technical Capabilities**\n{clean_name}'s operational portfolio centers on critical infrastructure systems, engineered hardware/software solutions, and specialized technical services across {default_industry}."
             
-            p3 = f"**Business Model & Revenue Architecture:** {clean_name} generates commercial value through direct solution deployments, enterprise equipment sales, recurring service support, and strategic customer integrations across {default_industry}."
+            p3 = f"**Business Model & Revenue Architecture**\n{clean_name} generates commercial value through direct solution deployments, enterprise equipment sales, recurring service support, and strategic customer integrations across {default_industry}."
             
             if client_inquiry and len(client_inquiry.strip()) > 2:
-                inq_clean = client_inquiry.strip()
-                p4 = f"**Strategic Alignment & Inbound Mandate:** The inbound requirement specifically targets `{inq_clean}`. Market intelligence and offering matching prioritize active capital projects, equipment procurement stage-gates, and regulatory filings that directly intersect {clean_name}'s capabilities with {inq_clean}."
+                from service_catalog import catalog
+                decomp = catalog.decompose_compound_words(client_inquiry.strip()) if hasattr(catalog, "decompose_compound_words") else client_inquiry.strip()
+                inq_label = decomp.title() if decomp.islower() else client_inquiry.strip()
+                p4 = f"**Strategic Alignment & Inbound Mandate Analysis**\nThe inbound requirement specifically targets **{inq_label}**. Market intelligence and offering matching prioritize active capital projects, equipment procurement stage-gates, and regulatory filings that directly intersect {clean_name}'s capabilities with {inq_label} developments."
             else:
-                p4 = f"**Strategic Market Mandate:** {clean_name}'s strategic mandate centers on expanding commercial visibility, tracking stage-gate development milestones, and accelerating project pipeline conversion across {default_industry}."
+                p4 = f"**Strategic Market Mandate**\n{clean_name}'s strategic mandate centers on expanding commercial visibility, tracking stage-gate development milestones, and accelerating project pipeline conversion across {default_industry}."
 
             exec_summary = f"{p1}\n\n{p2}\n\n{p3}\n\n{p4}"
 
