@@ -524,11 +524,17 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         inq_lower = client_inquiry.lower().strip() if client_inquiry else ""
         sec_lower = sec_name.lower().strip()
-        acronyms = [a.lower().strip() for a in re.findall(r"\((.*?)\)", sec_lower)]
-        if "battery energy storage" in sec_lower:
-            acronyms.append("bess")
-        if "photovoltaic" in definition.lower() or "solar pv" in sec_lower:
-            acronyms.append("pv")
+        defn_lower = definition.lower() if definition else ""
+        
+        # Dynamically extract acronyms from parentheticals and catalog mappings
+        from service_catalog import catalog
+        acronyms = [a.lower().strip() for a in re.findall(r"\((.*?)\)", sec_lower) + re.findall(r"\((.*?)\)", defn_lower) if 2 <= len(a.strip()) <= 6 and a.strip().isalnum()]
+        if hasattr(catalog, "acronym_map"):
+            for acr, indices in catalog.acronym_map.items():
+                if any(catalog.sectors[idx] == sec_name for idx in indices):
+                    if acr not in acronyms:
+                        acronyms.append(acr)
+        
         clean_sec = re.sub(r"\(.*?\)", "", sec_lower).strip()
         sec_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
         sec_tokens.update(acronyms)

@@ -67,16 +67,22 @@ class ServiceCatalog:
         # Dynamically index acronyms present in canonical sectors and definitions
         self.acronym_map: Dict[str, List[int]] = {}
         for i, (s, d) in enumerate(zip(self.sectors, self.definitions)):
-            s_low = s.lower()
-            for a in re.findall(r"\((.*?)\)", s):
+            # 1. Parenthetical abbreviations in sector title and definition (e.g. (BESS), (PV), (BMS), (SAF), (CSP))
+            for a in re.findall(r"\((.*?)\)", s) + re.findall(r"\((.*?)\)", d):
                 clean_a = a.strip().lower()
-                if 2 <= len(clean_a) <= 6:
+                if 2 <= len(clean_a) <= 6 and clean_a.isalnum():
                     self.acronym_map.setdefault(clean_a, []).append(i)
-            # Domain canonical acronym equivalents
-            if "battery energy storage" in s_low:
-                self.acronym_map.setdefault("bess", []).append(i)
-            if "photovoltaic" in d.lower() or "solar pv" in s_low:
-                self.acronym_map.setdefault("pv", []).append(i)
+
+            # 2. Dynamic initialisms for multi-word sector titles
+            clean_s = re.sub(r"\(.*?\)", "", s).strip()
+            words = [w for w in re.findall(r"[a-zA-Z0-9]+", clean_s) if w.lower() not in ("and", "the", "for", "of", "in", "to", "or", "on", "with", "other")]
+            if len(words) >= 2:
+                init = "".join([w[0].lower() for w in words])
+                if 2 <= len(init) <= 6:
+                    self.acronym_map.setdefault(init, []).append(i)
+                # Expand standard plural/system acronym variations (e.g. Storage -> Storage System)
+                if words[-1].lower() in ("storage", "facility", "plant", "unit") and len(init) < 6:
+                    self.acronym_map.setdefault(init + "s", []).append(i)
 
         # Dynamically index all canonical catalog words for compound term decomposition
         self.catalog_words: Set[str] = set()
