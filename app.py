@@ -550,15 +550,26 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
                         st.markdown(f"**Required Service / Expansion Field:** `{client_inquiry}`")
 
             # 2. Verified Core Products & Existing Capabilities
+            detailed_prods = company_details.get("detailed_product_offerings", [])
             prods = company_details.get("core_products_and_services", [])
             diffs = company_details.get("key_differentiators", [])
             scale_list = company_details.get("operational_scale_metrics", [])
-            if prods or diffs or scale_list:
+            if detailed_prods or prods or diffs or scale_list:
                 st.markdown("### Verified Products & Technical Capabilities")
-                c_p1, c_p2 = st.columns(2)
+                c_p1, c_p2 = st.columns([1, 1])
                 with c_p1:
                     st.markdown("#### Core Products & Offerings")
-                    if prods:
+                    if detailed_prods:
+                        for prod_item in detailed_prods[:6]:
+                            p_name = prod_item.get("name", "") if isinstance(prod_item, dict) else str(prod_item)
+                            p_desc = prod_item.get("summary", "") if isinstance(prod_item, dict) else ""
+                            st.markdown(f"""
+                            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-left:3px solid #2563eb; border-radius:6px; padding:10px 14px; margin-bottom:10px;">
+                                <div style="font-weight:700; color:#0f172a; font-size:0.92rem; margin-bottom:3px;">⚡ {p_name}</div>
+                                <div style="font-size:0.83rem; color:#475569; line-height:1.45;">{p_desc}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    elif prods:
                         for p in prods[:8]:
                             st.markdown(f"- **{p}**")
                     else:

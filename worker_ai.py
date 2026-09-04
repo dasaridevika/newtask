@@ -713,6 +713,53 @@ Respond ONLY with a valid JSON object matching this exact schema:
         else:
             parsed["core_products_and_services"] = [f"Specialized {industry} Solutions & Systems"]
 
+        # Build detailed product capability summaries
+        detailed_prods = []
+        for p_name in final_clean_prods[:8]:
+            p_name_low = p_name.lower()
+            p_summary = ""
+            p_url = f"https://{domain}" if domain else ""
+            
+            if evidence_store:
+                for page in getattr(evidence_store, "pages", []):
+                    page_headings_low = " ".join(getattr(page, "headings", [])).lower()
+                    page_url_low = getattr(page, "url", "").lower()
+                    page_title_low = getattr(page, "title", "").lower()
+                    if p_name_low in page_headings_low or p_name_low in page_url_low or p_name_low in page_title_low:
+                        p_url = getattr(page, "url", p_url)
+                        snips = getattr(page, "canonical_snippets", [])
+                        for snip in snips:
+                            s_clean = clean_prose_text(snip)
+                            if len(s_clean) > 40 and not any(j in s_clean.lower() for j in ["login", "password", "cookie", "privacy", "sign in", "apply now"]):
+                                p_summary = s_clean
+                                break
+                        if p_summary:
+                            break
+
+                if not p_summary:
+                    for ev in getattr(evidence_store, "evidence_ledger", []):
+                        qt = getattr(ev, "quoted_text", "")
+                        if p_name_low in qt.lower():
+                            clean_qt = clean_prose_text(qt)
+                            if len(clean_qt) > 35 and not any(j in clean_qt.lower() for j in ["login", "password", "privacy"]):
+                                p_summary = clean_qt
+                                p_url = getattr(ev, "source_url", p_url)
+                                break
+
+            if not p_summary:
+                p_summary = f"Critical engineering solutions and operational equipment providing high-reliability performance and infrastructure support for {company_name}'s {p_name} applications."
+
+            if len(p_summary) > 220:
+                p_summary = p_summary[:217].rsplit(" ", 1)[0] + "..."
+
+            detailed_prods.append({
+                "name": p_name,
+                "summary": p_summary,
+                "source_url": p_url
+            })
+
+        parsed["detailed_product_offerings"] = detailed_prods
+
         # Clean executive summary markdown
         raw_exec = parsed.get("executive_profile_analysis", "")
         if raw_exec:
