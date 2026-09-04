@@ -265,9 +265,11 @@ def extract_markdown_evidence(markdown_text: str, url: str) -> dict:
 
 def clean_html(raw_html: str) -> dict:
     """Fallback HTML cleaner for standard HTTP requests."""
+    import html
+    raw_html = html.unescape(raw_html).replace("\ufffd", "")
+
     title_match = re.search(r"<title[^>]*>(.*?)</title>", raw_html, re.I | re.DOTALL)
     title = re.sub(r"\s+", " ", title_match.group(1)).strip() if title_match else "Enterprise Page"
-    title = title.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
 
     meta_desc = ""
     m = re.search(r'<meta\s+(?:name|property)=["\'](?:description|og:description)["\']\s+content=["\'](.*?)["\']', raw_html, re.I)
@@ -275,7 +277,6 @@ def clean_html(raw_html: str) -> dict:
         m = re.search(r'<meta\s+content=["\'](.*?)["\']\s+(?:name|property)=["\'](?:description|og:description)["\']', raw_html, re.I)
     if m:
         meta_desc = re.sub(r"\s+", " ", m.group(1)).strip()
-        meta_desc = meta_desc.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
 
     headings = []
     for h in re.findall(r"<h[1-3][^>]*>(.*?)</h[1-3]>", raw_html, re.I | re.DOTALL):
@@ -289,21 +290,20 @@ def clean_html(raw_html: str) -> dict:
         "restricted to access", "partner support", "save portals", "apply now", "open search",
         "please contact", "all rights reserved", "terms of use", "privacy policy", "cookie",
         "forgot password", "create account", "available 9:", "need help", "sign in", "login",
-        "enable javascript", "menu !", "modal", "support:", "salescloud"
+        "enable javascript", "menu !", "modal", "support:", "salescloud", "language & location",
+        "learn about", "product solutions", "verticals", "other topics", "site map", "worldwide"
     ]
 
     list_items = []
     for li in re.findall(r"<li[^>]*>(.*?)</li>", raw_html, re.I | re.DOTALL):
         clean_li = re.sub(r"<[^>]+>", "", li).strip()
         clean_li = re.sub(r"\s+", " ", clean_li)
-        clean_li = clean_li.replace("&amp;", "&").replace("&quot;", '"').replace("&#39;", "'")
         li_low = clean_li.lower()
-        if 15 < len(clean_li) < 140 and clean_li not in list_items and not any(p in li_low for p in NOISE_PATTERNS):
+        if 15 < len(clean_li) < 140 and clean_li not in list_items and not any(p in li_low for p in NOISE_PATTERNS) and not li_low.endswith(":"):
             list_items.append(clean_li)
 
     text = re.sub(r"<(script|style|nav|header|footer|svg|noscript|iframe)[^>]*>.*?</\1>", " ", raw_html, flags=re.DOTALL | re.IGNORECASE)
     text = re.sub(r"<[^>]+>", " ", text)
-    text = text.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
     text = re.sub(r"\s+", " ", text).strip()
 
     sentences = re.split(r"(?<=[.!?])\s+", text)

@@ -337,12 +337,21 @@ Respond ONLY with a valid JSON object matching this exact schema:
                     facts.append({"statement": s_clean, "source_url": f"https://{domain}" if domain else "", "confidence": "high"})
 
             # Clean products list
+            NAV_WORDS = (
+                "language & location", "learn about", "product solutions", "verticals", "other topics",
+                "navigation", "quick links", "read more", "view all", "contact us", "overview",
+                "home", "search", "cookie policy", "terms of use", "privacy policy", "global sites",
+                "worldwide", "all categories", "site map", "back to top"
+            )
             clean_prods = []
-            for p in products_list[:8]:
+            for p in products_list:
                 p_clean = re.sub(r"\s+", " ", p).strip()
                 p_clean = re.sub(r"^===.*?===\s*", "", p_clean).strip()
-                if 3 < len(p_clean) < 70 and p_clean not in clean_prods and not any(w in p_clean.lower() for w in NOISE_PATTERNS):
-                    clean_prods.append(p_clean)
+                p_clean = p_clean.replace("\ufffd", "")
+                p_low = p_clean.lower()
+                if 3 < len(p_clean) < 70 and p_clean not in clean_prods:
+                    if not any(w in p_low for w in NOISE_PATTERNS) and not any(nav in p_low for nav in NAV_WORDS) and not p_low.endswith(":"):
+                        clean_prods.append(p_clean)
 
             # Build clean, natural executive brief
             overview_core = meta_desc if (meta_desc and len(meta_desc) > 30) else (" ".join([f["statement"] for f in facts[:2]]) if facts else f"{clean_name} is an established {archetype} operating in {default_industry}.")
