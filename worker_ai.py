@@ -503,6 +503,11 @@ Respond ONLY with a valid JSON object matching this exact schema:
             req_analysis["primary_operational_bottleneck"] = bottleneck
             req_analysis["risk_mitigation_strategy"] = mitigation
             req_analysis["target_decision_maker"] = decision_maker
+            req_analysis["strategic_context_summary"] = (
+                f"{company_name} operates as a key solution provider across {industry}. "
+                f"To capture commercial pipeline in {inq_str}, continuous stage-gate market intelligence is deployed to monitor "
+                f"capital expenditure filings, interconnection queues, and engineering procurement tenders 6–12 months prior to formal RFPs."
+            )
         else:
             if _is_placeholder(req_analysis.get("core_growth_mandate", "")):
                 req_analysis["core_growth_mandate"] = f"Expand commercial visibility, secure early positioning in major capital buildout projects, and scale critical operational delivery across {industry}."
