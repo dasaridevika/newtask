@@ -907,7 +907,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
                 }
             }
 
-            if (raw_ev_level in ("LEVEL_1", "LEVEL_2") or "LEVEL 1" in ev_level or "LEVEL 2" in ev_level) and classification == "exact":
+            has_verified_ev = len(supporting_citations) >= 1 or cand.get("is_inquiry_match", False) or "inquiry_stated" in ev_ids
+            if (raw_ev_level in ("LEVEL_1", "LEVEL_2") or "LEVEL 1" in ev_level or "LEVEL 2" in ev_level) and classification == "exact" and has_verified_ev:
                 if len(exact_mappings) < 3:
                     exact_mappings.append(mapping_record)
                 elif len(adjacent_mappings) < 3:
@@ -921,7 +922,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         "status": "SUPPLEMENTARY (CAPACITY_REACHED)",
                         "rationale": f"Matching solution for '{title}' evaluated; top primary offerings prioritized."
                     })
-            elif (raw_ev_level == "LEVEL_3" or "LEVEL 3" in ev_level) and classification in ("adjacent", "exact") and len(adjacent_mappings) < 3:
+            elif (raw_ev_level == "LEVEL_3" or "LEVEL 3" in ev_level) and classification in ("adjacent", "exact") and has_verified_ev and len(adjacent_mappings) < 3:
                 adjacent_mappings.append(mapping_record)
             else:
                 reason_code = cand.get("decision", {}).get("reason_code", "NO_VERIFIED_EVIDENCE")

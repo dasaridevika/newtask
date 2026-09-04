@@ -449,6 +449,7 @@ if run_btn:
                 company_details=company_details,
                 scored_candidates=scored_candidates,
                 evidence_ledger=evidence_ledger,
+                client_inquiry=client_inquiry,
                 start_time_ms=start_time_exec
             )
             status.update(label="Dynamic Semantic Analysis & Evidence-Grounded Matching Complete", state="complete", expanded=False)
