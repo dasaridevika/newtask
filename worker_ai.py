@@ -525,6 +525,10 @@ Respond ONLY with a valid JSON object matching this exact schema:
         inq_lower = client_inquiry.lower().strip() if client_inquiry else ""
         sec_lower = sec_name.lower().strip()
         acronyms = [a.lower().strip() for a in re.findall(r"\((.*?)\)", sec_lower)]
+        if "battery energy storage" in sec_lower:
+            acronyms.append("bess")
+        if "photovoltaic" in definition.lower() or "solar pv" in sec_lower:
+            acronyms.append("pv")
         clean_sec = re.sub(r"\(.*?\)", "", sec_lower).strip()
         sec_tokens = set(re.findall(r"\b[a-zA-Z0-9]{2,}\b", sec_lower))
         sec_tokens.update(acronyms)
@@ -540,8 +544,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
             defn_lower = definition.lower() if definition else ""
 
-            # 1. Full phrase containment in sector name or definition
-            if inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or inq_lower in defn_lower:
+            # 1. Full phrase containment or direct acronym equivalence
+            if inq_lower in acronyms or inq_lower == sec_lower or inq_lower == clean_sec or clean_sec in inq_lower or inq_lower in clean_sec or inq_lower in defn_lower:
                 is_inquiry_match = True
             elif inq_tokens_to_eval:
                 matched_tokens = [t for t in inq_tokens_to_eval if t in sec_tokens or any(t in s or s in t for s in sec_tokens)]

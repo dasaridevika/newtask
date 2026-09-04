@@ -64,8 +64,27 @@ class ServiceCatalog:
         if "model_name" in data:
             self.model_name = str(data["model_name"])
 
-        # Build standard generic TF-IDF corpus from sector definitions
-        corpus = [f"{s}. {d}" for s, d in zip(self.sectors, self.definitions)]
+        # Dynamically index acronyms present in canonical sectors and definitions
+        self.acronym_map: Dict[str, List[int]] = {}
+        for i, (s, d) in enumerate(zip(self.sectors, self.definitions)):
+            s_low = s.lower()
+            for a in re.findall(r"\((.*?)\)", s):
+                clean_a = a.strip().lower()
+                if 2 <= len(clean_a) <= 6:
+                    self.acronym_map.setdefault(clean_a, []).append(i)
+            # Domain canonical acronym equivalents
+            if "battery energy storage" in s_low:
+                self.acronym_map.setdefault("bess", []).append(i)
+            if "photovoltaic" in d.lower() or "solar pv" in s_low:
+                self.acronym_map.setdefault("pv", []).append(i)
+
+        # Build standard generic TF-IDF corpus with embedded acronyms
+        corpus = []
+        for i, (s, d) in enumerate(zip(self.sectors, self.definitions)):
+            acrs = [a for a, indices in self.acronym_map.items() if i in indices]
+            acr_str = f" ({' '.join(acrs)})" if acrs else ""
+            corpus.append(f"{s}{acr_str}. {d}")
+
         self.tfidf_vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
             sublinear_tf=True,
@@ -235,14 +254,23 @@ class ServiceCatalog:
 
         # 3. Explicit Client Inquiry Retrieval (Dedicated pass to prevent dilution by large company text)
         inquiry_indices = []
-        if client_inquiry and len(client_inquiry.strip()) > 2 and self.tfidf_vectorizer and self.tfidf_matrix is not None:
-            inq_vec_tfidf = self.tfidf_vectorizer.transform([client_inquiry.strip()])
-            inq_tfidf_sims = (self.tfidf_matrix * inq_vec_tfidf.T).toarray().flatten()
-            # Retrieve top candidates scoring above baseline for inquiry
-            sorted_inq = np.argsort(-inq_tfidf_sims)
-            for idx in sorted_inq:
-                if inq_tfidf_sims[idx] > 0.04 and len(inquiry_indices) < max(5, top_k // 2):
-                    inquiry_indices.append(int(idx))
+        if client_inquiry and len(client_inquiry.strip()) >= 2:
+            inq_clean = client_inquiry.strip().lower()
+            
+            # Direct canonical acronym / synonym mapping
+            if hasattr(self, "acronym_map") and inq_clean in self.acronym_map:
+                for a_idx in self.acronym_map[inq_clean]:
+                    if a_idx not in inquiry_indices:
+                        inquiry_indices.append(a_idx)
+
+            if self.tfidf_vectorizer and self.tfidf_matrix is not None:
+                inq_vec_tfidf = self.tfidf_vectorizer.transform([inq_clean])
+                inq_tfidf_sims = (self.tfidf_matrix * inq_vec_tfidf.T).toarray().flatten()
+                sorted_inq = np.argsort(-inq_tfidf_sims)
+                for idx in sorted_inq:
+                    if inq_tfidf_sims[idx] > 0.03 and len(inquiry_indices) < max(5, top_k // 2):
+                        if int(idx) not in inquiry_indices:
+                            inquiry_indices.append(int(idx))
 
         # Combined baseline company score (0.75 dense + 0.25 lexical)
         retrieval_scores = 0.75 * dense_sims + 0.25 * tfidf_sims
