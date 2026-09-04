@@ -552,24 +552,24 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
             # 2. Verified Core Products & Existing Capabilities
             prods = company_details.get("core_products_and_services", [])
             diffs = company_details.get("key_differentiators", [])
-            if prods or diffs:
+            scale_list = company_details.get("operational_scale_metrics", [])
+            if prods or diffs or scale_list:
                 st.markdown("### Verified Products & Technical Capabilities")
                 c_p1, c_p2 = st.columns(2)
                 with c_p1:
                     st.markdown("#### Core Products & Offerings")
                     if prods:
-                        for p in prods[:6]:
+                        for p in prods[:8]:
                             st.markdown(f"- **{p}**")
                     else:
                         st.write("Specialized commercial and industrial product lines.")
                 with c_p2:
                     st.markdown("#### Operational Differentiators & Footprint")
                     if diffs:
-                        for d in diffs[:4]:
+                        for d in diffs[:5]:
                             st.markdown(f"- {d}")
-                    scale_list = company_details.get("operational_scale_metrics", [])
                     if scale_list:
-                        for s in scale_list[:3]:
+                        for s in scale_list[:5]:
                             st.markdown(f"- 📈 *{s}*")
 
             # 3. Key Operational Pillars & Growth Context
