@@ -558,7 +558,7 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
                 st.markdown("### Verified Products & Technical Capabilities")
                 c_p1, c_p2 = st.columns([1, 1], gap="medium")
                 with c_p1:
-                    st.markdown("#### Core Products & Offerings")
+                    st.markdown("#### ⚡ Core Products & Offerings")
                     if detailed_prods:
                         for prod_item in detailed_prods[:6]:
                             p_name = prod_item.get("name", "") if isinstance(prod_item, dict) else str(prod_item)
@@ -584,21 +584,20 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
                     else:
                         st.write("Specialized commercial and industrial product lines.")
                 with c_p2:
-                    st.markdown("#### Operational Differentiators & Footprint")
                     if diffs:
+                        st.markdown("#### 🛡️ Key Differentiators")
                         for d in diffs[:3]:
                             st.markdown(f"""
-                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #059669; border-radius:8px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.02); min-height:85px;">
-                                <div style="font-weight:700; color:#0f172a; font-size:0.95rem; margin-bottom:4px;">🛡️ Key Differentiator</div>
-                                <div style="font-size:0.85rem; color:#475569; line-height:1.5;">{d}</div>
+                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #059669; border-radius:8px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.02); min-height:65px;">
+                                <div style="font-size:0.88rem; color:#334155; line-height:1.5;">{d}</div>
                             </div>
                             """, unsafe_allow_html=True)
                     if scale_list:
+                        st.markdown("#### 📈 Operational Scale & Footprint")
                         for s in scale_list[:3]:
                             st.markdown(f"""
-                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #7c3aed; border-radius:8px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.02); min-height:85px;">
-                                <div style="font-weight:700; color:#0f172a; font-size:0.95rem; margin-bottom:4px;">📈 Operational Scale & Footprint</div>
-                                <div style="font-size:0.85rem; color:#475569; line-height:1.5;">{s}</div>
+                            <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #7c3aed; border-radius:8px; padding:14px 16px; margin-bottom:12px; box-shadow:0 1px 3px rgba(0,0,0,0.02); min-height:65px;">
+                                <div style="font-size:0.88rem; color:#334155; line-height:1.5;">{s}</div>
                             </div>
                             """, unsafe_allow_html=True)
 
