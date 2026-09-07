@@ -555,7 +555,7 @@ async def _crawl4ai_deep_harvest(url: str, base_url: str, store: EvidenceStore) 
 
                         if sub_type in (PageType.PRODUCTS_SERVICES, PageType.SOLUTIONS):
                             for h in sub_ext["headings"]:
-                                if 5 <= len(h) <= 70 and not any(j in h.lower() for j in ["privacy", "terms", "cookie", "login", "contact", "about", "home", "search", "menu", "activation"]):
+                                if 5 <= len(h) <= 70 and not any(j in h.lower() for j in ["privacy", "terms", "cookie", "login", "contact", "about", "home", "search", "menu", "activation", "resources", "resource", "news", "blog", "events", "insights"]):
                                     if h not in store.observed_products and len(store.observed_products) < 20:
                                         store.observed_products.append(h)
 

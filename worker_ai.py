@@ -235,7 +235,9 @@ class WorkerAI:
             "discontinued", "exclude", "availability", "save", "open search", "approach",
             "comprehensive approach", "our approach", "why choose", "overview",
             "products & services", "products and services", "services & products",
-            "language & location", "tell us your feedback", "tell us", "products", "services"
+            "language & location", "tell us your feedback", "tell us", "products", "services",
+            "resources", "resource", "media", "news", "blog", "events", "insights", "tools",
+            "calculators", "selector", "support & services", "contact sales", "find a partner", "where to buy"
         }
         products_list = []
         if evidence_store:
