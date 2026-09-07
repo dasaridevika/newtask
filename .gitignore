@@ -8,3 +8,6 @@ __pycache__/
 .venv
 env/
 venv/
+run_history.jsonl
+test_*.py
+tests/
