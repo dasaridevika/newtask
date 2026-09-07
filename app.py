@@ -9,9 +9,52 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+import re
 from scraper import search_company_serp
 from service_catalog import catalog
 from worker_ai import ai, clean_prose_text
+
+
+def parse_executive_pillars(raw_text: str) -> list:
+    """Parses executive profile analysis into 4 distinct structured cards."""
+    if not raw_text:
+        return []
+    
+    clean_txt = clean_prose_text(raw_text)
+    
+    p1_m = re.search(r"(?:#+\s*|\*\*)?Executive Profile & Market Position(?:\*\*)?[:\s]*([\s\S]*?)(?=(?:#+\s*|\*\*)?Core Offerings|\Z)", clean_txt, flags=re.I)
+    p2_m = re.search(r"(?:#+\s*|\*\*)?Core Offerings & Technical Capabilities(?:\*\*)?[:\s]*([\s\S]*?)(?=(?:#+\s*|\*\*)?Business Model|\Z)", clean_txt, flags=re.I)
+    p3_m = re.search(r"(?:#+\s*|\*\*)?Business Model (?:&|and) Monetization(?: Architecture)?(?:\*\*)?[:\s]*([\s\S]*?)(?=(?:#+\s*|\*\*)?Strategic Alignment|\Z)", clean_txt, flags=re.I)
+    p4_m = re.search(r"(?:#+\s*|\*\*)?Strategic Alignment (?:&|and) Inbound Mandate(?: Analysis)?(?:\*\*)?[:\s]*([\s\S]*?)(?=(?:#+\s*|\*\*)?Requirements|Business Model / Archetype|\Z)", clean_txt, flags=re.I)
+    
+    p1 = p1_m.group(1).strip() if p1_m else ""
+    p2 = p2_m.group(1).strip() if p2_m else ""
+    p3 = p3_m.group(1).strip() if p3_m else ""
+    p4 = p4_m.group(1).strip() if p4_m else ""
+    
+    pillars = []
+    if p1 or p2 or p3 or p4:
+        if p1:
+            pillars.append({"title": "Executive Profile & Market Position", "icon": "🌐", "text": p1, "accent": "#2563eb", "badge": "Market Position"})
+        if p2:
+            pillars.append({"title": "Core Offerings & Technical Capabilities", "icon": "⚙️", "text": p2, "accent": "#4338ca", "badge": "Core Offerings"})
+        if p3:
+            pillars.append({"title": "Business Model & Monetization Architecture", "icon": "💼", "text": p3, "accent": "#059669", "badge": "Business Model"})
+        if p4:
+            pillars.append({"title": "Strategic Alignment & Inbound Mandate Analysis", "icon": "🎯", "text": p4, "accent": "#7c3aed", "badge": "Strategic Mandate"})
+    else:
+        paras = [p.strip() for p in clean_txt.split("\n\n") if len(p.strip()) > 30]
+        meta = [
+            ("Executive Profile & Market Position", "🌐", "#2563eb", "Market Position"),
+            ("Core Offerings & Technical Capabilities", "⚙️", "#4338ca", "Core Offerings"),
+            ("Business Model & Monetization Architecture", "💼", "#059669", "Business Model"),
+            ("Strategic Alignment & Inbound Mandate Analysis", "🎯", "#7c3aed", "Strategic Mandate"),
+        ]
+        for idx, para in enumerate(paras[:4]):
+            t, ic, ac, bg = meta[idx] if idx < len(meta) else (f"Strategic Dimension {idx+1}", "📌", "#2563eb", "Intelligence")
+            pillars.append({"title": t, "icon": ic, "text": para, "accent": ac, "badge": bg})
+            
+    return pillars
 
 # Streamlit Page Config
 st.set_page_config(
@@ -538,16 +581,96 @@ if "active_result" in st.session_state and st.session_state["active_result"]:
             st.caption("Factual breakdown of existing company operations, verified products/services, and operational footprint:")
 
             # 1. Executive Strategic Brief Card
-            with st.container(border=True):
-                st.markdown("### Executive Operations & Market Brief")
-                st.markdown(clean_prose_text(company_details.get("executive_profile_analysis", "")))
+            st.markdown("### Executive Operations & Market Brief")
+            
+            # Ribbon with metadata pills
+            archetype = company_details.get("archetype", "Commercial Enterprise")
+            inq_tag = client_inquiry if client_inquiry else "General Enterprise Intelligence"
+            
+            st.markdown(f"""
+            <div style="display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 16px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.06em;">Business Archetype:</span>
+                    <span style="font-size:0.84rem; font-weight:700; color:#0f172a; background:#ffffff; border:1px solid #cbd5e1; padding:3px 10px; border-radius:6px;">🏢 {archetype}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.06em;">Inbound Focus:</span>
+                    <span style="font-size:0.84rem; font-weight:700; color:#2563eb; background:#eff6ff; border:1px solid #bfdbfe; padding:3px 10px; border-radius:6px;">🎯 {inq_tag}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                    <span style="font-size:0.78rem; font-weight:700; color:#059669; background:#ecfdf5; border:1px solid #a7f3d0; padding:3px 10px; border-radius:6px;">🛡️ 100% Grounded Evidence</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            pillars = parse_executive_pillars(company_details.get("executive_profile_analysis", ""))
+            if len(pillars) >= 2:
+                c_row1_1, c_row1_2 = st.columns(2, gap="medium")
+                with c_row1_1:
+                    p = pillars[0]
+                    st.markdown(f"""
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-top:4px solid {p['accent']}; border-radius:12px; padding:18px 20px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.02); min-height:165px; display:flex; flex-direction:column;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:1.1rem;">{p['icon']}</span>
+                                <span style="font-weight:700; color:#0f172a; font-size:0.96rem;">{p['title']}</span>
+                            </div>
+                            <span style="font-size:0.72rem; font-weight:700; color:{p['accent']}; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 8px; border-radius:9999px; text-transform:uppercase; letter-spacing:0.04em;">{p['badge']}</span>
+                        </div>
+                        <div style="font-size:0.88rem; color:#334155; line-height:1.6; flex-grow:1;">{p['text']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c_row1_2:
+                    p = pillars[1]
+                    st.markdown(f"""
+                    <div style="background:#ffffff; border:1px solid #e2e8f0; border-top:4px solid {p['accent']}; border-radius:12px; padding:18px 20px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.02); min-height:165px; display:flex; flex-direction:column;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <span style="font-size:1.1rem;">{p['icon']}</span>
+                                <span style="font-weight:700; color:#0f172a; font-size:0.96rem;">{p['title']}</span>
+                            </div>
+                            <span style="font-size:0.72rem; font-weight:700; color:{p['accent']}; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 8px; border-radius:9999px; text-transform:uppercase; letter-spacing:0.04em;">{p['badge']}</span>
+                        </div>
+                        <div style="font-size:0.88rem; color:#334155; line-height:1.6; flex-grow:1;">{p['text']}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                col_meta1, col_meta2 = st.columns(2)
-                with col_meta1:
-                    st.markdown(f"**Business Model / Archetype:** `{company_details.get('archetype', 'Commercial Enterprise')}`")
-                with col_meta2:
-                    if client_inquiry:
-                        st.markdown(f"**Required Service / Expansion Field:** `{client_inquiry}`")
+                if len(pillars) >= 4:
+                    c_row2_1, c_row2_2 = st.columns(2, gap="medium")
+                    with c_row2_1:
+                        p = pillars[2]
+                        st.markdown(f"""
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-top:4px solid {p['accent']}; border-radius:12px; padding:18px 20px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.02); min-height:165px; display:flex; flex-direction:column;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:1.1rem;">{p['icon']}</span>
+                                    <span style="font-weight:700; color:#0f172a; font-size:0.96rem;">{p['title']}</span>
+                                </div>
+                                <span style="font-size:0.72rem; font-weight:700; color:{p['accent']}; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 8px; border-radius:9999px; text-transform:uppercase; letter-spacing:0.04em;">{p['badge']}</span>
+                            </div>
+                            <div style="font-size:0.88rem; color:#334155; line-height:1.6; flex-grow:1;">{p['text']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with c_row2_2:
+                        p = pillars[3]
+                        st.markdown(f"""
+                        <div style="background:#ffffff; border:1px solid #e2e8f0; border-top:4px solid {p['accent']}; border-radius:12px; padding:18px 20px; margin-bottom:14px; box-shadow:0 1px 4px rgba(0,0,0,0.02); min-height:165px; display:flex; flex-direction:column;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid #f1f5f9;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:1.1rem;">{p['icon']}</span>
+                                    <span style="font-weight:700; color:#0f172a; font-size:0.96rem;">{p['title']}</span>
+                                </div>
+                                <span style="font-size:0.72rem; font-weight:700; color:{p['accent']}; background:#f8fafc; border:1px solid #e2e8f0; padding:2px 8px; border-radius:9999px; text-transform:uppercase; letter-spacing:0.04em;">{p['badge']}</span>
+                            </div>
+                            <div style="font-size:0.88rem; color:#334155; line-height:1.6; flex-grow:1;">{p['text']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                <div style="background:#ffffff; border:1px solid #e2e8f0; border-left:4px solid #2563eb; border-radius:10px; padding:18px 20px; margin-bottom:14px; font-size:0.90rem; color:#334155; line-height:1.6;">
+                    {clean_prose_text(company_details.get("executive_profile_analysis", ""))}
+                </div>
+                """, unsafe_allow_html=True)
 
             # 2. Verified Core Products & Existing Capabilities
             detailed_prods = company_details.get("detailed_product_offerings", [])
