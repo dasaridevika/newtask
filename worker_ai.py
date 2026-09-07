@@ -717,6 +717,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
         # Build detailed product capability summaries
         detailed_prods = []
+        used_summaries = set()
         for p_name in final_clean_prods[:8]:
             p_name_low = p_name.lower()
             p_summary = ""
@@ -732,7 +733,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         snips = getattr(page, "canonical_snippets", [])
                         for snip in snips:
                             s_clean = clean_prose_text(snip)
-                            if len(s_clean) > 40 and not any(j in s_clean.lower() for j in ["login", "password", "cookie", "privacy", "sign in", "apply now"]):
+                            if len(s_clean) > 40 and s_clean.lower() not in used_summaries and not any(j in s_clean.lower() for j in ["login", "password", "cookie", "privacy", "sign in", "apply now"]):
                                 p_summary = s_clean
                                 break
                         if p_summary:
@@ -743,13 +744,15 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         qt = getattr(ev, "quoted_text", "")
                         if p_name_low in qt.lower():
                             clean_qt = clean_prose_text(qt)
-                            if len(clean_qt) > 35 and not any(j in clean_qt.lower() for j in ["login", "password", "privacy"]):
+                            if len(clean_qt) > 35 and clean_qt.lower() not in used_summaries and not any(j in clean_qt.lower() for j in ["login", "password", "privacy"]):
                                 p_summary = clean_qt
                                 p_url = getattr(ev, "source_url", p_url)
                                 break
 
-            if not p_summary:
+            if not p_summary or p_summary.lower() in used_summaries:
                 p_summary = f"Critical engineering solutions and operational equipment providing high-reliability performance and infrastructure support for {company_name}'s {p_name} applications."
+
+            used_summaries.add(p_summary.lower())
 
             if len(p_summary) > 220:
                 p_summary = p_summary[:217].rsplit(" ", 1)[0] + "..."
@@ -765,31 +768,45 @@ Respond ONLY with a valid JSON object matching this exact schema:
         # Clean executive summary markdown
         raw_exec = parsed.get("executive_profile_analysis", "")
         if raw_exec:
-            raw_exec = re.split(r"\n\s*\*\*(?:Requirements|Delivered Historical|Current Active|Future Roadmaps|Portfolio Target|Observed Facts)", raw_exec, flags=re.I)[0]
+            raw_exec = re.split(
+                r"\n\s*(?:#+\s*|\*\*)?(?:Requirements|req_\d+|Delivered Historical|Current Active|Future Roadmaps|Portfolio Target|Observed Facts|Buying Role|Strategic Requirements|Business Model / Archetype|Target Customers)",
+                raw_exec,
+                flags=re.I,
+            )[0]
+            raw_exec = re.sub(r"(?:\n\s*[-*_]{3,}\s*|\n\s*#+\s*)+$", "", raw_exec)
             parsed["executive_profile_analysis"] = raw_exec.strip()
 
-        # Ensure rich differentiators and operational scale metrics
-        existing_diffs = parsed.get("key_differentiators", [])
-        if not isinstance(existing_diffs, list):
-            existing_diffs = [existing_diffs] if existing_diffs else []
-        final_diffs = [clean_prose_text(d) for d in existing_diffs if len(clean_prose_text(d)) > 15]
-        if final_clean_prods and len(final_diffs) < 2:
-            final_diffs.append(f"Comprehensive product and engineering portfolio covering {', '.join(final_clean_prods[:4])}")
-        if len(final_diffs) < 3:
-            final_diffs.append(f"Global manufacturing and engineering support infrastructure tailored for {industry}")
-        if len(final_diffs) < 4:
-            final_diffs.append("Proven enterprise deployment track record with mission-critical uptime reliability")
-        parsed["key_differentiators"] = final_diffs[:5]
-
+        # Ensure rich differentiators and operational scale metrics without overlap
         existing_scale = parsed.get("operational_scale_metrics", [])
         if not isinstance(existing_scale, list):
             existing_scale = [existing_scale] if existing_scale else []
         final_scale = [clean_prose_text(s) for s in existing_scale + scale_metrics_list if len(clean_prose_text(s)) > 8]
         dedup_scale = []
         for s in final_scale:
-            if s.lower() not in [x.lower() for x in dedup_scale]:
+            if not any(s.lower() == x.lower() or s.lower() in x.lower() or x.lower() in s.lower() for x in dedup_scale):
                 dedup_scale.append(s)
         parsed["operational_scale_metrics"] = dedup_scale[:5] if dedup_scale else ["Global commercial operations footprint"]
+
+        existing_diffs = parsed.get("key_differentiators", [])
+        if not isinstance(existing_diffs, list):
+            existing_diffs = [existing_diffs] if existing_diffs else []
+        final_diffs = [clean_prose_text(d) for d in existing_diffs if len(clean_prose_text(d)) > 15]
+        
+        filtered_diffs = []
+        for d in final_diffs:
+            d_low = d.lower()
+            if any(s.lower() in d_low or d_low in s.lower() for s in dedup_scale):
+                continue
+            if d_low not in [x.lower() for x in filtered_diffs]:
+                filtered_diffs.append(d)
+
+        if final_clean_prods and len(filtered_diffs) < 2:
+            filtered_diffs.append(f"Comprehensive product and engineering portfolio covering {', '.join(final_clean_prods[:4])}")
+        if len(filtered_diffs) < 3:
+            filtered_diffs.append(f"Global manufacturing and engineering support infrastructure tailored for {industry}")
+        if len(filtered_diffs) < 4:
+            filtered_diffs.append("Proven enterprise deployment track record with mission-critical uptime reliability")
+        parsed["key_differentiators"] = filtered_diffs[:5]
 
         parsed["requirements"] = clean_requirements
         parsed["status"] = "verified" if len(parsed.get("observed_facts", [])) >= 1 or len(parsed.get("portfolio_target_sectors", [])) >= 1 else "partially_verified"
