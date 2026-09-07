@@ -718,6 +718,14 @@ Respond ONLY with a valid JSON object matching this exact schema:
         # Build detailed product capability summaries
         detailed_prods = []
         used_summaries = set()
+        junk_snip_terms = [
+            "login", "password", "cookie", "privacy", "sign in", "apply now",
+            "restricted to access", "activation status", "reseller partner", "reseller",
+            "where to buy", "find a partner", "terms of use", "contact us", "read more",
+            "learn more", "click here", "your account", "forbidden", "access denied",
+            "null", "undefined", "seeking technical guidance"
+        ]
+
         for p_name in final_clean_prods[:8]:
             p_name_low = p_name.lower()
             p_summary = ""
@@ -733,7 +741,11 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         snips = getattr(page, "canonical_snippets", [])
                         for snip in snips:
                             s_clean = clean_prose_text(snip)
-                            if len(s_clean) > 40 and s_clean.lower() not in used_summaries and not any(j in s_clean.lower() for j in ["login", "password", "cookie", "privacy", "sign in", "apply now"]):
+                            if (
+                                len(s_clean) > 40 
+                                and not any(j in s_clean.lower() for j in junk_snip_terms)
+                                and s_clean.lower() not in used_summaries
+                            ):
                                 p_summary = s_clean
                                 break
                         if p_summary:
@@ -744,13 +756,17 @@ Respond ONLY with a valid JSON object matching this exact schema:
                         qt = getattr(ev, "quoted_text", "")
                         if p_name_low in qt.lower():
                             clean_qt = clean_prose_text(qt)
-                            if len(clean_qt) > 35 and clean_qt.lower() not in used_summaries and not any(j in clean_qt.lower() for j in ["login", "password", "privacy"]):
+                            if (
+                                len(clean_qt) > 35 
+                                and not any(j in clean_qt.lower() for j in junk_snip_terms)
+                                and clean_qt.lower() not in used_summaries
+                            ):
                                 p_summary = clean_qt
                                 p_url = getattr(ev, "source_url", p_url)
                                 break
 
             if not p_summary or p_summary.lower() in used_summaries:
-                p_summary = f"Critical engineering solutions and operational equipment providing high-reliability performance and infrastructure support for {company_name}'s {p_name} applications."
+                p_summary = f"High-reliability {p_name.lower()} solutions engineered to deliver continuous operational uptime, infrastructure protection, and technical performance for {company_name} deployments."
 
             used_summaries.add(p_summary.lower())
 
